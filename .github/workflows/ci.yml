@@ -5,7 +5,8 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a run on main: every main commit must end with a complete check.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   check:
@@ -21,8 +22,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Lint
         run: ./gradlew ktlintCheck detekt
-      - name: Common tests on JVM and Android
-        run: ./gradlew jvmTest testAndroidHostTest
+      - name: Tests on JVM and Android (libraries and apps)
+        run: ./gradlew jvmTest testAndroidHostTest :desktopApp:test :androidApp:testDebugUnitTest
       - name: Coverage report
         run: ./gradlew koverXmlReport koverHtmlReport
       - uses: actions/upload-artifact@v7

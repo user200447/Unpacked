@@ -38,6 +38,7 @@ open iosApp/iosApp.xcodeproj              # iOS: run the iosApp scheme in Xcode
 ```sh
 ./gradlew ktlintCheck detekt              # lint; a violation fails the build
 ./gradlew jvmTest testAndroidHostTest     # common tests on JVM and Android
+./gradlew :desktopApp:test :androidApp:testDebugUnitTest   # app-module tests
 ./gradlew iosSimulatorArm64Test           # common tests on the iOS simulator (macOS only)
 ./gradlew compileKotlinIosArm64           # device slice of every module (macOS only)
 ./gradlew koverHtmlReport                 # merged coverage report in build/reports/kover/html

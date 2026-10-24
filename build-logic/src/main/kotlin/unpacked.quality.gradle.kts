@@ -14,7 +14,7 @@ configure<KtlintExtension> {
     version.set(libs.findVersion("ktlint").get().requiredVersion)
     android.set(false)
     filter {
-        exclude { it.file.path.contains("/build/generated/") }
+        exclude { it.file.invariantSeparatorsPath.contains("/build/generated/") }
     }
 }
 
