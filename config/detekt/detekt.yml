@@ -1,0 +1,15 @@
+# Built on top of detekt's default rule set (buildUponDefaultConfig = true).
+# Only deviations from the defaults are listed here.
+
+build:
+  maxIssues: 0
+
+style:
+  MaxLineLength:
+    maxLineLength: 120
+    excludeCommentStatements: true
+
+naming:
+  FunctionNaming:
+    # Composables and the iOS entry point are PascalCase by convention.
+    ignoreAnnotated: ['Composable']

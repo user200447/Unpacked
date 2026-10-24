@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, tests, desktop and Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Lint
+        run: ./gradlew ktlintCheck detekt
+      - name: Common tests on JVM and Android
+        run: ./gradlew jvmTest testAndroidHostTest
+      - name: Coverage report
+        run: ./gradlew koverXmlReport koverHtmlReport
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: kover-report
+          path: build/reports/kover
+      - name: Desktop and Android builds
+        run: ./gradlew :desktopApp:packageUberJarForCurrentOS :androidApp:assembleDebug
+
+  ios:
+    name: iOS tests and build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: 21
+      - uses: android-actions/setup-android@v4
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Common tests on the iOS simulator
+        run: ./gradlew iosSimulatorArm64Test
+      - name: Build the iOS app
+        run: |
+          xcodebuild build \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO

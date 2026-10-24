@@ -1,35 +1,50 @@
-This is a Kotlin Multiplatform project targeting Android, iOS, Desktop (JVM).
+# Unpacked
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+A privacy-first Kotlin Multiplatform app that turns the personal-data archives people download from large platforms into a searchable local timeline, answers questions about that data with provenance, and reports what the archive leaves out compared with GDPR Article 15.
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+Nothing leaves the device by default. The domain language and the decisions behind the design live in [CONTEXT.md](CONTEXT.md) and [docs/adr](docs/adr).
 
-### Running the apps
+## Modules
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+| Module | Role |
+| --- | --- |
+| `core:model` | Canonical model: Events, Claims, Entities, Kinds, Provenance. Plain Kotlin, no dependencies. |
+| `core:ingest` | Reads an Export (zip or folder) through a Source adapter into the canonical model. |
+| `core:data` | Local library on Room KMP; the only module that touches persistence. |
+| `core:insights` | Insight cards and the Gap report as pure functions over repository interfaces. |
+| `core:agent` | Koog agent, read-only Tools, provider selection, citation validation. |
+| `ui` | Compose Multiplatform screens shared by all targets; produces the `UnpackedKit` iOS framework. |
+| `androidApp`, `desktopApp`, `iosApp` | Thin entry points. |
+| `build-logic` | Gradle convention plugins (`unpacked.kmp.library`, `unpacked.kmp.compose`, `unpacked.quality`). |
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- Desktop app:
-  - Hot reload: `./gradlew :desktopApp:hotRun --auto`
-  - Standard run: `./gradlew :desktopApp:run`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+Every core module compiles for JVM, Android, iosArm64 and iosSimulatorArm64 with explicit API mode on.
 
-### Running tests
+## Requirements
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+- JDK 21 (the Gradle daemon toolchain is pinned in `gradle/gradle-daemon-jvm.properties`)
+- Android SDK with `sdk.dir` in `local.properties`
+- Xcode 26 for the iOS app
 
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- Desktop tests: `./gradlew :shared:jvmTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+## Build and run
 
----
+```sh
+./gradlew :desktopApp:run                 # desktop
+./gradlew :androidApp:assembleDebug       # Android APK
+open iosApp/iosApp.xcodeproj              # iOS: run the iosApp scheme in Xcode
+```
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+## Tests and quality gates
+
+```sh
+./gradlew ktlintCheck detekt              # lint; a violation fails the build
+./gradlew jvmTest testAndroidHostTest     # common tests on JVM and Android
+./gradlew iosSimulatorArm64Test           # common tests on the iOS simulator (macOS only)
+./gradlew koverHtmlReport                 # merged coverage report in build/reports/kover/html
+./gradlew check                           # lint plus JVM and Android tests
+```
+
+`./gradlew ktlintFormat` fixes formatting. The CI workflow in `.github/workflows/ci.yml` runs lint, all tests and the desktop, Android and iOS builds on every push.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).

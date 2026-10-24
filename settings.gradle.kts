@@ -1,6 +1,7 @@
 rootProject.name = "Unpacked"
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             mavenContent {
@@ -31,6 +32,11 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
+include(":core:model")
+include(":core:ingest")
+include(":core:data")
+include(":core:insights")
+include(":core:agent")
+include(":ui")
 include(":androidApp")
 include(":desktopApp")
-include(":shared")
