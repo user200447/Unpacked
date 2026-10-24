@@ -39,11 +39,12 @@ open iosApp/iosApp.xcodeproj              # iOS: run the iosApp scheme in Xcode
 ./gradlew ktlintCheck detekt              # lint; a violation fails the build
 ./gradlew jvmTest testAndroidHostTest     # common tests on JVM and Android
 ./gradlew iosSimulatorArm64Test           # common tests on the iOS simulator (macOS only)
+./gradlew compileKotlinIosArm64           # device slice of every module (macOS only)
 ./gradlew koverHtmlReport                 # merged coverage report in build/reports/kover/html
-./gradlew check                           # lint plus JVM and Android tests
+./gradlew check                           # lint plus tests on every target the host can run
 ```
 
-`./gradlew ktlintFormat` fixes formatting. The CI workflow in `.github/workflows/ci.yml` runs lint, all tests and the desktop, Android and iOS builds on every push.
+`./gradlew ktlintFormat` fixes formatting. The CI workflow in `.github/workflows/ci.yml` runs lint, all tests, the desktop and Android builds, and both iOS slices (simulator via `xcodebuild`, device via the Kotlin compiler) on every push.
 
 ## License
 

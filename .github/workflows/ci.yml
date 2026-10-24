@@ -17,6 +17,7 @@ jobs:
         with:
           distribution: zulu
           java-version: 21
+      - uses: android-actions/setup-android@v4
       - uses: gradle/actions/setup-gradle@v6
       - name: Lint
         run: ./gradlew ktlintCheck detekt
@@ -45,6 +46,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Common tests on the iOS simulator
         run: ./gradlew iosSimulatorArm64Test
+      - name: Compile the iosArm64 device slice
+        run: ./gradlew compileKotlinIosArm64 :ui:linkDebugFrameworkIosArm64
       - name: Build the iOS app
         run: |
           xcodebuild build \

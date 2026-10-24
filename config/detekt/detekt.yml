@@ -11,5 +11,5 @@ style:
 
 naming:
   FunctionNaming:
-    # Composables and the iOS entry point are PascalCase by convention.
+    # Composables are PascalCase by convention.
     ignoreAnnotated: ['Composable']
