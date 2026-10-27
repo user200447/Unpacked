@@ -23,6 +23,7 @@ kotlin {
             api(project(":core:model"))
             api(project(":core:ingest"))
             api(libs.kotlinx.coroutinesCore)
+            implementation(libs.koin.core)
             // Room and the bundled SQLite driver never leave this module (ADR 0005).
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)

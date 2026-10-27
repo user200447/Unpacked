@@ -34,7 +34,7 @@ public class Export private constructor(
             fileSystem: FileSystem,
             directory: Path,
         ): Export {
-            val id = ExportId(directory.name)
+            val id = exportIdOfFolder(directory)
             return Export(id, fileSystem, unwrap(fileSystem, directory, id))
         }
 
@@ -43,7 +43,7 @@ public class Export private constructor(
             fileSystem: FileSystem,
             zipFile: Path,
         ): Export {
-            val id = ExportId(zipFile.name.removeSuffixIgnoreCase(".zip"))
+            val id = exportIdOfZip(zipFile)
             val zipFileSystem = fileSystem.openZip(zipFile)
             return Export(id, zipFileSystem, unwrap(zipFileSystem, "/".toPath(), id))
         }
@@ -63,8 +63,5 @@ public class Export private constructor(
         }
 
         private fun isHidden(segment: String): Boolean = segment.startsWith(".") || segment == "__MACOSX"
-
-        private fun String.removeSuffixIgnoreCase(suffix: String): String =
-            if (endsWith(suffix, ignoreCase = true)) dropLast(suffix.length) else this
     }
 }

@@ -8,6 +8,12 @@ style:
   MaxLineLength:
     maxLineLength: 120
     excludeCommentStatements: true
+  MagicNumber:
+    # Compose sizes such as 16.dp are declared once as named properties (ui/theme/Spacing.kt), not inline.
+    ignorePropertyDeclaration: true
+  UnusedPrivateMember:
+    # Compose previews are private by convention and called only by the IDE.
+    ignoreAnnotated: ['Preview']
 
 naming:
   FunctionNaming:
