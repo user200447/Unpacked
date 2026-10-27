@@ -7,6 +7,7 @@ package com.jassemsendi.unpacked.fixtures
 public object InstagramFixtures {
     public const val ADS_VIEWED_PATH: String = "ads_information/ads_and_topics/ads_viewed.json"
     public const val ADS_VIEWED_FILE: String = "ads_viewed.json"
+    public const val POSTS_VIEWED_PATH: String = "ads_information/ads_and_topics/posts_viewed.json"
 
     /** A single-object `label_values` file with a `vec` list; no mapper registers it in ticket #3. */
     public const val UNMAPPED_PATH: String =
@@ -65,6 +66,43 @@ public object InstagramFixtures {
               {"dict": [{"dict": [{"label": "Name", "value": "Nobody Knows"}], "title": ""}], "title": "Owner"}
             ],
             "fbid": "1:4:0::DYIImpressionsData"
+          }
+        ]
+        """.trimIndent()
+
+    /** Two viewed posts: one by a named author with two hashtags, one whose author is unknown. */
+    public val POSTS_VIEWED_JSON: String =
+        """
+        [
+          {
+            "timestamp": $FIRST_AD_TIME_SECONDS,
+            "media": [],
+            "label_values": [
+              {"label": "URL", "value": "https://www.instagram.com/p/CCC/", "href": "https://www.instagram.com/p/CCC/"},
+              {"label": "Caption", "value": "Match day #Football #explore"},
+              {"label": "Title", "value": ""},
+              {"dict": [
+                {"dict": [{"label": "Name", "value": "Football"}], "title": ""},
+                {"dict": [{"label": "Name", "value": "explore"}], "title": ""}
+              ], "title": "Hashtags"},
+              {"dict": [{"dict": [
+                {"label": "URL", "value": ""},
+                {"label": "Name", "value": "Example Player"},
+                {"label": "Username", "value": "Example.Player"}
+              ], "title": ""}], "title": "Owner"},
+              {"dict": [], "title": "Brand partner"}
+            ],
+            "fbid": "1:5:$FIRST_AD_TIME_SECONDS"
+          },
+          {
+            "timestamp": ${FIRST_AD_TIME_SECONDS + ONE_MINUTE},
+            "media": [],
+            "label_values": [
+              {"label": "URL", "value": "https://www.instagram.com/p/DDD/", "href": "https://www.instagram.com/p/DDD/"},
+              {"dict": [], "title": "Hashtags"},
+              {"dict": [], "title": "Owner"}
+            ],
+            "fbid": "1:6:${FIRST_AD_TIME_SECONDS + ONE_MINUTE}"
           }
         ]
         """.trimIndent()

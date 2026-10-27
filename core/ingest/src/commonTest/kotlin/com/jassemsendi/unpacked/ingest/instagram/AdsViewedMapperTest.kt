@@ -12,6 +12,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class AdsViewedMapperTest {
+    private val mapper = InstagramMappers.forFile("ads_viewed.json")!!
     private val provenance = Provenance(ExportId("export"), InstagramFixtures.ADS_VIEWED_PATH, 7)
     private val rawKind = RawKind("ads_viewed")
     private val time = Instant.fromEpochSeconds(InstagramFixtures.FIRST_AD_TIME_SECONDS)
@@ -19,7 +20,7 @@ class AdsViewedMapperTest {
     @Test
     fun undatedRecordsProduceNothing() {
         val mapped =
-            AdsViewedMapper.map(
+            mapper.map(
                 FlatRecord(mapOf("Owner / Name" to "Someone"), time = null, provenance, rawKind),
             )
         assertTrue(mapped.isEmpty)
@@ -50,5 +51,5 @@ class AdsViewedMapperTest {
     }
 
     private fun map(fields: Map<String, String>) =
-        AdsViewedMapper.map(FlatRecord(fields, time, provenance, rawKind)).events.single()
+        mapper.map(FlatRecord(fields, time, provenance, rawKind)).events.single()
 }

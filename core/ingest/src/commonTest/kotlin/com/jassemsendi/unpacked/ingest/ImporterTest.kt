@@ -150,7 +150,10 @@ class ImporterTest {
                     .outcome.output.events
             assertEquals(listOf(0, 1), events.map { it.provenance.recordIndex })
             assertEquals("logistics, growth", events[1].attributes["Hashtags / Name"])
-            assertEquals("instagram:advertiser:examplecourier", events[1].entities.single().id)
+            assertEquals(
+                listOf("instagram:advertiser:examplecourier", "instagram:topic:logistics", "instagram:topic:growth"),
+                events[1].entities.map { it.id },
+            )
             assertEquals(
                 FileResult.Parsed(
                     InstagramFixtures.ADS_VIEWED_PATH,
@@ -184,6 +187,56 @@ class ImporterTest {
             assertEquals(
                 listOf(InstagramFixtures.ADS_VIEWED_PATH, "personal_information/notes_0.txt"),
                 steps.finished().map { it.outcome.result.path },
+            )
+        }
+
+    @Test
+    fun everyActivityFileIsParsedAndEventsCountPerKindAsComputedByHandFromTheFixture() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 5, includeActivity = true).writeTo(fs, root)
+
+            val steps = import(Export.directory(fs, root))
+            val summary = steps.summary()
+            val events = steps.finished().flatMap { it.outcome.output.events }
+
+            assertEquals(emptyList(), summary.failed)
+            assertEquals(listOf(InstagramFixtures.UNMAPPED_PATH), summary.skipped.map { it.path })
+            assertEquals(
+                (SyntheticInstagramExport.ACTIVITY_PATHS + InstagramFixtures.ADS_VIEWED_PATH).sorted(),
+                summary.parsed.map { it.path },
+            )
+            assertEquals(
+                mapOf(
+                    EventKind.AdShown to 5,
+                    EventKind.ContentViewed to 9,
+                    EventKind.ContentLiked to 10,
+                    EventKind.Login to 3,
+                    EventKind.Logout to 2,
+                    EventKind.Follow to 10,
+                    EventKind.Unfollow to 2,
+                    EventKind.Search to 4,
+                    EventKind.LinkVisited to 2,
+                    EventKind.Other to 10,
+                ),
+                events.groupingBy { it.kind }.eachCount(),
+            )
+            assertEquals(
+                EventKind.entries.toSet() - EventKind.MessageSent - EventKind.MessageReceived,
+                events.map { it.kind }.toSet(),
+                "the full non-message Event vocabulary appears",
+            )
+            assertEquals(
+                2,
+                summary.parsed.sumOf { it.droppedCount },
+                "the undated post view and the undated follower are dropped, not failed",
+            )
+            val social = events.filter { it.kind == EventKind.Follow || it.kind == EventKind.Unfollow }
+            assertTrue(social.all { event -> event.entities.any { it.kind == EntityKind.Account } })
+            val viewed = events.filter { it.kind == EventKind.ContentViewed || it.kind == EventKind.AdShown }
+            val named = viewed.mapNotNull { event -> event.entities.firstOrNull { it.kind != EntityKind.Topic } }
+            assertTrue(named.size > viewed.size / 2, "most viewed content names its author or advertiser")
+            assertTrue(
+                named.all { it.id.startsWith("instagram:account:") || it.id.startsWith("instagram:advertiser:") },
             )
         }
 }

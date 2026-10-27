@@ -15,6 +15,11 @@ style:
     # Compose previews are private by convention and called only by the IDE.
     ignoreAnnotated: ['Preview']
 
+complexity:
+  LongParameterList:
+    # The synthetic Export generator (core:fixtures) takes one named flag or count per class of file it writes.
+    constructorThreshold: 8
+
 naming:
   FunctionNaming:
     # Composables are PascalCase by convention.

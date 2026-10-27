@@ -91,6 +91,34 @@ abstract class LibraryTest {
         }
 
     @Test
+    fun theFullSyntheticExportLandsWithEveryEventKindCountedAndNoFailedFile() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 5, includeActivity = true).writeTo(fs, root)
+
+            val import = import(Export.directory(fs, root))
+
+            assertEquals(emptyList(), import.summary.failed)
+            assertEquals(
+                mapOf(
+                    EventKind.AdShown to 5,
+                    EventKind.ContentViewed to 9,
+                    EventKind.ContentLiked to 10,
+                    EventKind.Login to 3,
+                    EventKind.Logout to 2,
+                    EventKind.Follow to 10,
+                    EventKind.Unfollow to 2,
+                    EventKind.Search to 4,
+                    EventKind.LinkVisited to 2,
+                    EventKind.Other to 10,
+                ),
+                library.events.countByKind(import.id),
+            )
+            val follows = library.events.forImport(import.id).filter { it.kind == EventKind.Follow }
+            assertTrue(follows.all { event -> event.entities.any { it.id.startsWith("instagram:account:") } })
+            assertTrue(library.entities.all().any { it.kind == EntityKind.Device }, "logins name their devices")
+        }
+
+    @Test
     fun theImportUseCaseImportsTheExportAtAPickedLocationAndFailsWhenThereIsNoneThere() =
         runTest {
             SyntheticInstagramExport(adsViewed = 3, mediaFiles = 1).writeTo(fs, root)
@@ -144,8 +172,12 @@ abstract class LibraryTest {
             )
             assertEquals("Ship anything #logistics #growth", event.attributes["Caption"])
             assertEquals("logistics, growth", event.attributes["Hashtags / Name"])
-            val advertiser = event.entities.single()
-            assertEquals("instagram:advertiser:examplecourier", advertiser.id)
+            assertEquals(
+                listOf("instagram:advertiser:examplecourier", "instagram:topic:logistics", "instagram:topic:growth"),
+                event.entities.map { it.id },
+                "entity order follows the record: the advertiser, then each hashtag as a Topic",
+            )
+            val advertiser = event.entities.first()
             assertEquals(EntityKind.Advertiser, advertiser.kind)
             assertEquals("Example Courier", advertiser.displayName)
             assertEquals(
