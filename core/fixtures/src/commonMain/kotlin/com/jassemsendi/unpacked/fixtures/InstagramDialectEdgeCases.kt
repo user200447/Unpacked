@@ -51,4 +51,13 @@ public object InstagramDialectEdgeCases {
           }
         }]}
         """.trimIndent()
+
+    /** The media-list dialect: items with a creation time and metadata, the second undated and untitled. */
+    public val MEDIA_LIST_JSON: String =
+        """
+        {"ig_stories": [
+          {"uri": "media/other/story_1.webp", "creation_timestamp": $TIME_SECONDS, "media_metadata": {"camera_metadata": {"has_camera_metadata": false}}, "title": "Having fun", "cross_post_source": {"source_app": "FB"}},
+          {"uri": "media/other/story_2.webp", "creation_timestamp": 0, "media_metadata": {}, "title": ""}
+        ]}
+        """.trimIndent()
 }

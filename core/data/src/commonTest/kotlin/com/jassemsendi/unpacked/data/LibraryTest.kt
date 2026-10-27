@@ -93,7 +93,7 @@ abstract class LibraryTest {
     @Test
     fun theFullSyntheticExportLandsWithEveryEventKindCountedAndNoFailedFile() =
         runTest {
-            SyntheticInstagramExport(adsViewed = 5, includeActivity = true).writeTo(fs, root)
+            SyntheticInstagramExport(adsViewed = 5, includeTimedFiles = true).writeTo(fs, root)
 
             val import = import(Export.directory(fs, root))
 

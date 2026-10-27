@@ -8,7 +8,7 @@ import kotlin.random.Random
 /**
  * Builds a small Instagram Export in memory with the real folder layout: a deterministic
  * ads-viewed file, an unmapped file, media that must never be opened, and optionally the timed
- * activity files of every other recognised kind ([ACTIVITY_PATHS]), a malformed ads-viewed file,
+ * files of every other recognised name ([TIMED_FILE_PATHS]), a malformed ads-viewed file,
  * and non-JSON non-media files such as the HTML notes a real Export carries.
  * Every later ticket adds files to it rather than inventing new fixtures.
  */
@@ -16,7 +16,7 @@ public class SyntheticInstagramExport(
     public val adsViewed: Int = 5,
     public val malformedAdsViewed: Boolean = false,
     public val includeUnmappedFile: Boolean = true,
-    public val includeActivity: Boolean = false,
+    public val includeTimedFiles: Boolean = false,
     public val mediaFiles: Int = 3,
     public val otherFiles: Int = 0,
     seed: Int = 42,
@@ -53,8 +53,8 @@ public class SyntheticInstagramExport(
         if (includeUnmappedFile) {
             fileSystem.writeText(root / InstagramFixtures.UNMAPPED_PATH.toPath(), InstagramFixtures.ADVERTISERS_JSON)
         }
-        if (includeActivity) {
-            SyntheticActivityFiles.all(ACTIVITY_FIRST_TIME).forEach { (path, json) ->
+        if (includeTimedFiles) {
+            SyntheticTimedFiles.all(TIMED_FILES_FIRST_TIME).forEach { (path, json) ->
                 fileSystem.writeText(root / path.toPath(), json)
             }
         }
@@ -92,11 +92,11 @@ public class SyntheticInstagramExport(
     public companion object {
         public const val FIRST_TIME: Long = 1_790_000_000L
 
-        /** The activity files start a day after the first ad, one minute apart. */
-        public const val ACTIVITY_FIRST_TIME: Long = FIRST_TIME + 24 * 3_600L
+        /** The timed files start a day after the first ad, one minute apart. */
+        public const val TIMED_FILES_FIRST_TIME: Long = FIRST_TIME + 24 * 3_600L
 
-        /** The paths of the activity files written when `includeActivity` is set. */
-        public val ACTIVITY_PATHS: List<String> = SyntheticActivityFiles.all(ACTIVITY_FIRST_TIME).keys.toList()
+        /** The paths of the timed files written when `includeTimedFiles` is set. */
+        public val TIMED_FILE_PATHS: List<String> = SyntheticTimedFiles.all(TIMED_FILES_FIRST_TIME).keys.toList()
         private const val HOUR = 3_600L
         private val ADVERTISERS =
             listOf(

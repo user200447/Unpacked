@@ -18,9 +18,9 @@ internal fun owner(
         listOfNotNull(
             profile(
                 kind,
-                name = fields["$prefix / Name"],
-                username = fields["$prefix / Username"],
-                url = fields["$prefix / URL"],
+                name = fields[fieldPath(prefix, "Name")],
+                username = fields[fieldPath(prefix, "Username")],
+                url = fields[fieldPath(prefix, "URL")],
             ),
         )
     }
@@ -29,15 +29,18 @@ internal fun owner(
 internal fun profile(): EntityRule =
     { fields -> listOfNotNull(profile(EntityKind.Account, fields["Name"], fields["Username"], fields["URL"])) }
 
-/** An account named by its username in [usernameField], optionally with a display name in [nameField]. */
+/**
+ * An account named by its username in [usernameField], optionally with a display name in
+ * [nameField] and its profile link in [urlField].
+ */
 internal fun account(
     usernameField: String,
     nameField: String? = null,
-    urlField: String = "Href",
+    urlField: String? = null,
 ): EntityRule =
     { fields ->
         listOfNotNull(
-            profile(EntityKind.Account, nameField?.let(fields::get), fields[usernameField], fields[urlField]),
+            profile(EntityKind.Account, nameField?.let(fields::get), fields[usernameField], urlField?.let(fields::get)),
         )
     }
 
@@ -47,16 +50,16 @@ internal fun account(
  */
 internal fun hashtags(): EntityRule =
     { fields ->
-        fields["Hashtags / Name"]?.split(", ").orEmpty().map { name ->
+        fields[fieldPath("Hashtags", "Name")]?.split(", ").orEmpty().map { name ->
             Entity(Source.Instagram, EntityKind.Topic, Entity.normalizeKey(name), "#$name")
         }
     }
 
 /** The device a login or logout came from, as Instagram names it: by the user agent string, kept as given. */
-internal fun device(field: String = "User Agent"): EntityRule =
+internal fun device(): EntityRule =
     { fields ->
         listOfNotNull(
-            fields[field]?.takeIf { it.isNotBlank() }?.let { userAgent ->
+            fields["User Agent"].orBlank()?.let { userAgent ->
                 Entity(Source.Instagram, EntityKind.Device, Entity.normalizeKey(userAgent), userAgent)
             },
         )
@@ -72,8 +75,8 @@ private fun profile(
     username: String?,
     url: String?,
 ): Entity? {
-    val username = username?.takeIf { it.isNotBlank() }
-    val name = name?.takeIf { it.isNotBlank() }
+    val username = username.orBlank()
+    val name = name.orBlank()
     val displayName = name ?: username ?: return null
     return Entity(
         source = Source.Instagram,
@@ -83,7 +86,7 @@ private fun profile(
         attributes =
             buildMap {
                 username?.let { put("username", it) }
-                url?.takeIf { it.isNotBlank() }?.let { put("url", it) }
+                url.orBlank()?.let { put("url", it) }
             },
     )
 }

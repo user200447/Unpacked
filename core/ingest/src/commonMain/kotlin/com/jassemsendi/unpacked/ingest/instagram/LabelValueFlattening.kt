@@ -19,16 +19,14 @@ private fun flattenInto(
             when {
                 prefix.isEmpty() -> name
                 name.isEmpty() -> prefix
-                else -> "$prefix / $name"
+                else -> fieldPath(prefix, name)
             }
-        val scalar = item.value.orBlank() ?: item.href.orBlank() ?: epochToInstant(item.timestampValue)?.toString()
+        val scalar = fieldText(item.value, item.href, item.timestampValue)
         if (scalar != null && key.isNotEmpty()) out.append(key, scalar)
         flattenInto(out, key, item.vec)
         flattenInto(out, key, item.dict)
     }
 }
-
-private fun String?.orBlank(): String? = this?.takeIf { it.isNotBlank() }
 
 private fun MutableMap<String, String>.append(
     key: String,

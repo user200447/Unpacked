@@ -191,9 +191,9 @@ class ImporterTest {
         }
 
     @Test
-    fun everyActivityFileIsParsedAndEventsCountPerKindAsComputedByHandFromTheFixture() =
+    fun everyTimedFileIsParsedAndEventsCountPerKindAsComputedByHandFromTheFixture() =
         runTest {
-            SyntheticInstagramExport(adsViewed = 5, includeActivity = true).writeTo(fs, root)
+            SyntheticInstagramExport(adsViewed = 5, includeTimedFiles = true).writeTo(fs, root)
 
             val steps = import(Export.directory(fs, root))
             val summary = steps.summary()
@@ -201,10 +201,8 @@ class ImporterTest {
 
             assertEquals(emptyList(), summary.failed)
             assertEquals(listOf(InstagramFixtures.UNMAPPED_PATH), summary.skipped.map { it.path })
-            assertEquals(
-                (SyntheticInstagramExport.ACTIVITY_PATHS + InstagramFixtures.ADS_VIEWED_PATH).sorted(),
-                summary.parsed.map { it.path },
-            )
+            assertEquals(32, summary.parsed.size, "the ads file and the 31 timed files")
+            assertEquals(Inventory(jsonFiles = 33, mediaFiles = 3, otherFiles = 0), summary.inventory)
             assertEquals(
                 mapOf(
                     EventKind.AdShown to 5,
@@ -233,10 +231,8 @@ class ImporterTest {
             val social = events.filter { it.kind == EventKind.Follow || it.kind == EventKind.Unfollow }
             assertTrue(social.all { event -> event.entities.any { it.kind == EntityKind.Account } })
             val viewed = events.filter { it.kind == EventKind.ContentViewed || it.kind == EventKind.AdShown }
-            val named = viewed.mapNotNull { event -> event.entities.firstOrNull { it.kind != EntityKind.Topic } }
-            assertTrue(named.size > viewed.size / 2, "most viewed content names its author or advertiser")
-            assertTrue(
-                named.all { it.id.startsWith("instagram:account:") || it.id.startsWith("instagram:advertiser:") },
-            )
+            val named = viewed.map { event -> event.entities.single { it.kind != EntityKind.Topic }.id }
+            assertEquals(5, named.count { it.startsWith("instagram:advertiser:") }, "every ad names its advertiser")
+            assertEquals(9, named.count { it.startsWith("instagram:account:") }, "every view names its author")
         }
 }

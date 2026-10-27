@@ -17,8 +17,9 @@ style:
 
 complexity:
   LongParameterList:
-    # The synthetic Export generator (core:fixtures) takes one named flag or count per class of file it writes.
-    constructorThreshold: 8
+    # A constructor whose every parameter has a default is a set of named options, not a long signature
+    # (the synthetic Export generator in core:fixtures).
+    ignoreDefaultParameters: true
 
 naming:
   FunctionNaming:

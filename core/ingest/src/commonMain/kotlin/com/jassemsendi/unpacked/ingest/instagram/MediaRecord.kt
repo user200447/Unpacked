@@ -13,12 +13,12 @@ internal data class MediaRecord(
     val uri: String,
     @SerialName("creation_timestamp") val creationTimestamp: Long? = null,
     val title: String? = null,
-)
+) : DialectRecord {
+    override fun time(): Instant? = epochToInstant(creationTimestamp)
 
-internal fun MediaRecord.time(): Instant? = epochToInstant(creationTimestamp)
-
-internal fun MediaRecord.flatten(): Map<String, String> =
-    buildMap {
-        put("URI", uri)
-        title?.takeIf { it.isNotBlank() }?.let { put("Title", it) }
-    }
+    override fun fields(): Map<String, String> =
+        buildMap {
+            put("URI", uri)
+            title.orBlank()?.let { put("Title", it) }
+        }
+}

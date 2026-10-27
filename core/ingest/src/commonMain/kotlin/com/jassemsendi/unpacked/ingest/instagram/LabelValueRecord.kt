@@ -9,7 +9,11 @@ import kotlin.time.Instant
 internal data class LabelValueRecord(
     val timestamp: Long? = null,
     @SerialName("label_values") val labelValues: List<LabelValue> = emptyList(),
-)
+) : DialectRecord {
+    override fun time(): Instant? = epochToInstant(timestamp)
+
+    override fun fields(): Map<String, String> = flatten()
+}
 
 /**
  * One labelled value. A leaf has `label` and `value` (or `href`, or a `timestamp_value`); a group
@@ -26,6 +30,3 @@ internal data class LabelValue(
     val vec: List<LabelValue> = emptyList(),
     val dict: List<LabelValue> = emptyList(),
 )
-
-/** The record's time, or null when the Source gave none. */
-internal fun LabelValueRecord.time(): Instant? = epochToInstant(timestamp)

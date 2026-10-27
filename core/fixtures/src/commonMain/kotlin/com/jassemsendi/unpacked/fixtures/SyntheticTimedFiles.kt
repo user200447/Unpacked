@@ -8,31 +8,31 @@ import com.jassemsendi.unpacked.fixtures.InstagramJson.list
 import com.jassemsendi.unpacked.fixtures.InstagramJson.stringList
 import com.jassemsendi.unpacked.fixtures.InstagramJson.stringMap
 import com.jassemsendi.unpacked.fixtures.InstagramJson.timed
+import com.jassemsendi.unpacked.fixtures.InstagramRecords.accountHistory
 import com.jassemsendi.unpacked.fixtures.InstagramRecords.content
 import com.jassemsendi.unpacked.fixtures.InstagramRecords.media
 import com.jassemsendi.unpacked.fixtures.InstagramRecords.profileRecord
 import com.jassemsendi.unpacked.fixtures.InstagramRecords.quiz
-import com.jassemsendi.unpacked.fixtures.InstagramRecords.session
 import com.jassemsendi.unpacked.fixtures.InstagramRecords.stickerReaction
 
 /**
- * The timed activity files of the synthetic Export, one per file the Instagram adapter recognises,
+ * The timed files of the synthetic Export, one per file the Instagram adapter recognises,
  * each with a handful of invented records shaped like the real Export. Counts are fixed so a test
  * can compute the expected Events per Kind by hand: see the comment above each group.
  */
-internal object SyntheticActivityFiles {
+internal object SyntheticTimedFiles {
     private val player = Account("Example Player", "example.player")
     private val coach = Account("Example Coach", "Example.Coach")
     private val baker = Account("Example Baker", "example_baker")
 
     /** Every file by path, with its JSON text, given the instant the first record happens at. */
     fun all(firstTime: Long): Map<String, String> {
-        val clock = Clock(firstTime)
-        return viewed(clock) + liked(clock) + sessions(clock) + social(clock) + searchesAndLinks(clock) + other(clock)
+        val t = Ticker(firstTime)
+        return viewed(t) + liked(t) + logins(t) + social(t) + searchesAndLinks(t) + other(t)
     }
 
     /** Successive records are one minute apart. */
-    private class Clock(
+    private class Ticker(
         private val start: Long,
     ) {
         private var ticks = 0
@@ -41,7 +41,7 @@ internal object SyntheticActivityFiles {
     }
 
     // ContentViewed: 2 + 2 + 2 + 1 + 2 = 9 Events, 1 undated record dropped
-    private fun viewed(t: Clock): Map<String, String> =
+    private fun viewed(t: Ticker): Map<String, String> =
         mapOf(
             "$ADS/posts_viewed.json" to
                 list(
@@ -84,7 +84,7 @@ internal object SyntheticActivityFiles {
         )
 
     // ContentLiked: 3 + 2 + 2 + 1 + 1 + 1 = 10 Events
-    private fun liked(t: Clock): Map<String, String> =
+    private fun liked(t: Ticker): Map<String, String> =
         mapOf(
             "$LIKES/liked_posts.json" to
                 list(
@@ -115,21 +115,25 @@ internal object SyntheticActivityFiles {
         )
 
     // Login: 3 Events from 2 devices; Logout: 2 Events
-    private fun sessions(t: Clock): Map<String, String> =
+    private fun logins(t: Ticker): Map<String, String> =
         mapOf(
             "$LOGIN/login_activity.json" to
                 container(
                     "account_history_login_history",
-                    session(t.next(), PHONE),
-                    session(t.next(), LAPTOP),
-                    session(t.next(), PHONE),
+                    accountHistory(t.next(), PHONE),
+                    accountHistory(t.next(), LAPTOP),
+                    accountHistory(t.next(), PHONE),
                 ),
             "$LOGIN/logout_activity.json" to
-                container("account_history_logout_history", session(t.next(), PHONE), session(t.next(), LAPTOP)),
+                container(
+                    "account_history_logout_history",
+                    accountHistory(t.next(), PHONE),
+                    accountHistory(t.next(), LAPTOP),
+                ),
         )
 
     // Follow: 3 + 4 + 1 + 1 + 1 = 10 Events, 1 undated record dropped; Unfollow: 2 Events
-    private fun social(t: Clock): Map<String, String> =
+    private fun social(t: Ticker): Map<String, String> =
         mapOf(
             "$CONNECTIONS/followers_1.json" to
                 list(
@@ -160,7 +164,7 @@ internal object SyntheticActivityFiles {
         )
 
     // Search: 2 + 1 + 1 = 4 Events; LinkVisited: 2 Events
-    private fun searchesAndLinks(t: Clock): Map<String, String> =
+    private fun searchesAndLinks(t: Ticker): Map<String, String> =
         mapOf(
             "$SEARCHES/recent_searches.json" to
                 list(
@@ -189,7 +193,7 @@ internal object SyntheticActivityFiles {
         )
 
     // Other: 2 + 1 + 2 + 1 + 1 + 1 + 1 + 1 = 10 Events
-    private fun other(t: Clock): Map<String, String> =
+    private fun other(t: Ticker): Map<String, String> =
         mapOf(
             "your_instagram_activity/comments/post_comments_1.json" to
                 list(

@@ -87,7 +87,7 @@ internal object InstagramRecords {
         )
 
     /** One login or logout as the account history files record it: only `Time` is dated. */
-    fun session(
+    fun accountHistory(
         timestamp: Long,
         userAgent: String,
     ): String =

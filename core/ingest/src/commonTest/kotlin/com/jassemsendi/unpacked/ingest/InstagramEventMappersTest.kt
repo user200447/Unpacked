@@ -33,17 +33,15 @@ class InstagramEventMappersTest {
         return finished.outcome.result to finished.outcome.output.events
     }
 
+    private fun List<ImportStep>.events(): List<Event> =
+        filterIsInstance<ImportStep.FileFinished>().flatMap { it.outcome.output.events }
+
     private fun account(
+        key: String,
         username: String,
         url: String,
         displayName: String = username,
-    ) = Entity(
-        Source.Instagram,
-        EntityKind.Account,
-        username.lowercase(),
-        displayName,
-        mapOf("username" to username, "url" to url),
-    )
+    ) = Entity(Source.Instagram, EntityKind.Account, key, displayName, mapOf("username" to username, "url" to url))
 
     @Test
     fun followersListFileBecomesFollowEventsNamingTheFollowerAccount() =
@@ -69,11 +67,13 @@ class InstagramEventMappersTest {
                 events[0].time,
             )
             assertEquals(
-                listOf(account("Amira_Ayari", "https://www.instagram.com/Amira_Ayari")),
+                listOf(account("amira_ayari", "Amira_Ayari", "https://www.instagram.com/Amira_Ayari")),
                 events[0].entities,
             )
             assertEquals(
-                listOf(account("basma.example", "https://www.threads.com/basma.example", "Basma Example")),
+                listOf(
+                    account("basma.example", "basma.example", "https://www.threads.com/basma.example", "Basma Example"),
+                ),
                 events[1].entities,
             )
             assertEquals("instagram:account:amira_ayari", events[0].entities.single().id)
@@ -92,8 +92,8 @@ class InstagramEventMappersTest {
             assertEquals(2, (result as FileResult.Parsed).eventCount)
             assertEquals(
                 listOf(
-                    account("Myriem.Example", "https://www.instagram.com/_u/myriem.example"),
-                    account("aziz_example", "https://www.instagram.com/_u/aziz_example"),
+                    account("myriem.example", "Myriem.Example", "https://www.instagram.com/_u/myriem.example"),
+                    account("aziz_example", "aziz_example", "https://www.instagram.com/_u/aziz_example"),
                 ),
                 events.map { it.entities.single() },
             )
@@ -133,15 +133,20 @@ class InstagramEventMappersTest {
                 root / InstagramStringDataFixtures.LOGIN_ACTIVITY_PATH.toPath(),
                 InstagramStringDataFixtures.LOGIN_ACTIVITY_JSON,
             )
-            val (_, logouts) =
-                importFile(
-                    InstagramStringDataFixtures.LOGOUT_ACTIVITY_PATH,
-                    InstagramStringDataFixtures.LOGOUT_ACTIVITY_JSON,
-                )
+            fs.writeText(
+                root / InstagramStringDataFixtures.LOGOUT_ACTIVITY_PATH.toPath(),
+                InstagramStringDataFixtures.LOGOUT_ACTIVITY_JSON,
+            )
 
-            val logout = logouts.single()
-            assertEquals(EventKind.Logout, logout.kind)
-            assertEquals(Instant.fromEpochSeconds(InstagramStringDataFixtures.FIRST_LOGIN_TIME_SECONDS), logout.time)
+            val events = Importer(InstagramAdapter).run(Export.directory(fs, root)).toList().events()
+
+            val firstLogin = events.first { it.kind == EventKind.Login }
+            val logout = events.single { it.kind == EventKind.Logout }
+            assertEquals(
+                Instant.fromEpochSeconds(InstagramStringDataFixtures.FIRST_LOGIN_TIME_SECONDS),
+                firstLogin.time,
+            )
+            assertEquals(firstLogin.time, logout.time, "epoch milliseconds in one file, seconds in the other")
             assertEquals(InstagramStringDataFixtures.LAPTOP_USER_AGENT, logout.entities.single().displayName)
         }
 

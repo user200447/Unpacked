@@ -11,6 +11,13 @@ internal class UnsupportedFileShapeException(
     message: String,
 ) : RuntimeException(message)
 
+/** What every dialect's record can tell: its label/value pairs and when it happened, if the Source said. */
+internal interface DialectRecord {
+    fun fields(): Map<String, String>
+
+    fun time(): Instant?
+}
+
 /** One record of any Instagram dialect after decoding and flattening: its label/value pairs and its time. */
 internal data class InstagramRecord(
     val fields: Map<String, String>,
@@ -49,24 +56,27 @@ internal object InstagramDecoder {
 
     private fun JsonObject.isRecord(): Boolean = DIALECT_KEYS.any { it in this }
 
-    private fun decodeRecord(element: JsonObject): InstagramRecord =
-        when {
-            LABEL_VALUES in element -> {
-                json.decodeFromJsonElement<LabelValueRecord>(element).let { InstagramRecord(it.flatten(), it.time()) }
-            }
+    private fun decodeRecord(element: JsonObject): InstagramRecord {
+        val record: DialectRecord =
+            when {
+                LABEL_VALUES in element -> {
+                    json.decodeFromJsonElement<LabelValueRecord>(element)
+                }
 
-            STRING_MAP_DATA in element || STRING_LIST_DATA in element -> {
-                json.decodeFromJsonElement<StringDataRecord>(element).let { InstagramRecord(it.flatten(), it.time()) }
-            }
+                STRING_MAP_DATA in element || STRING_LIST_DATA in element -> {
+                    json.decodeFromJsonElement<StringDataRecord>(element)
+                }
 
-            URI in element -> {
-                json.decodeFromJsonElement<MediaRecord>(element).let { InstagramRecord(it.flatten(), it.time()) }
-            }
+                URI in element -> {
+                    json.decodeFromJsonElement<MediaRecord>(element)
+                }
 
-            else -> {
-                unsupported("record has none of ${DIALECT_KEYS.joinToString()}")
+                else -> {
+                    unsupported("record has none of ${DIALECT_KEYS.joinToString()}")
+                }
             }
-        }
+        return InstagramRecord(record.fields(), record.time())
+    }
 
     private fun unsupported(message: String): Nothing = throw UnsupportedFileShapeException(message)
 

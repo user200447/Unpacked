@@ -51,11 +51,34 @@ class InstagramDecoderTest {
     }
 
     @Test
-    fun timestampsAreSecondsUnlessTooLargeAndZeroMeansUnknown() {
-        assertEquals(Instant.fromEpochSeconds(1_791_445_719), epochToInstant(1_791_445_719))
-        assertEquals(Instant.fromEpochMilliseconds(1_791_445_719_000), epochToInstant(1_791_445_719_000))
-        assertNull(epochToInstant(0))
-        assertNull(epochToInstant(null))
+    fun timestampsAreSecondsUnlessTooLargeAndZeroOrMissingMeansUnknown() {
+        assertEquals(Instant.fromEpochSeconds(1_791_445_719), timed(1_791_445_719).time)
+        assertEquals(Instant.fromEpochMilliseconds(1_791_445_719_000), timed(1_791_445_719_000).time)
+        assertNull(timed(0).time)
+        assertNull(
+            InstagramDecoder
+                .decode("""[{"label_values": []}]""")
+                .getOrThrow()
+                .single()
+                .time,
+        )
+    }
+
+    private fun timed(timestamp: Long): InstagramRecord =
+        InstagramDecoder
+            .decode("""[{"timestamp": $timestamp, "label_values": []}]""")
+            .getOrThrow()
+            .single()
+
+    @Test
+    fun mediaListRecordsReadTheirCreationTimeAndKeepOnlyUriAndTitle() {
+        val records = InstagramDecoder.decode(InstagramDialectEdgeCases.MEDIA_LIST_JSON).getOrThrow()
+
+        assertEquals(2, records.size)
+        assertEquals(Instant.fromEpochSeconds(InstagramDialectEdgeCases.TIME_SECONDS), records[0].time)
+        assertEquals(mapOf("URI" to "media/other/story_1.webp", "Title" to "Having fun"), records[0].fields)
+        assertNull(records[1].time, "a zero creation time is unknown")
+        assertEquals(mapOf("URI" to "media/other/story_2.webp"), records[1].fields, "a blank title is dropped")
     }
 
     @Test

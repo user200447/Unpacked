@@ -65,9 +65,9 @@ public object InstagramStringDataFixtures {
         """
         {
           "account_history_login_history": [
-            ${login(FIRST_LOGIN_TIME_SECONDS, PHONE_USER_AGENT)},
-            ${login(FIRST_LOGIN_TIME_SECONDS + 3_600, LAPTOP_USER_AGENT)},
-            ${login(FIRST_LOGIN_TIME_SECONDS + 7_200, PHONE_USER_AGENT)}
+            ${accountHistory(FIRST_LOGIN_TIME_SECONDS, PHONE_USER_AGENT)},
+            ${accountHistory(FIRST_LOGIN_TIME_SECONDS + 3_600, LAPTOP_USER_AGENT)},
+            ${accountHistory(FIRST_LOGIN_TIME_SECONDS + 7_200, PHONE_USER_AGENT)}
           ]
         }
         """.trimIndent()
@@ -77,12 +77,12 @@ public object InstagramStringDataFixtures {
         """
         {
           "account_history_logout_history": [
-            ${login(FIRST_LOGIN_TIME_SECONDS * 1_000, LAPTOP_USER_AGENT)}
+            ${accountHistory(FIRST_LOGIN_TIME_SECONDS * 1_000, LAPTOP_USER_AGENT)}
           ]
         }
         """.trimIndent()
 
-    private fun login(
+    private fun accountHistory(
         timestamp: Long,
         userAgent: String,
     ): String =
