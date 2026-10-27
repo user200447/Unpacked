@@ -16,10 +16,22 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            // The library is reached through its repository interfaces and the Import use case only.
+            implementation(project(":core:data"))
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
+            implementation(compose.components.uiToolingPreview)
+            implementation(libs.androidx.lifecycle.viewmodelCompose)
+            implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.koin.core)
+            implementation(libs.koin.composeViewmodel)
+            implementation(libs.kotlinx.datetime)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlinx.coroutinesTest)
+            implementation(libs.turbine)
         }
     }
 }

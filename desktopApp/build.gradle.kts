@@ -9,8 +9,11 @@ plugins {
 
 dependencies {
     implementation(project(":ui"))
+    implementation(project(":core:data"))
     implementation(compose.desktop.currentOs)
     implementation(libs.kotlinx.coroutinesSwing)
+    implementation(libs.koin.core)
+    implementation(libs.okio)
 }
 
 compose.desktop {
