@@ -14,7 +14,10 @@ kotlin {
 
 dependencies {
     implementation(project(":ui"))
+    implementation(project(":core:data"))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.koin.core)
+    implementation(libs.okio)
 }
 
 android {

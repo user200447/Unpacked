@@ -63,8 +63,5 @@ public class Export private constructor(
         }
 
         private fun isHidden(segment: String): Boolean = segment.startsWith(".") || segment == "__MACOSX"
-
-        private fun String.removeSuffixIgnoreCase(suffix: String): String =
-            if (endsWith(suffix, ignoreCase = true)) dropLast(suffix.length) else this
     }
 }

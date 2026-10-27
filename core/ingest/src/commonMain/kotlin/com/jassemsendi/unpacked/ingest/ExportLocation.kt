@@ -1,0 +1,38 @@
+package com.jassemsendi.unpacked.ingest
+
+import com.jassemsendi.unpacked.model.ExportId
+import okio.FileSystem
+import okio.Path.Companion.toPath
+
+/** Where the user's Export is on disk, by absolute path: the zip as downloaded, or the folder it was unzipped into. */
+public sealed interface ExportLocation {
+    public val path: String
+
+    /** The id [Export] will give this Export, known before it is opened: the zip name without `.zip`, or the folder name. */
+    public val exportId: ExportId
+
+    public data class Zip(
+        override val path: String,
+    ) : ExportLocation {
+        override val exportId: ExportId get() = ExportId(path.toPath().name.removeSuffixIgnoreCase(".zip"))
+    }
+
+    public data class Folder(
+        override val path: String,
+    ) : ExportLocation {
+        override val exportId: ExportId get() = ExportId(path.toPath().name)
+    }
+}
+
+/** Opens the Export at [location], reading a zip in place and a folder as it is. */
+public fun Export.Companion.open(
+    fileSystem: FileSystem,
+    location: ExportLocation,
+): Export =
+    when (location) {
+        is ExportLocation.Zip -> zip(fileSystem, location.path.toPath())
+        is ExportLocation.Folder -> directory(fileSystem, location.path.toPath())
+    }
+
+internal fun String.removeSuffixIgnoreCase(suffix: String): String =
+    if (endsWith(suffix, ignoreCase = true)) dropLast(suffix.length) else this

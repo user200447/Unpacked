@@ -4,6 +4,7 @@ import com.jassemsendi.unpacked.fixtures.InstagramFixtures
 import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
 import com.jassemsendi.unpacked.fixtures.writeText
 import com.jassemsendi.unpacked.ingest.Export
+import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.InstagramAdapter
 import com.jassemsendi.unpacked.model.EntityKind
@@ -24,6 +25,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -86,6 +88,23 @@ abstract class LibraryTest {
             )
             assertEquals(TickingClock.START, import.startedAt)
             assertEquals(TickingClock.START + TickingClock.TICK, import.completedAt)
+        }
+
+    @Test
+    fun theImportUseCaseImportsTheExportAtAPickedLocationAndFailsWhenThereIsNoneThere() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 3, mediaFiles = 1).writeTo(fs, root)
+            val useCase = LibraryImportUseCase(library, fs)
+
+            val steps = useCase.run(ExportLocation.Folder(root.toString())).toList()
+
+            val stored = assertIs<ImportStep.Stored>(steps.last()).import
+            assertIs<ImportStep.Started>(steps.first())
+            assertEquals(ExportId("instagram-synthetic"), stored.summary.exportId)
+            assertEquals(mapOf(EventKind.AdShown to 3), library.events.countByKind(stored.id))
+            assertEquals(listOf(stored), library.imports.all())
+            assertFailsWith<Exception> { useCase.run(ExportLocation.Zip("/nowhere/missing.zip")).toList() }
+            assertEquals(listOf(stored), library.imports.all(), "a location that will not open records no Import")
         }
 
     @Test
