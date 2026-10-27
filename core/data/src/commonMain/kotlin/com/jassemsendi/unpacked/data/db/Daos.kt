@@ -47,17 +47,30 @@ internal interface EventDao {
     @Query("DELETE FROM events WHERE id IN (:ids)")
     suspend fun delete(ids: List<Long>)
 
-    @Query("SELECT kind, COUNT(*) AS count FROM events GROUP BY kind")
-    suspend fun countByKind(): List<KindCount>
-
-    @Query("SELECT kind, COUNT(*) AS count FROM events WHERE import_id = :importId GROUP BY kind")
-    suspend fun countByKindForImport(importId: Long): List<KindCount>
+    /** The whole library when [importId] is null. */
+    @Query("SELECT kind, COUNT(*) AS count FROM events WHERE :importId IS NULL OR import_id = :importId GROUP BY kind")
+    suspend fun countByKind(importId: Long?): List<KindCount>
 
     @Query("SELECT * FROM events WHERE id = :id")
     suspend fun byId(id: Long): EventRow?
 
     @Query("SELECT * FROM events WHERE import_id = :importId ORDER BY time, id")
     suspend fun forImport(importId: Long): List<EventRow>
+
+    /** Every Kind when [kind] is null. */
+    @Query(
+        """
+        SELECT * FROM events
+        WHERE :kind IS NULL OR kind = :kind
+        ORDER BY time DESC, id DESC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun newestFirst(
+        kind: String?,
+        limit: Int,
+        offset: Int,
+    ): List<EventRow>
 
     @Query("SELECT * FROM event_attributes WHERE event_id IN (:ids) ORDER BY event_id, position")
     suspend fun attributes(ids: List<Long>): List<EventAttributeRow>
@@ -81,11 +94,9 @@ internal interface ClaimDao {
     @Query("DELETE FROM claims WHERE id IN (:ids)")
     suspend fun delete(ids: List<Long>)
 
-    @Query("SELECT kind, COUNT(*) AS count FROM claims GROUP BY kind")
-    suspend fun countByKind(): List<KindCount>
-
-    @Query("SELECT kind, COUNT(*) AS count FROM claims WHERE import_id = :importId GROUP BY kind")
-    suspend fun countByKindForImport(importId: Long): List<KindCount>
+    /** The whole library when [importId] is null. */
+    @Query("SELECT kind, COUNT(*) AS count FROM claims WHERE :importId IS NULL OR import_id = :importId GROUP BY kind")
+    suspend fun countByKind(importId: Long?): List<KindCount>
 
     @Query("SELECT * FROM claims WHERE id = :id")
     suspend fun byId(id: Long): ClaimRow?

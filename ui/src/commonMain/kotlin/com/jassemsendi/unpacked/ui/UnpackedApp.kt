@@ -9,19 +9,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.jassemsendi.unpacked.ui.home.HomeRoot
 import com.jassemsendi.unpacked.ui.imports.ImportRoot
 import com.jassemsendi.unpacked.ui.welcome.WelcomeScreen
 
-/** Root of the shared UI: the Welcome screen first, then the Import screen. Koin must be started before this runs. */
+/**
+ * Root of the shared UI: the Welcome screen first, then the Import screen, then Home with the timeline;
+ * Home and Import lead to each other. Koin must be started before this runs.
+ */
 @Composable
 fun UnpackedApp() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            var welcomed by rememberSaveable { mutableStateOf(false) }
-            if (welcomed) {
-                ImportRoot()
-            } else {
-                WelcomeScreen(onContinue = { welcomed = true })
+            var screen by rememberSaveable(stateSaver = Screen.saver) { mutableStateOf(Screen.Welcome) }
+            when (screen) {
+                Screen.Welcome -> WelcomeScreen(onContinue = { screen = Screen.Import })
+                Screen.Import -> ImportRoot(onShowTimeline = { screen = Screen.Home })
+                Screen.Home -> HomeRoot(onImport = { screen = Screen.Import })
             }
         }
     }

@@ -29,6 +29,16 @@ public interface EventRepository {
 
     /** The Events of one Import in time order. */
     public suspend fun forImport(importId: ImportId): List<Event>
+
+    /**
+     * One page of the whole library's Events, newest first, narrowed to one Kind when [kind] is given.
+     * Events at the same instant keep a fixed order across pages, so paging never repeats or skips one.
+     */
+    public suspend fun newestFirst(
+        kind: EventKind? = null,
+        limit: Int,
+        offset: Int,
+    ): List<Event>
 }
 
 public interface ClaimRepository {

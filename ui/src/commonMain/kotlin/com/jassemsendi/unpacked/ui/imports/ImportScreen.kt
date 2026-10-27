@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -31,12 +30,16 @@ import com.jassemsendi.unpacked.ingest.ExportPart
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.ui.ObserveAsEvents
 import com.jassemsendi.unpacked.ui.theme.Spacing
+import com.jassemsendi.unpacked.ui.theme.readable
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun ImportRoot(viewModel: ImportViewModel = koinViewModel()) {
+fun ImportRoot(
+    onShowTimeline: () -> Unit,
+    viewModel: ImportViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbars = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -54,7 +57,12 @@ fun ImportRoot(viewModel: ImportViewModel = koinViewModel()) {
     }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbars) }) { padding ->
-        ImportScreen(state = state, onAction = viewModel::onAction, modifier = Modifier.padding(padding))
+        ImportScreen(
+            state = state,
+            onAction = viewModel::onAction,
+            onShowTimeline = onShowTimeline,
+            modifier = Modifier.padding(padding),
+        )
     }
 }
 
@@ -62,6 +70,7 @@ fun ImportRoot(viewModel: ImportViewModel = koinViewModel()) {
 fun ImportScreen(
     state: ImportState,
     onAction: (ImportAction) -> Unit,
+    onShowTimeline: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -70,7 +79,7 @@ fun ImportScreen(
         verticalArrangement = Arrangement.spacedBy(Spacing.medium),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        item { Picker(state, onAction) }
+        item { Picker(state, onAction, onShowTimeline) }
         state.part?.let { part -> item { PartNotice(part) } }
         item { RunPanel(state.run) }
         item { Text("Your Imports", style = MaterialTheme.typography.titleLarge, modifier = Modifier.readable()) }
@@ -89,12 +98,11 @@ fun ImportScreen(
     }
 }
 
-internal fun Modifier.readable(): Modifier = widthIn(max = Spacing.readableWidth).fillMaxWidth()
-
 @Composable
 private fun Picker(
     state: ImportState,
     onAction: (ImportAction) -> Unit,
+    onShowTimeline: () -> Unit,
 ) {
     val running = state.run is ImportRunUi.Running
     Column(modifier = Modifier.readable(), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
@@ -119,6 +127,7 @@ private fun Picker(
                     enabled = !running,
                 ) { Text("Choose a folder") }
             }
+            TextButton(onClick = onShowTimeline) { Text("See your timeline") }
         }
     }
 }
@@ -196,6 +205,7 @@ private fun ImportScreenPreview() {
                     part = ExportPart(number = 2, count = 3),
                 ),
             onAction = {},
+            onShowTimeline = {},
         )
     }
 }

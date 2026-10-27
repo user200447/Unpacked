@@ -2,31 +2,15 @@ package com.jassemsendi.unpacked.ui.imports
 
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.Import
-import kotlinx.datetime.LocalDateTime
+import com.jassemsendi.unpacked.ui.time.toDeviceMinute
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
-import kotlinx.datetime.format.char
-import kotlinx.datetime.toLocalDateTime
-
-private val startedAtFormat =
-    LocalDateTime.Format {
-        year()
-        char('-')
-        monthNumber()
-        char('-')
-        day()
-        char(' ')
-        hour()
-        char(':')
-        minute()
-    }
 
 fun Import.toUi(timeZone: TimeZone): ImportUi =
     ImportUi(
         id = id,
         exportName = summary.exportId.value,
         sourceName = summary.source.name,
-        startedAt = startedAt.toLocalDateTime(timeZone).format(startedAtFormat),
+        startedAt = startedAt.toDeviceMinute(timeZone),
         isComplete = completedAt != null,
         eventCount = summary.eventCount,
         claimCount = summary.claimCount,
