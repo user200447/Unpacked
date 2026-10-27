@@ -13,9 +13,9 @@ import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.RawKind
 
-internal fun Provenance.toColumns(): ProvenanceColumns = ProvenanceColumns(exportId.value, path, recordIndex)
+internal fun Provenance.toColumns(): ProvenanceColumns = ProvenanceColumns(exportId.value, path, recordIndex, itemIndex)
 
-internal fun ProvenanceColumns.toModel(): Provenance = Provenance(ExportId(exportId), path, recordIndex)
+internal fun ProvenanceColumns.toModel(): Provenance = Provenance(ExportId(exportId), path, recordIndex, itemIndex)
 
 internal fun <K : Enum<K>> List<KindCount>.toMap(kindOf: (String) -> K): Map<K, Int> =
     associate { kindOf(it.kind) to it.count }

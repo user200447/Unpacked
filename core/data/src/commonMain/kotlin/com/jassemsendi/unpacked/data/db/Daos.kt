@@ -90,7 +90,7 @@ internal interface ClaimDao {
     @Query("SELECT * FROM claims WHERE id = :id")
     suspend fun byId(id: Long): ClaimRow?
 
-    @Query("SELECT * FROM claims WHERE import_id = :importId ORDER BY as_of, id")
+    @Query("SELECT * FROM claims WHERE import_id = :importId ORDER BY as_of, path, record_index, item_index")
     suspend fun forImport(importId: Long): List<ClaimRow>
 
     @Query("SELECT * FROM claim_attributes WHERE claim_id IN (:ids) ORDER BY claim_id, position")

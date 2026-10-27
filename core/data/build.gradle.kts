@@ -104,6 +104,10 @@ val hostNatives =
     }
 
 tasks.withType<Test>().configureEach {
+    // The real-Export smoke test (jvmTest) prints its Kind counts; show them when it is enabled.
+    if (System.getenv("UNPACKED_INSTAGRAM_EXPORT") != null) {
+        testLogging.showStandardStreams = true
+    }
     if (name == "testAndroidHostTest") {
         dependsOn(extractSqliteNatives)
         systemProperty(

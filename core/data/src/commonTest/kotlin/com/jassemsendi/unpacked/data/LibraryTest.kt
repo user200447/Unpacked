@@ -1,5 +1,6 @@
 package com.jassemsendi.unpacked.data
 
+import com.jassemsendi.unpacked.fixtures.InstagramClaimFixtures
 import com.jassemsendi.unpacked.fixtures.InstagramFixtures
 import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
 import com.jassemsendi.unpacked.fixtures.writeText
@@ -7,6 +8,7 @@ import com.jassemsendi.unpacked.ingest.Export
 import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.InstagramAdapter
+import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.ExportId
@@ -79,8 +81,8 @@ abstract class LibraryTest {
                     FileResult.Parsed(InstagramFixtures.ADS_VIEWED_PATH, RawKind("ads_viewed"), 4, 4, 0),
                     FileResult.Skipped(
                         InstagramFixtures.UNMAPPED_PATH,
-                        RawKind("advertisers_using_your_activity_or_information"),
-                        "no mapper registered for advertisers_using_your_activity_or_information.json",
+                        RawKind("subscription_for_no_ads"),
+                        "no mapper registered for subscription_for_no_ads.json",
                     ),
                     FileResult.Skipped("personal_information/notes_0.txt", RawKind("notes_0"), "not a JSON file"),
                 ),
@@ -116,6 +118,100 @@ abstract class LibraryTest {
             val follows = library.events.forImport(import.id).filter { it.kind == EventKind.Follow }
             assertTrue(follows.all { event -> event.entities.any { it.id.startsWith("instagram:account:") } })
             assertTrue(library.entities.all().any { it.kind == EntityKind.Device }, "logins name their devices")
+        }
+
+    @Test
+    fun theUntimedFilesLandAsClaimsCountedPerKindAndNeverAsEvents() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 2, includeClaimFiles = true).writeTo(fs, root)
+
+            val import = import(Export.directory(fs, root))
+
+            assertEquals(emptyList(), import.summary.failed)
+            assertEquals(
+                mapOf(
+                    ClaimKind.AdvertiserHoldsContact to 4,
+                    ClaimKind.InferredInterest to 8,
+                    ClaimKind.InferredLocation to 5,
+                    ClaimKind.ReachCategory to 3,
+                    ClaimKind.ConsentGiven to 1,
+                    ClaimKind.ProfileField to 4,
+                    ClaimKind.ContactSynced to 3,
+                    ClaimKind.Other to 14,
+                ),
+                library.claims.countByKind(import.id),
+            )
+            assertEquals(mapOf(EventKind.AdShown to 2), library.events.countByKind(import.id))
+            val claims = library.claims.forImport(import.id)
+            assertEquals(42, claims.size)
+            val advertisers = claims.filter { it.kind == ClaimKind.AdvertiserHoldsContact }
+            assertTrue(advertisers.all { claim -> claim.entities.single().kind == EntityKind.Advertiser })
+            assertEquals(4, advertisers.map { it.entities.single().id }.distinct().size)
+            val consent = claims.single { it.kind == ClaimKind.ConsentGiven }
+            assertNotNull(consent.asOf)
+            assertEquals(consent, library.claims.byProvenance(consent.provenance))
+            assertNull(library.events.byProvenance(consent.provenance), "a dated Claim is no Event")
+            assertEquals(
+                setOf(
+                    InstagramClaimFixtures.REPAIRED_NAME,
+                    InstagramClaimFixtures.ARABIC_NAME,
+                    InstagramClaimFixtures.LATIN1_NAME,
+                ),
+                claims
+                    .filter { it.kind == ClaimKind.ContactSynced }
+                    .map {
+                        it.attributes.getValue(
+                            "First Name",
+                        )
+                    }.toSet(),
+            )
+            assertTrue(library.entities.all().any { it.kind == EntityKind.Place }, "locations name their places")
+        }
+
+    @Test
+    fun aClaimReadsBackWithItsAsOfTimeAttributesAndProvenanceAndNoEventQueryReturnsIt() =
+        runTest {
+            fs.writeText(root / InstagramClaimFixtures.CONSENTS_PATH.toPath(), InstagramClaimFixtures.CONSENTS_JSON)
+            val import = import(Export.directory(fs, root))
+            val provenance = Provenance(ExportId("instagram-synthetic"), InstagramClaimFixtures.CONSENTS_PATH, 0)
+
+            val claim = assertNotNull(library.claims.byProvenance(provenance))
+
+            assertEquals(ClaimKind.ConsentGiven, claim.kind)
+            assertEquals(RawKind("consents"), claim.rawKind)
+            assertEquals(provenance, claim.provenance)
+            assertEquals(Instant.fromEpochSeconds(InstagramClaimFixtures.CONSENT_TIME_SECONDS), claim.asOf)
+            assertEquals(
+                mapOf(
+                    InstagramClaimFixtures.CONSENT_LABEL to "",
+                    "Update time" to InstagramClaimFixtures.CONSENT_TIME_ISO,
+                ),
+                claim.attributes,
+            )
+            assertEquals(mapOf(ClaimKind.ConsentGiven to 1), library.claims.countByKind(import.id))
+            assertEquals(listOf(claim), library.claims.forImport(import.id))
+            assertNull(library.events.byProvenance(provenance))
+            assertEquals(emptyMap(), library.events.countByKind(import.id))
+            assertEquals(emptyList(), library.events.forImport(import.id))
+        }
+
+    @Test
+    fun oneRecordListingSeveralAdvertisersStoresOneClaimPerItemFoundByItsItemIndex() =
+        runTest {
+            fs.writeText(
+                root / InstagramClaimFixtures.ADVERTISERS_PATH.toPath(),
+                InstagramClaimFixtures.ADVERTISERS_JSON,
+            )
+            val import = import(Export.directory(fs, root))
+            val record = Provenance(ExportId("instagram-synthetic"), InstagramClaimFixtures.ADVERTISERS_PATH, 0)
+
+            assertEquals(mapOf(ClaimKind.AdvertiserHoldsContact to 3), library.claims.countByKind(import.id))
+            val second = assertNotNull(library.claims.byProvenance(record.copy(itemIndex = 1)))
+            assertEquals("Smith, Jones & Co", second.attributes.getValue(InstagramClaimFixtures.ADVERTISERS_LABEL))
+            assertEquals("instagram:advertiser:smith, jones & co", second.entities.single().id)
+            assertEquals(listOf(0, 1, 2), library.claims.forImport(import.id).map { it.provenance.itemIndex })
+            assertNull(library.claims.byProvenance(record.copy(itemIndex = 3)))
+            assertEquals(3, library.entities.all().count { it.kind == EntityKind.Advertiser })
         }
 
     @Test

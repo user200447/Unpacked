@@ -20,11 +20,11 @@ public enum class EventKind {
 public enum class ClaimKind {
     AdvertiserHoldsContact,
     InferredInterest,
-    LocationOfInterest,
-    AdTopic,
+    InferredLocation,
+    ReachCategory,
+    ConsentGiven,
     ProfileField,
-    ConnectedApp,
-    Device,
+    ContactSynced,
     Other,
 }
 

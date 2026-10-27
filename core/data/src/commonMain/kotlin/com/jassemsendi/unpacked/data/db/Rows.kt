@@ -66,11 +66,12 @@ internal interface EntityLink : OwnedByRecord {
     val position: Int
 }
 
-/** The three Provenance columns shared by Events and Claims. */
+/** The Provenance columns shared by Events and Claims. */
 internal data class ProvenanceColumns(
     @ColumnInfo(name = "export_id") val exportId: String,
     val path: String,
     @ColumnInfo(name = "record_index") val recordIndex: Int,
+    @ColumnInfo(name = "item_index") val itemIndex: Int,
 )
 
 @Entity(

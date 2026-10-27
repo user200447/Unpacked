@@ -9,9 +9,8 @@ public object InstagramFixtures {
     public const val ADS_VIEWED_FILE: String = "ads_viewed.json"
     public const val POSTS_VIEWED_PATH: String = "ads_information/ads_and_topics/posts_viewed.json"
 
-    /** A single-object `label_values` file with a `vec` list; no mapper registers it in ticket #3. */
-    public const val UNMAPPED_PATH: String =
-        "ads_information/instagram_ads_and_businesses/advertisers_using_your_activity_or_information.json"
+    /** A file no mapper knows: a real name some Exports carry, kept out of the registry so the Explorer path stays tested. */
+    public const val UNMAPPED_PATH: String = "ads_information/instagram_ads_and_businesses/subscription_for_no_ads.json"
 
     public const val FIRST_AD_TIME_SECONDS: Long = 1_791_445_719L
     private const val ONE_MINUTE = 60L
@@ -107,13 +106,12 @@ public object InstagramFixtures {
         ]
         """.trimIndent()
 
-    public val ADVERTISERS_JSON: String =
+    public val UNMAPPED_JSON: String =
         """
         {
+          "timestamp": $FIRST_AD_TIME_SECONDS,
           "media": [],
-          "label_values": [
-            {"label": "Advertisers", "vec": [{"value": "Example Hotels"}, {"value": "Example Fashion"}]}
-          ]
+          "label_values": [{"label": "Subscription status", "value": "Not subscribed"}]
         }
         """.trimIndent()
 

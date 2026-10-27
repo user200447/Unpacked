@@ -1,12 +1,9 @@
 package com.jassemsendi.unpacked.fixtures
 
 import com.jassemsendi.unpacked.fixtures.InstagramJson.container
-import com.jassemsendi.unpacked.fixtures.InstagramJson.entry
 import com.jassemsendi.unpacked.fixtures.InstagramJson.labelValues
 import com.jassemsendi.unpacked.fixtures.InstagramJson.leaf
 import com.jassemsendi.unpacked.fixtures.InstagramJson.list
-import com.jassemsendi.unpacked.fixtures.InstagramJson.stringList
-import com.jassemsendi.unpacked.fixtures.InstagramJson.stringMap
 import com.jassemsendi.unpacked.fixtures.InstagramJson.timed
 import com.jassemsendi.unpacked.fixtures.InstagramRecords.accountHistory
 import com.jassemsendi.unpacked.fixtures.InstagramRecords.content
@@ -14,6 +11,9 @@ import com.jassemsendi.unpacked.fixtures.InstagramRecords.media
 import com.jassemsendi.unpacked.fixtures.InstagramRecords.profileRecord
 import com.jassemsendi.unpacked.fixtures.InstagramRecords.quiz
 import com.jassemsendi.unpacked.fixtures.InstagramRecords.stickerReaction
+import com.jassemsendi.unpacked.fixtures.InstagramStringDataJson.entry
+import com.jassemsendi.unpacked.fixtures.InstagramStringDataJson.stringList
+import com.jassemsendi.unpacked.fixtures.InstagramStringDataJson.stringMap
 
 /**
  * The timed files of the synthetic Export, one per file the Instagram adapter recognises,
@@ -29,15 +29,6 @@ internal object SyntheticTimedFiles {
     fun all(firstTime: Long): Map<String, String> {
         val t = Ticker(firstTime)
         return viewed(t) + liked(t) + logins(t) + social(t) + searchesAndLinks(t) + other(t)
-    }
-
-    /** Successive records are one minute apart. */
-    private class Ticker(
-        private val start: Long,
-    ) {
-        private var ticks = 0
-
-        fun next(): Long = start + MINUTE * ticks++
     }
 
     // ContentViewed: 2 + 2 + 2 + 1 + 2 = 9 Events, 1 undated record dropped
@@ -254,7 +245,6 @@ internal object SyntheticTimedFiles {
                 ),
         )
 
-    private const val MINUTE = 60L
     private const val ADS = "ads_information/ads_and_topics"
     private const val STORY_INTERACTIONS = "your_instagram_activity/story_interactions"
     private const val LIKES = "your_instagram_activity/likes"
