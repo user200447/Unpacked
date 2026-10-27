@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.data
 
 import com.jassemsendi.unpacked.fixtures.InstagramClaimFixtures
 import com.jassemsendi.unpacked.fixtures.InstagramFixtures
+import com.jassemsendi.unpacked.fixtures.InstagramMessageFixtures
 import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
 import com.jassemsendi.unpacked.fixtures.writeText
 import com.jassemsendi.unpacked.ingest.Export
@@ -10,6 +11,7 @@ import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.InstagramAdapter
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.EntityKind
+import com.jassemsendi.unpacked.model.Event
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.ExportId
 import com.jassemsendi.unpacked.model.FileResult
@@ -45,6 +47,7 @@ abstract class LibraryTest {
     private val fs = FakeFileSystem()
     private val root = "/exports/instagram-synthetic".toPath()
     private val clock = TickingClock()
+    private val pageSize = 20
     private lateinit var library: Library
 
     protected abstract fun openLibrary(clock: Clock): Library
@@ -56,6 +59,16 @@ abstract class LibraryTest {
 
     @AfterTest
     fun close() = library.close()
+
+    /** Every page of the timeline in turn, until one comes back empty. */
+    private suspend fun readEveryPage(): List<List<Event>> =
+        buildList {
+            var page = library.events.newestFirst(limit = pageSize, offset = 0)
+            while (page.isNotEmpty()) {
+                add(page)
+                page = library.events.newestFirst(limit = pageSize, offset = size * pageSize)
+            }
+        }
 
     private suspend fun import(export: Export): Import {
         val steps = library.import(export, InstagramAdapter).toList()
@@ -166,6 +179,65 @@ abstract class LibraryTest {
                     }.toSet(),
             )
             assertTrue(library.entities.all().any { it.kind == EntityKind.Place }, "locations name their places")
+        }
+
+    @Test
+    fun messageThreadsLandAsSentAndReceivedCountsNamingTheThreadAndStoringNoText() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 1, includeMessageThreads = true, mediaFiles = 2).writeTo(fs, root)
+
+            val import = import(Export.directory(fs, root))
+
+            assertEquals(emptyList(), import.summary.failed)
+            val threads = SyntheticInstagramExport.MESSAGE_THREADS
+            assertEquals(
+                mapOf(
+                    EventKind.AdShown to 1,
+                    EventKind.MessageSent to threads.sumOf { it.sent },
+                    EventKind.MessageReceived to threads.sumOf { it.received },
+                ),
+                library.events.countByKind(import.id),
+            )
+            val messages = library.events.forImport(import.id).filter { it.kind != EventKind.AdShown }
+            assertTrue(messages.all { it.attributes.isEmpty() }, "a message Event stores nothing but its counts")
+            assertTrue(messages.all { it.entities.single().kind == EntityKind.Thread })
+            assertEquals(
+                threads.map { it.title }.toSet(),
+                library.entities
+                    .all()
+                    .filter { it.kind == EntityKind.Thread }
+                    .map { it.displayName }
+                    .toSet(),
+            )
+            assertEquals(
+                2 + SyntheticInstagramExport.THREAD_MEDIA_PATHS.size,
+                import.summary.inventory.mediaFiles,
+                "the media inside thread folders is counted",
+            )
+        }
+
+    @Test
+    fun aThreadWhoseOwnerIsUnknownIsStoredAsParsedWithItsDroppedReason() =
+        runTest {
+            fs.writeText(root / InstagramMessageFixtures.THREAD_PATH.toPath(), InstagramMessageFixtures.THREAD_JSON)
+
+            val import = import(Export.directory(fs, root))
+
+            assertEquals(
+                listOf(
+                    FileResult.Parsed(
+                        InstagramMessageFixtures.THREAD_PATH,
+                        RawKind("message_1"),
+                        recordCount = 3,
+                        eventCount = 0,
+                        claimCount = 0,
+                        droppedCount = 3,
+                        droppedReason = InstagramAdapter.OWNER_UNKNOWN,
+                    ),
+                ),
+                import.summary.files,
+            )
+            assertEquals(emptyMap(), library.events.countByKind(import.id))
         }
 
     @Test
@@ -283,6 +355,37 @@ abstract class LibraryTest {
             assertEquals(advertiser, library.entities.byId(advertiser.id))
             assertNull(library.events.byProvenance(provenance.copy(recordIndex = 2)), "the undated record is dropped")
             assertEquals(listOf(0, 1), library.events.forImport(import.id).map { it.provenance.recordIndex })
+        }
+
+    @Test
+    fun theTimelineReadsEveryEventNewestFirstInPagesNarrowedToOneKindAndNeverAClaim() =
+        runTest {
+            SyntheticInstagramExport(
+                adsViewed = 7,
+                includeTimedFiles = true,
+                includeClaimFiles = true,
+            ).writeTo(fs, root)
+            val import = import(Export.directory(fs, root))
+            val all = library.events.forImport(import.id)
+            val newestFirst = all.sortedWith(compareByDescending<Event> { it.time }.thenByDescending { it.id })
+            assertTrue(all.size > pageSize, "the fixture must span more than one page")
+
+            val read = readEveryPage()
+
+            assertTrue(read.dropLast(1).all { it.size == pageSize }, "every page but the last is full")
+            assertEquals(newestFirst, read.flatten())
+            assertEquals(
+                newestFirst.filter { it.kind == EventKind.ContentLiked },
+                library.events.newestFirst(kind = EventKind.ContentLiked, limit = all.size, offset = 0),
+            )
+            assertEquals(
+                library.events.countByKind().getValue(EventKind.ContentLiked),
+                library.events.newestFirst(kind = EventKind.ContentLiked, limit = all.size, offset = 0).size,
+            )
+            assertEquals(emptyList(), library.events.newestFirst(limit = pageSize, offset = all.size))
+            val claims = library.claims.forImport(import.id)
+            assertTrue(claims.any { it.asOf != null }, "the fixture must hold dated Claims")
+            assertTrue(newestFirst.none { event -> claims.any { it.provenance == event.provenance } })
         }
 
     @Test

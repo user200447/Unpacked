@@ -9,6 +9,15 @@ import com.jassemsendi.unpacked.model.Source
 public sealed interface SourceAdapter {
     public val source: Source
 
+    /**
+     * Begins reading one Export: whatever the Source must know before any file is parsed, such as
+     * whose Export it is, is read here. Must not throw; what cannot be read is simply not known.
+     */
+    public fun begin(export: Export): ExportReader
+}
+
+/** Reads the files of the one Export it was begun for. */
+public fun interface ExportReader {
     /** Turns one JSON file's text into Events and Claims. Must not throw for bad content; report it as Failed. */
     public fun parse(
         file: ExportFile,

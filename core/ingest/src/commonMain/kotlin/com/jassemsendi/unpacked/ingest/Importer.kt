@@ -47,7 +47,7 @@ public sealed interface ImportStep {
 }
 
 /**
- * Runs one Import of one Export. Walks every file, hands JSON files to the adapter, records every
+ * Runs one Import of one Export. Walks every file, hands JSON files to the adapter's reader, records every
  * other non-media file as Skipped, counts media without opening it, and never aborts because one
  * file is bad.
  */
@@ -65,11 +65,12 @@ public class Importer(
                     otherFiles = visited.count { !it.isJson },
                 )
             emit(ImportStep.Started(export.id, adapter.source, inventory))
+            val reader = adapter.begin(export)
             val results = ArrayList<FileResult>(visited.size)
             visited.forEachIndexed { index, file ->
                 val progress = ImportProgress(index, visited.size)
                 emit(ImportStep.FileStarted(file.path, progress))
-                val outcome = if (file.isJson) parse(export, file) else notJson(file)
+                val outcome = if (file.isJson) parse(reader, export, file) else notJson(file)
                 results += outcome.result
                 emit(ImportStep.FileFinished(outcome, progress))
             }
@@ -77,10 +78,11 @@ public class Importer(
         }
 
     private fun parse(
+        reader: ExportReader,
         export: Export,
         file: ExportFile,
     ): FileOutcome =
-        runCatching { adapter.parse(file, export.readText(file)) }
+        runCatching { reader.parse(file, export.readText(file)) }
             .getOrElse { error ->
                 if (error is CancellationException) throw error
                 FileOutcome(FileResult.Failed(file.path, file.rawKind, error.describe()))

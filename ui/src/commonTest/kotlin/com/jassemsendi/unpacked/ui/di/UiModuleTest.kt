@@ -1,7 +1,12 @@
 package com.jassemsendi.unpacked.ui.di
 
+import com.jassemsendi.unpacked.data.ClaimRepository
+import com.jassemsendi.unpacked.data.EventRepository
 import com.jassemsendi.unpacked.data.ImportRepository
 import com.jassemsendi.unpacked.data.ImportUseCase
+import com.jassemsendi.unpacked.ui.home.FakeClaimRepository
+import com.jassemsendi.unpacked.ui.home.FakeEventRepository
+import com.jassemsendi.unpacked.ui.home.HomeViewModel
 import com.jassemsendi.unpacked.ui.imports.ExportPicker
 import com.jassemsendi.unpacked.ui.imports.FakeExportPicker
 import com.jassemsendi.unpacked.ui.imports.FakeImportRepository
@@ -27,18 +32,21 @@ class UiModuleTest {
     fun resetMainDispatcher() = Dispatchers.resetMain()
 
     @Test
-    fun theImportViewModelResolvesFromTheLibraryInterfacesAndAPicker() {
+    fun everyViewModelResolvesFromTheLibraryInterfacesAndAPicker() {
         val repository = FakeImportRepository()
         val appModule =
             module {
                 single<ImportRepository> { repository }
                 single<ImportUseCase> { FakeImportUseCase(repository) }
+                single<EventRepository> { FakeEventRepository() }
+                single<ClaimRepository> { FakeClaimRepository() }
                 single<ExportPicker> { FakeExportPicker() }
             }
 
         val koin = koinApplication { modules(appModule, uiModule) }.koin
 
         assertNotNull(koin.get<ImportViewModel>())
+        assertNotNull(koin.get<HomeViewModel>())
         koin.close()
     }
 }

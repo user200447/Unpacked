@@ -96,12 +96,18 @@ internal class RoomEventRepository(
     private val entities = RoomEntityRepository(db)
 
     override suspend fun countByKind(importId: ImportId?): Map<EventKind, Int> =
-        (importId?.let { dao.countByKindForImport(it.value) } ?: dao.countByKind()).toMap(EventKind::valueOf)
+        dao.countByKind(importId?.value).toMap(EventKind::valueOf)
 
     override suspend fun byProvenance(provenance: Provenance): Event? =
         dao.byId(provenance.hash)?.let { hydrate(listOf(it)).single() }
 
     override suspend fun forImport(importId: ImportId): List<Event> = hydrate(dao.forImport(importId.value))
+
+    override suspend fun newestFirst(
+        kind: EventKind?,
+        limit: Int,
+        offset: Int,
+    ): List<Event> = hydrate(dao.newestFirst(kind?.name, limit, offset))
 
     private suspend fun hydrate(rows: List<EventRow>): List<Event> =
         entities.hydrate(rows, { it.id }, dao::attributes, dao::links) { row, attributes, linked ->
@@ -116,7 +122,7 @@ internal class RoomClaimRepository(
     private val entities = RoomEntityRepository(db)
 
     override suspend fun countByKind(importId: ImportId?): Map<ClaimKind, Int> =
-        (importId?.let { dao.countByKindForImport(it.value) } ?: dao.countByKind()).toMap(ClaimKind::valueOf)
+        dao.countByKind(importId?.value).toMap(ClaimKind::valueOf)
 
     override suspend fun byProvenance(provenance: Provenance): Claim? =
         dao.byId(provenance.hash)?.let { hydrate(listOf(it)).single() }

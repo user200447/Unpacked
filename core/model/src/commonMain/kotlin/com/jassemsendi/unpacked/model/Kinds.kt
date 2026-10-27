@@ -35,6 +35,9 @@ public enum class EntityKind {
     Device,
     Topic,
     Place,
+
+    /** One direct-message conversation, named by its title and nothing more (ADR 0003). */
+    Thread,
 }
 
 /**

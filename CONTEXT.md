@@ -16,6 +16,10 @@ _Avoid_: Dump, download, takeout, archive (as a generic noun)
 One run of reading one Export into the user's local library. The unit the user deletes: removing an Import removes every Event, Claim and Entity it produced.
 _Avoid_: Sync, load, ingestion (as the noun for the result), session
 
+**Export owner**:
+The person the Export is about, as the Source names them in the Export's own profile file. Read once before any file is parsed; it is what tells a message sent from one received.
+_Avoid_: User (for this), account holder, me, self
+
 **Library**:
 The user's local store of every Import, held in one on-device database and read only through repository interfaces. The Library is what cards, the agent's Tools and the gap report query; the Export itself is never consulted after its Import.
 _Avoid_: Database, store, cache, local data (as the noun for the thing)
@@ -31,7 +35,7 @@ A standing assertion a Source makes about the user with no moment of occurrence:
 _Avoid_: Fact, inference, attribute, untimed event, metadata
 
 **Entity**:
-A named thing that recurs across Events and Claims and is worth counting or following: an advertiser, an account, a device, a topic, a place. An Entity belongs to exactly one Source; it is what that Source said, nothing more.
+A named thing that recurs across Events and Claims and is worth counting or following: an advertiser, an account, a device, a topic, a place, a message thread. An Entity belongs to exactly one Source; it is what that Source said, nothing more.
 _Avoid_: Actor, object, tag, dimension
 
 **Match**:
@@ -49,6 +53,14 @@ _Avoid_: Source type, file type, original kind
 **Provenance**:
 Where one Event or Claim came from: the Export, the file path inside it, the record's position in that file and, when the record lists several things, the item among them. Every Event and Claim has exactly one Provenance, and every citation the agent gives is a Provenance. What the user sees when they click through is the record's own label/value pairs plus this location.
 _Avoid_: Source (in this sense), origin, reference, citation (for the stored thing), evidence
+
+**Record**:
+One entry of an Export file as the Source wrote it: the label and value pairs an Event or Claim was read from. A Record is what the user sees on clicking through, together with its Provenance; it is never a synonym for the Event or Claim itself.
+_Avoid_: Row, entry, raw event, JSON object
+
+**Timeline**:
+The Home screen's list of the Library's Events, newest first, read a page at a time and narrowed to one Kind on request. Claims never appear in it, even when they carry an "as of" time; opening any entry shows its Record, its Raw kind and its Provenance, and every time reads in the device's time zone.
+_Avoid_: Feed, history, activity log, event list
 
 ### Insights
 
