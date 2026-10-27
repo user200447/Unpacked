@@ -55,6 +55,17 @@ internal data class ImportFileRow(
     }
 }
 
+/** A side-table row that belongs to one Event or Claim. */
+internal interface OwnedByRecord {
+    val recordId: Long
+}
+
+/** A join-table row linking one Event or Claim to one Entity, in [position] order. */
+internal interface EntityLink : OwnedByRecord {
+    val entityId: String
+    val position: Int
+}
+
 /** The three Provenance columns shared by Events and Claims. */
 internal data class ProvenanceColumns(
     @ColumnInfo(name = "export_id") val exportId: String,
@@ -97,11 +108,11 @@ internal data class EventRow(
     ],
 )
 internal data class EventAttributeRow(
-    @ColumnInfo(name = "event_id") val eventId: Long,
+    @ColumnInfo(name = "event_id") override val recordId: Long,
     val position: Int,
     val label: String,
     val value: String,
-)
+) : OwnedByRecord
 
 @Entity(
     tableName = "event_entities",
@@ -123,10 +134,10 @@ internal data class EventAttributeRow(
     indices = [Index("entity_id")],
 )
 internal data class EventEntityRow(
-    @ColumnInfo(name = "event_id") val eventId: Long,
-    @ColumnInfo(name = "entity_id") val entityId: String,
-    val position: Int,
-)
+    @ColumnInfo(name = "event_id") override val recordId: Long,
+    @ColumnInfo(name = "entity_id") override val entityId: String,
+    override val position: Int,
+) : EntityLink
 
 @Entity(
     tableName = "claims",
@@ -162,11 +173,11 @@ internal data class ClaimRow(
     ],
 )
 internal data class ClaimAttributeRow(
-    @ColumnInfo(name = "claim_id") val claimId: Long,
+    @ColumnInfo(name = "claim_id") override val recordId: Long,
     val position: Int,
     val label: String,
     val value: String,
-)
+) : OwnedByRecord
 
 @Entity(
     tableName = "claim_entities",
@@ -188,10 +199,10 @@ internal data class ClaimAttributeRow(
     indices = [Index("entity_id")],
 )
 internal data class ClaimEntityRow(
-    @ColumnInfo(name = "claim_id") val claimId: Long,
-    @ColumnInfo(name = "entity_id") val entityId: String,
-    val position: Int,
-)
+    @ColumnInfo(name = "claim_id") override val recordId: Long,
+    @ColumnInfo(name = "entity_id") override val entityId: String,
+    override val position: Int,
+) : EntityLink
 
 /** One row per `source:kind:key` (ADR 0002), shared by every Import that mentions the Entity. */
 @Entity(tableName = "entities", indices = [Index("kind")])

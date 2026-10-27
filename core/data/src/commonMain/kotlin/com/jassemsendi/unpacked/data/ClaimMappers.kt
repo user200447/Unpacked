@@ -6,10 +6,11 @@ import com.jassemsendi.unpacked.data.db.ClaimRow
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.Entity
+import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.RawKind
 
-internal fun Claim.toRow(importId: Long): ClaimRow =
-    ClaimRow(id, importId, kind.name, rawKind.value, asOf?.toEpochMillis(), provenance.toColumns())
+internal fun Claim.toRow(importId: ImportId): ClaimRow =
+    ClaimRow(id, importId.value, kind.name, rawKind.value, asOf?.toEpochMillis(), provenance.toColumns())
 
 internal fun Claim.attributeRows(): List<ClaimAttributeRow> =
     attributes.entries.mapIndexed { position, (label, value) -> ClaimAttributeRow(id, position, label, value) }

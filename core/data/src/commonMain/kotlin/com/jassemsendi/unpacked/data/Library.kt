@@ -7,7 +7,6 @@ import com.jassemsendi.unpacked.ingest.Export
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.Importer
 import com.jassemsendi.unpacked.ingest.SourceAdapter
-import com.jassemsendi.unpacked.model.ImportId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
@@ -15,8 +14,8 @@ import kotlinx.coroutines.flow.flow
 import kotlin.time.Clock
 
 /**
- * The user's local library: one SQLite database holding every Import, read through the repository
- * interfaces and written only by [import]. Each platform source set adds the `open` and `inMemory`
+ * The user's local library: every Import, held on the device and read through the repository
+ * interfaces, written only by [import]. Each platform source set adds the `open` and `inMemory`
  * factories, because Room on Android needs a `Context` to build a database and the others do not.
  */
 public class Library internal constructor(
@@ -27,7 +26,6 @@ public class Library internal constructor(
     public val events: EventRepository = RoomEventRepository(db)
     public val claims: ClaimRepository = RoomClaimRepository(db)
     public val entities: EntityRepository = RoomEntityRepository(db)
-    private val writer = LibraryWriter(db)
 
     /**
      * Runs one Import of [export] through [adapter] and writes it into the library file by file.
@@ -39,12 +37,11 @@ public class Library internal constructor(
         adapter: SourceAdapter,
     ): Flow<ImportStep> =
         flow {
-            var importId: Long? = null
-            var position = 0
+            var write: ImportWrite? = null
             Importer(adapter).run(export).collect { step ->
                 when (step) {
                     is ImportStep.Started -> {
-                        importId = writer.start(step, clock.now())
+                        write = ImportWrite.begin(db, step, clock.now())
                         emit(step)
                     }
 
@@ -53,14 +50,13 @@ public class Library internal constructor(
                     }
 
                     is ImportStep.FileFinished -> {
-                        writer.writeFile(checkNotNull(importId), position++, step.outcome)
+                        checkNotNull(write).writeFile(step.outcome)
                         emit(step)
                     }
 
                     is ImportStep.Completed -> {
-                        val id = checkNotNull(importId)
-                        writer.complete(id, clock.now())
-                        emit(ImportStep.Stored(checkNotNull(imports.get(ImportId(id)))))
+                        val id = checkNotNull(write).also { it.complete(clock.now()) }.id
+                        emit(ImportStep.Stored(checkNotNull(imports.get(id))))
                     }
 
                     is ImportStep.Stored -> {

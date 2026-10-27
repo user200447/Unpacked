@@ -21,13 +21,13 @@ internal fun Long.toInstant(): Instant = Instant.fromEpochMilliseconds(this)
 internal fun sourceOf(id: String): Source = Source.entries.first { it.id == id }
 
 internal fun FileResult.toRow(
-    importId: Long,
+    importId: ImportId,
     position: Int,
 ): ImportFileRow =
     when (this) {
         is FileResult.Parsed -> {
             ImportFileRow(
-                importId = importId,
+                importId = importId.value,
                 path = path,
                 rawKind = rawKind.value,
                 position = position,
@@ -50,13 +50,13 @@ internal fun FileResult.toRow(
     }
 
 private fun FileResult.notParsed(
-    importId: Long,
+    importId: ImportId,
     position: Int,
     status: String,
     reason: String,
 ): ImportFileRow =
     ImportFileRow(
-        importId = importId,
+        importId = importId.value,
         path = path,
         rawKind = rawKind.value,
         position = position,

@@ -1,10 +1,23 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+
 plugins {
     id("unpacked.kmp.library")
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
 }
 
+@OptIn(ExperimentalKotlinGradlePluginApi::class)
 kotlin {
+    // JVM and iOS build a database from a path alone; Android needs a Context (see androidMain).
+    applyDefaultHierarchyTemplate {
+        common {
+            group("nonAndroid") {
+                withJvm()
+                withIos()
+            }
+        }
+    }
+
     sourceSets {
         commonMain.dependencies {
             api(project(":core:model"))
@@ -74,14 +87,19 @@ val extractSqliteNatives by tasks.registering(ExtractNatives::class) {
     into.set(sqliteNativesDir)
 }
 
+/** Where the JVM artifact keeps the library for one OS and CPU, and what it is called there. */
+data class HostNatives(
+    val directory: String,
+    val file: String,
+)
+
 val hostOs = System.getProperty("os.name").lowercase()
-val hostArch = System.getProperty("os.arch").lowercase()
+val hostArch = if (System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64")) "arm64" else "x64"
 val hostNatives =
     when {
-        hostOs.contains("mac") -> "osx_arm64" to "libsqliteJni.dylib"
-        hostOs.contains("windows") -> "windows_x64" to "sqliteJni.dll"
-        hostArch == "aarch64" -> "linux_arm64" to "libsqliteJni.so"
-        else -> "linux_x64" to "libsqliteJni.so"
+        hostOs.contains("mac") -> HostNatives("osx_$hostArch", "libsqliteJni.dylib")
+        hostOs.contains("windows") -> HostNatives("windows_$hostArch", "sqliteJni.dll")
+        else -> HostNatives("linux_$hostArch", "libsqliteJni.so")
     }
 
 tasks.withType<Test>().configureEach {
@@ -92,9 +110,9 @@ tasks.withType<Test>().configureEach {
             sqliteNativesDir
                 .get()
                 .asFile
-                .resolve("natives/${hostNatives.first}")
+                .resolve("natives/${hostNatives.directory}")
                 .absolutePath,
         )
-        systemProperty("androidx.sqlite.driver.bundled.name", hostNatives.second)
+        systemProperty("androidx.sqlite.driver.bundled.name", hostNatives.file)
     }
 }

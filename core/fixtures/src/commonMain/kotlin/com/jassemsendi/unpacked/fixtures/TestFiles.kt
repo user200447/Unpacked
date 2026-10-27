@@ -4,7 +4,7 @@ import okio.FileSystem
 import okio.Path
 
 /** Writes UTF-8 text, creating parent directories first. Shared by the generator and the tests. */
-fun FileSystem.writeText(
+public fun FileSystem.writeText(
     path: Path,
     text: String,
 ) {

@@ -9,6 +9,7 @@ import com.jassemsendi.unpacked.model.Entity
 import com.jassemsendi.unpacked.model.Event
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.RawKind
 
@@ -19,8 +20,8 @@ internal fun ProvenanceColumns.toModel(): Provenance = Provenance(ExportId(expor
 internal fun <K : Enum<K>> List<KindCount>.toMap(kindOf: (String) -> K): Map<K, Int> =
     associate { kindOf(it.kind) to it.count }
 
-internal fun Event.toRow(importId: Long): EventRow =
-    EventRow(id, importId, kind.name, rawKind.value, time.toEpochMillis(), provenance.toColumns())
+internal fun Event.toRow(importId: ImportId): EventRow =
+    EventRow(id, importId.value, kind.name, rawKind.value, time.toEpochMillis(), provenance.toColumns())
 
 internal fun Event.attributeRows(): List<EventAttributeRow> =
     attributes.entries.mapIndexed { position, (label, value) -> EventAttributeRow(id, position, label, value) }

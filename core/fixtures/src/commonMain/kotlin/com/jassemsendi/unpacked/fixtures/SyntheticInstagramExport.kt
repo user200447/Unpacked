@@ -11,22 +11,22 @@ import kotlin.random.Random
  * malformed ads-viewed file, and non-JSON non-media files such as the HTML notes a real Export carries.
  * Every later ticket adds files to it rather than inventing new fixtures.
  */
-class SyntheticInstagramExport(
-    val adsViewed: Int = 5,
-    val malformedAdsViewed: Boolean = false,
-    val includeUnmappedFile: Boolean = true,
-    val mediaFiles: Int = 3,
-    val otherFiles: Int = 0,
+public class SyntheticInstagramExport(
+    public val adsViewed: Int = 5,
+    public val malformedAdsViewed: Boolean = false,
+    public val includeUnmappedFile: Boolean = true,
+    public val mediaFiles: Int = 3,
+    public val otherFiles: Int = 0,
     seed: Int = 42,
 ) {
-    data class Ad(
+    public data class Ad(
         val name: String,
         val username: String,
         val timestampSeconds: Long,
         val caption: String,
     )
 
-    val ads: List<Ad>
+    public val ads: List<Ad>
 
     init {
         val random = Random(seed)
@@ -42,7 +42,7 @@ class SyntheticInstagramExport(
             }
     }
 
-    fun writeTo(
+    public fun writeTo(
         fileSystem: FileSystem,
         root: Path,
     ) {
@@ -60,7 +60,8 @@ class SyntheticInstagramExport(
         }
     }
 
-    fun adsViewedJson(): String = ads.joinToString(prefix = "[", postfix = "]", separator = ",") { ad -> ad.toJson() }
+    public fun adsViewedJson(): String =
+        ads.joinToString(prefix = "[", postfix = "]", separator = ",") { ad -> ad.toJson() }
 
     private fun Ad.toJson(): String =
         """
@@ -81,8 +82,8 @@ class SyntheticInstagramExport(
         }
         """.trimIndent()
 
-    companion object {
-        const val FIRST_TIME = 1_790_000_000L
+    public companion object {
+        public const val FIRST_TIME: Long = 1_790_000_000L
         private const val HOUR = 3_600L
         private val ADVERTISERS =
             listOf(

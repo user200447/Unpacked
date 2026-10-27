@@ -29,6 +29,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 /**
@@ -87,6 +89,23 @@ abstract class LibraryTest {
         }
 
     @Test
+    fun aFileThatCannotBeReadIsRecordedAsFailedWithItsReasonAndTheRestStillLands() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 2, malformedAdsViewed = true, mediaFiles = 1).writeTo(fs, root)
+
+            val import = import(Export.directory(fs, root))
+
+            val failed = import.summary.failed.single()
+            assertEquals(InstagramFixtures.ADS_VIEWED_PATH, failed.path)
+            assertEquals(RawKind("ads_viewed"), failed.rawKind)
+            assertTrue(failed.reason.isNotBlank())
+            assertEquals(1, import.summary.skipped.size)
+            assertEquals(emptyMap(), library.events.countByKind(import.id))
+            assertEquals(Inventory(jsonFiles = 2, mediaFiles = 1, otherFiles = 0), import.summary.inventory)
+            assertEquals(import, library.imports.get(import.id), "the Failed entry and its reason are stored")
+        }
+
+    @Test
     fun anEventReadsBackWithItsAttributesRawKindProvenanceAndEntities() =
         runTest {
             fs.writeText(root / InstagramFixtures.ADS_VIEWED_PATH.toPath(), InstagramFixtures.ADS_VIEWED_JSON)
@@ -98,7 +117,7 @@ abstract class LibraryTest {
             assertEquals(EventKind.AdShown, event.kind)
             assertEquals(RawKind("ads_viewed"), event.rawKind)
             assertEquals(provenance, event.provenance)
-            assertEquals(Instant.fromEpochSeconds(InstagramFixtures.FIRST_AD_TIME_SECONDS + 60), event.time)
+            assertEquals(Instant.fromEpochSeconds(InstagramFixtures.FIRST_AD_TIME_SECONDS) + 1.minutes, event.time)
             assertEquals(
                 listOf("URL", "Caption", "Hashtags / Name", "Owner / URL", "Owner / Name", "Owner / Username"),
                 event.attributes.keys.toList(),
@@ -237,6 +256,6 @@ private class TickingClock : Clock {
 
     companion object {
         val START: Instant = Instant.fromEpochSeconds(1_800_000_000)
-        val TICK = kotlin.time.Duration.parse("1s")
+        val TICK = 1.seconds
     }
 }

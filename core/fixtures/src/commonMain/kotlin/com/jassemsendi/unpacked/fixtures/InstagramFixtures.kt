@@ -4,19 +4,19 @@ package com.jassemsendi.unpacked.fixtures
  * Hand-written Instagram records in the `label_values` dialect, shaped exactly like the real
  * Export but with invented content. Shared by every ticket's tests.
  */
-object InstagramFixtures {
-    const val ADS_VIEWED_PATH = "ads_information/ads_and_topics/ads_viewed.json"
-    const val ADS_VIEWED_FILE = "ads_viewed.json"
+public object InstagramFixtures {
+    public const val ADS_VIEWED_PATH: String = "ads_information/ads_and_topics/ads_viewed.json"
+    public const val ADS_VIEWED_FILE: String = "ads_viewed.json"
 
     /** A single-object `label_values` file with a `vec` list; no mapper registers it in ticket #3. */
-    const val UNMAPPED_PATH =
+    public const val UNMAPPED_PATH: String =
         "ads_information/instagram_ads_and_businesses/advertisers_using_your_activity_or_information.json"
 
-    const val FIRST_AD_TIME_SECONDS = 1_791_445_719L
+    public const val FIRST_AD_TIME_SECONDS: Long = 1_791_445_719L
     private const val ONE_MINUTE = 60L
 
     /** Three ad impressions: a plain one, one with hashtags, and one with no timestamp. */
-    val ADS_VIEWED_JSON =
+    public val ADS_VIEWED_JSON: String =
         """
         [
           {
@@ -69,7 +69,7 @@ object InstagramFixtures {
         ]
         """.trimIndent()
 
-    val ADVERTISERS_JSON =
+    public val ADVERTISERS_JSON: String =
         """
         {
           "media": [],
@@ -79,5 +79,5 @@ object InstagramFixtures {
         }
         """.trimIndent()
 
-    const val MALFORMED_JSON = """[{"timestamp": 1791445719, "label_values": ["""
+    public const val MALFORMED_JSON: String = """[{"timestamp": 1791445719, "label_values": ["""
 }
