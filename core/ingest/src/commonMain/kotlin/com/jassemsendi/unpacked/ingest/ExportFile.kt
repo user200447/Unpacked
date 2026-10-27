@@ -1,9 +1,12 @@
 package com.jassemsendi.unpacked.ingest
 
+import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.RawKind
 
-/** One file inside an Export, identified by its path relative to the Export root. */
+/** One file inside an Export, identified by the Export and its path relative to the Export root. */
 public data class ExportFile(
+    val exportId: ExportId,
     val path: String,
 ) {
     val name: String get() = path.substringAfterLast('/')
@@ -13,6 +16,9 @@ public data class ExportFile(
     val rawKind: RawKind get() = RawKind(name.substringBeforeLast('.').lowercase())
     val isJson: Boolean get() = extension == "json"
     val isMedia: Boolean get() = extension in MEDIA_EXTENSIONS
+
+    /** Where the record at [recordIndex] in this file came from. */
+    public fun provenanceOf(recordIndex: Int): Provenance = Provenance(exportId, path, recordIndex)
 
     private companion object {
         val MEDIA_EXTENSIONS =

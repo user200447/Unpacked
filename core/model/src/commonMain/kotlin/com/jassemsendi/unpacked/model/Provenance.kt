@@ -2,12 +2,12 @@ package com.jassemsendi.unpacked.model
 
 /** Where one Event or Claim came from: the Export, the file inside it and the record's position in that file. */
 public data class Provenance(
-    val exportId: String,
+    val exportId: ExportId,
     val path: String,
     val recordIndex: Int,
 ) {
     /** A stable 64-bit identity for this location, for deduplication in later stages. */
-    val hash: Long get() = fnv1a64("$exportId\u0000$path\u0000$recordIndex".encodeToByteArray())
+    val hash: Long get() = fnv1a64("${exportId.value}\u0000$path\u0000$recordIndex".encodeToByteArray())
 }
 
 private const val FNV_OFFSET_BASIS: Long = -3750763034362895579L

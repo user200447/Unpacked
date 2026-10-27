@@ -6,7 +6,11 @@ import kotlin.test.assertNotEquals
 
 class ProvenanceTest {
     private val provenance =
-        Provenance(exportId = "instagram-2026-10-14", path = "ads_information/ads_viewed.json", recordIndex = 3)
+        Provenance(
+            exportId = ExportId("instagram-2026-10-14"),
+            path = "ads_information/ads_viewed.json",
+            recordIndex = 3,
+        )
 
     @Test
     fun hashIsStableAcrossInstances() {
@@ -17,7 +21,7 @@ class ProvenanceTest {
     fun hashChangesWithAnyField() {
         assertNotEquals(provenance.hash, provenance.copy(recordIndex = 4).hash)
         assertNotEquals(provenance.hash, provenance.copy(path = "ads_information/ads_clicked.json").hash)
-        assertNotEquals(provenance.hash, provenance.copy(exportId = "other").hash)
+        assertNotEquals(provenance.hash, provenance.copy(exportId = ExportId("other")).hash)
     }
 
     @Test

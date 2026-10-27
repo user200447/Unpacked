@@ -1,5 +1,6 @@
 package com.jassemsendi.unpacked.ingest.instagram
 
+import com.jassemsendi.unpacked.ingest.Output
 import com.jassemsendi.unpacked.model.Entity
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.Event
@@ -8,8 +9,12 @@ import com.jassemsendi.unpacked.model.Source
 
 /** `ads_viewed.json`: one AdShown Event per impression, with the ad's owner as an Advertiser Entity. */
 internal object AdsViewedMapper : InstagramMapper {
-    override fun map(record: FlatRecord): Mapped {
-        val time = record.time ?: return Mapped.NONE
+    private const val OWNER_NAME = "Owner / Name"
+    private const val OWNER_USERNAME = "Owner / Username"
+    private const val OWNER_URL = "Owner / URL"
+
+    override fun map(record: FlatRecord): Output {
+        val time = record.time ?: return Output.NONE
         val event =
             Event(
                 kind = EventKind.AdShown,
@@ -19,12 +24,13 @@ internal object AdsViewedMapper : InstagramMapper {
                 entities = listOfNotNull(advertiser(record.fields)),
                 attributes = record.fields,
             )
-        return Mapped(events = listOf(event))
+        return Output(events = listOf(event))
     }
 
+    /** Instagram usernames are case-insensitive, so the key is the lowercased username (ADR 0002). */
     private fun advertiser(fields: Map<String, String>): Entity? {
-        val username = fields["Owner / Username"]?.takeIf { it.isNotBlank() }
-        val name = fields["Owner / Name"]?.takeIf { it.isNotBlank() }
+        val username = fields[OWNER_USERNAME]?.takeIf { it.isNotBlank() }
+        val name = fields[OWNER_NAME]?.takeIf { it.isNotBlank() }
         val displayName = name ?: username ?: return null
         return Entity(
             source = Source.Instagram,
@@ -34,7 +40,7 @@ internal object AdsViewedMapper : InstagramMapper {
             attributes =
                 buildMap {
                     username?.let { put("username", it) }
-                    fields["Owner / URL"]?.let { put("url", it) }
+                    fields[OWNER_URL]?.let { put("url", it) }
                 },
         )
     }

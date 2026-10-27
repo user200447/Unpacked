@@ -13,6 +13,7 @@ The headline agent question is "which advertisers appear in both my Instagram an
 
 ## Consequences
 
-- Within a Source, Entity identity is `source:kind:key`, where key is the Source's own stable identifier when it has one (usernames, advertiser names as given), else a normalized display name.
+- Within a Source, Entity identity is `source:kind:key`, where key is the Source's own stable identifier when it has one, else a normalized display name (trimmed, lowercased, whitespace collapsed).
+- A stable identifier is normalized only as far as the Source itself treats it as equivalent: Instagram usernames are case-insensitive, so they are lowercased; an advertiser name that is the only identifier is normalized like a display name. The display name is always stored as given.
 - Improving the matching rule changes answers without touching the database.
 - The UI must present Matches as "these look like the same advertiser", never as a single merged row.

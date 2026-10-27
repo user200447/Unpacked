@@ -5,12 +5,14 @@ public sealed interface FileResult {
     public val path: String
     public val rawKind: RawKind
 
+    /** [droppedCount] is how many records produced neither an Event nor a Claim, such as undated impressions. */
     public data class Parsed(
         override val path: String,
         override val rawKind: RawKind,
         val recordCount: Int,
         val eventCount: Int,
         val claimCount: Int,
+        val droppedCount: Int = 0,
     ) : FileResult
 
     public data class Skipped(
@@ -35,7 +37,7 @@ public data class Inventory(
 
 /** The outcome of one Import of one Export. */
 public data class ImportSummary(
-    val exportId: String,
+    val exportId: ExportId,
     val source: Source,
     val files: List<FileResult>,
     val inventory: Inventory,

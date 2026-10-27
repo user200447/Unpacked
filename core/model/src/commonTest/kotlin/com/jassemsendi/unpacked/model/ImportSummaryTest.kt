@@ -5,10 +5,10 @@ import kotlin.test.assertEquals
 
 class ImportSummaryTest {
     @Test
-    fun countsEachOutcomeAndTotalsRecords() {
+    fun countsEachOutcomeAndTotalsEventsAndClaims() {
         val summary =
             ImportSummary(
-                exportId = "export",
+                exportId = ExportId("export"),
                 source = Source.Instagram,
                 files =
                     listOf(

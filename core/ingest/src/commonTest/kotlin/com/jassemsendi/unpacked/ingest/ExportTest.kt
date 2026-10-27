@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.ingest
 
 import com.jassemsendi.unpacked.ingest.instagram.InstagramFixtures
 import com.jassemsendi.unpacked.ingest.instagram.SyntheticInstagramExport
+import com.jassemsendi.unpacked.model.ExportId
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 import kotlin.test.Test
@@ -18,7 +19,7 @@ class ExportTest {
 
         val export = Export.directory(fs, root)
 
-        assertEquals("instagram-synthetic", export.id)
+        assertEquals(ExportId("instagram-synthetic"), export.id)
         assertEquals(
             listOf(
                 InstagramFixtures.UNMAPPED_PATH,
@@ -42,7 +43,7 @@ class ExportTest {
         val export = Export.zip(fs, zip)
         val adsFile = export.files().single()
 
-        assertEquals("instagram-synthetic", export.id)
+        assertEquals(ExportId("instagram-synthetic"), export.id)
         assertEquals(InstagramFixtures.ADS_VIEWED_PATH, adsFile.path)
         assertEquals(generator.adsViewedJson(), export.readText(adsFile))
         assertEquals(pathsBefore, fs.allPaths, "reading a zip must not write anything")
@@ -71,20 +72,19 @@ class ExportTest {
     fun hiddenAndMacOsMetadataFilesAreIgnored() {
         val root = "/exports/instagram-synthetic".toPath()
         SyntheticInstagramExport(adsViewed = 1, mediaFiles = 0, includeUnmappedFile = false).writeTo(fs, root)
-        fs.write(root / ".DS_Store") { writeUtf8("junk") }
-        fs.createDirectories(root / "__MACOSX")
-        fs.write(root / "__MACOSX" / "._ads_viewed.json") { writeUtf8("junk") }
+        fs.writeText(root / ".DS_Store", "junk")
+        fs.writeText(root / "__MACOSX" / "._ads_viewed.json", "junk")
 
         assertEquals(listOf(InstagramFixtures.ADS_VIEWED_PATH), Export.directory(fs, root).files().map { it.path })
     }
 
     @Test
     fun exportFileDerivesNameExtensionAndRawKind() {
-        val file = ExportFile("ads_information/ads_and_topics/Ads_Viewed.JSON")
+        val file = ExportFile(ExportId("export"), "ads_information/ads_and_topics/Ads_Viewed.JSON")
         assertEquals("Ads_Viewed.JSON", file.name)
         assertEquals("json", file.extension)
         assertEquals("ads_viewed", file.rawKind.value)
         assertTrue(file.isJson)
-        assertTrue(ExportFile("media/posts/a.MP4").isMedia)
+        assertTrue(ExportFile(ExportId("export"), "media/posts/a.MP4").isMedia)
     }
 }

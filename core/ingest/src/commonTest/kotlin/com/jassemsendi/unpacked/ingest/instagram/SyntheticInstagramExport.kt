@@ -1,5 +1,6 @@
 package com.jassemsendi.unpacked.ingest.instagram
 
+import com.jassemsendi.unpacked.ingest.writeText
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
@@ -8,13 +9,15 @@ import kotlin.random.Random
 /**
  * Builds a small Instagram Export in memory with the real folder layout: a deterministic
  * ads-viewed file, an unmapped file, media that must never be opened, and optionally a
- * malformed ads-viewed file. Every later ticket adds files to it rather than inventing new fixtures.
+ * malformed ads-viewed file, and non-JSON non-media files such as the HTML notes a real Export carries.
+ * Every later ticket adds files to it rather than inventing new fixtures.
  */
 internal class SyntheticInstagramExport(
     val adsViewed: Int = 5,
     val malformedAdsViewed: Boolean = false,
     val includeUnmappedFile: Boolean = true,
     val mediaFiles: Int = 3,
+    val otherFiles: Int = 0,
     seed: Int = 42,
 ) {
     data class Ad(
@@ -53,6 +56,9 @@ internal class SyntheticInstagramExport(
             val extension = MEDIA_EXTENSIONS[index % MEDIA_EXTENSIONS.size]
             fileSystem.writeText(root / "media/posts/202610/synthetic_$index.$extension".toPath(), "not really media")
         }
+        repeat(otherFiles) { index ->
+            fileSystem.writeText(root / "personal_information/notes_$index.txt".toPath(), "plain text, not records")
+        }
     }
 
     fun adsViewedJson(): String = ads.joinToString(prefix = "[", postfix = "]", separator = ",") { ad -> ad.toJson() }
@@ -75,14 +81,6 @@ internal class SyntheticInstagramExport(
           "fbid": "1:$timestampSeconds::DYIImpressionsData"
         }
         """.trimIndent()
-
-    private fun FileSystem.writeText(
-        path: Path,
-        text: String,
-    ) {
-        path.parent?.let { createDirectories(it) }
-        write(path) { writeUtf8(text) }
-    }
 
     companion object {
         const val FIRST_TIME = 1_790_000_000L
