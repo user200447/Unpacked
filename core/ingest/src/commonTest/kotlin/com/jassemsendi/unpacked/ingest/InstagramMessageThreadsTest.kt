@@ -83,7 +83,7 @@ class InstagramMessageThreadsTest {
                     InstagramMessageFixtures.THREAD_TITLE,
                 )
             assertTrue(events.all { it.entities == listOf(thread) }, "every message names the thread and nothing else")
-            assertEquals("instagram:thread:exampleplayer_1001", thread.id)
+            assertEquals("instagram:thread:1001", thread.id, "the folder's id, never its username part")
             assertTrue(events.all { it.attributes.isEmpty() }, "a message Event carries no attributes at all")
         }
 

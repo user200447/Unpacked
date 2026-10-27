@@ -17,10 +17,10 @@ public object InstagramMessageFixtures {
     private const val MESSAGES = "your_instagram_activity/messages"
 
     public const val THREAD_PATH: String = "$MESSAGES/inbox/exampleplayer_1001/message_1.json"
-    public const val THREAD_KEY: String = "exampleplayer_1001"
+    public const val THREAD_KEY: String = "1001"
     public const val THREAD_TITLE: String = "Example Player"
     public const val REQUEST_THREAD_PATH: String = "$MESSAGES/message_requests/examplecourier_1003/message_1.json"
-    public const val REQUEST_THREAD_KEY: String = "examplecourier_1003"
+    public const val REQUEST_THREAD_KEY: String = "1003"
     public const val MOJIBAKE_THREAD_PATH: String = "$MESSAGES/inbox/examplecafe_1002/message_1.json"
 
     /** "Example Café" as the Export writes it. */
@@ -82,9 +82,16 @@ public object InstagramMessageFixtures {
             ),
         )
 
-    /** Every word, path and name in the threads above that must never be stored, other than the thread titles. */
+    /**
+     * Every word, path and name in the threads above that must never be stored, other than the
+     * thread titles: the message texts, the attachments, the group members, the owner, and the
+     * username part of each thread folder.
+     */
     public val PRIVATE_TEXT: List<String> =
         listOf(
+            "exampleplayer",
+            "examplecafe",
+            "examplecourier",
             "Sending the ticket now",
             "Yes, see you at 8",
             "Are you coming to the match tonight?",

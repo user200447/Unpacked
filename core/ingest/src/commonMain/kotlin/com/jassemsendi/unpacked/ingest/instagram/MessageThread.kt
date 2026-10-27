@@ -2,7 +2,6 @@ package com.jassemsendi.unpacked.ingest.instagram
 
 import com.jassemsendi.unpacked.ingest.ExportFile
 import com.jassemsendi.unpacked.ingest.FileOutcome
-import com.jassemsendi.unpacked.ingest.InstagramAdapter
 import com.jassemsendi.unpacked.ingest.Output
 import com.jassemsendi.unpacked.model.Entity
 import com.jassemsendi.unpacked.model.EntityKind
@@ -38,9 +37,13 @@ internal data class MessageThread(
  */
 internal object MessageThreads {
     private val json = Json { ignoreUnknownKeys = true }
-    private val threadFileName = Regex("message(_\\d+)?\\.json", RegexOption.IGNORE_CASE)
+    private const val THREAD_FILE = "message.json"
 
-    fun isThreadFile(fileName: String): Boolean = threadFileName.matches(fileName)
+    /** Why every message of a thread is dropped when the Export's profile names nobody. */
+    const val OWNER_UNKNOWN: String =
+        "Export owner unknown: personal_information.json names no account, so sent cannot be told from received"
+
+    fun isThreadFile(fileName: String): Boolean = InstagramMappers.withoutPartSuffix(fileName) == THREAD_FILE
 
     fun read(
         file: ExportFile,
@@ -62,7 +65,7 @@ internal object MessageThreads {
     ): FileOutcome {
         val messages = thread.messages
         if (owner == null) {
-            return FileOutcome(file.parsed(messages.size, emptyList(), InstagramAdapter.OWNER_UNKNOWN))
+            return FileOutcome(file.parsed(messages.size, emptyList(), OWNER_UNKNOWN))
         }
         val entity = file.threadEntity(thread.title)
         val events =
@@ -92,17 +95,18 @@ internal object MessageThreads {
             eventCount = events.size,
             claimCount = 0,
             droppedCount = messageCount - events.size,
-            droppedReason = droppedReason,
+            droppedReason = droppedReason?.takeIf { messageCount > events.size },
         )
 
     /**
-     * The thread as an Entity: keyed by its folder, the Source's own stable id for the thread (the
-     * last segment of its `thread_path`), so two threads with the same title stay apart; shown by
-     * its title, repaired, or by that id when the Source gave no title.
+     * The thread as an Entity: keyed by the Source's own id for the thread, the number its folder
+     * ends in (`1291765392220940`, or `somebody_1291765392220940` in older Exports, whose username
+     * part is left out so the key names no participant), so two threads with the same title stay
+     * apart; shown by its title, repaired, or by that id when the Source gave no title.
      */
     private fun ExportFile.threadEntity(title: String?): Entity {
-        val folder = path.substringBeforeLast('/', missingDelimiterValue = "").substringAfterLast('/')
-        val displayName = title.orBlank()?.let(::repairMojibake) ?: folder
-        return Entity(Source.Instagram, EntityKind.Thread, folder, displayName)
+        val threadId = folderName.substringAfterLast('_')
+        val displayName = title.orBlank()?.let(::repairMojibake) ?: threadId
+        return Entity(Source.Instagram, EntityKind.Thread, threadId, displayName)
     }
 }

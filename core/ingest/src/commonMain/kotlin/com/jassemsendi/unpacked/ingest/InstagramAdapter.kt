@@ -20,8 +20,7 @@ public object InstagramAdapter : SourceAdapter {
     override val source: Source = Source.Instagram
 
     /** Why every message of a thread is dropped when the Export's profile names nobody. */
-    public const val OWNER_UNKNOWN: String =
-        "Export owner unknown: personal_information.json names no account, so sent cannot be told from received"
+    public const val OWNER_UNKNOWN: String = MessageThreads.OWNER_UNKNOWN
 
     override fun begin(export: Export): ExportReader = Reader(ExportOwners.of(export))
 

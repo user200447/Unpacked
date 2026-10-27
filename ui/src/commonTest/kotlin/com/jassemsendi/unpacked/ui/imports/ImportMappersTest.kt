@@ -5,6 +5,7 @@ import com.jassemsendi.unpacked.model.RawKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+/** How a file's result reads on the Import screen: its counts, and why records were dropped when the Import can say. */
 class ImportMappersTest {
     private val path = "your_instagram_activity/messages/inbox/t_1/message_1.json"
 

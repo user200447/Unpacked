@@ -32,7 +32,7 @@ internal object InstagramMessageJson {
         timestampMs: Long,
         vararg extras: String,
     ): String {
-        val attached = extras.filter { it.isNotEmpty() }.joinToString("") { ", $it" }
+        val attached = extras.joinToString("") { ", $it" }
         return """    {"sender_name": "$sender", "timestamp_ms": $timestampMs$attached, """ +
             """"is_geoblocked_for_viewer": false, "is_unsent_image_by_messenger_kid_parent": false}"""
     }

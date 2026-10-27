@@ -48,6 +48,7 @@ fun FileResult.toUi(): FileResultUi =
 
 private fun FileResult.Parsed.describeCounts(): String {
     val counts = "$recordCount records: $eventCount Events, $claimCount Claims"
-    val dropped = if (droppedCount > 0) "$counts, $droppedCount dropped" else return counts
-    return droppedReason?.let { "$dropped: $it" } ?: dropped
+    if (droppedCount == 0) return counts
+    val dropped = "$counts, $droppedCount dropped"
+    return if (droppedReason == null) dropped else "$dropped: $droppedReason"
 }

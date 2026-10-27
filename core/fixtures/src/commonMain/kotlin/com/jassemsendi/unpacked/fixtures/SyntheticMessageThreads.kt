@@ -6,15 +6,19 @@ import com.jassemsendi.unpacked.fixtures.InstagramMessageJson.photo
 import com.jassemsendi.unpacked.fixtures.InstagramMessageJson.reaction
 import com.jassemsendi.unpacked.fixtures.InstagramMessageJson.thread
 
-/** One thread of the synthetic Export and what importing it must count, decided against the owner's name. */
+/**
+ * One thread of the synthetic Export and what importing it must count, decided against the
+ * owner's name. [key] is the Entity key the thread gets: the id its folder name ends in.
+ */
 public data class SyntheticThread(
     val folder: String,
+    val key: String,
     val title: String,
     val sent: Int,
     val received: Int,
 ) {
-    /** The thread folder's name, which is the Entity key the thread gets. */
-    val key: String get() = folder.substringAfterLast('/')
+    /** The `thread_path` the Source writes inside the file: the folder relative to the messages folder. */
+    val threadPath: String get() = folder.substringAfter("/messages/")
 }
 
 /**
@@ -33,14 +37,21 @@ internal object SyntheticMessageThreads {
 
     val threads: List<SyntheticThread> =
         listOf(
-            SyntheticThread("$MESSAGES/inbox/exampleplayer_1001", PLAYER, sent = 4, received = 2),
+            SyntheticThread("$MESSAGES/inbox/exampleplayer_1001", "1001", PLAYER, sent = 4, received = 2),
             SyntheticThread(
                 "$MESSAGES/inbox/examplecafe_1002",
+                "1002",
                 InstagramMessageFixtures.REPAIRED_THREAD_TITLE,
                 sent = 1,
                 received = 4,
             ),
-            SyntheticThread("$MESSAGES/message_requests/examplecourier_1003", COURIER, sent = 0, received = 2),
+            SyntheticThread(
+                "$MESSAGES/message_requests/examplecourier_1003",
+                "1003",
+                COURIER,
+                sent = 0,
+                received = 2,
+            ),
         )
 
     /** Media the threads attached, inside their own folders; one has no extension, as the real Export has. */
@@ -60,7 +71,7 @@ internal object SyntheticMessageThreads {
             "${player.folder}/message_1.json" to
                 thread(
                     player.title,
-                    "inbox/exampleplayer_1001",
+                    player.threadPath,
                     listOf(PLAYER, OWNER),
                     newestFirst(
                         message(OWNER, ms(t), content("On my way")),
@@ -71,11 +82,11 @@ internal object SyntheticMessageThreads {
                     ),
                 ),
             "${player.folder}/message_2.json" to
-                thread(player.title, "inbox/exampleplayer_1001", listOf(PLAYER, OWNER), listOf(message(OWNER, ms(t)))),
+                thread(player.title, player.threadPath, listOf(PLAYER, OWNER), listOf(message(OWNER, ms(t)))),
             "${cafe.folder}/message_1.json" to
                 thread(
                     InstagramMessageFixtures.MOJIBAKE_THREAD_TITLE,
-                    "inbox/examplecafe_1002",
+                    cafe.threadPath,
                     listOf(COACH, BAKER, OWNER),
                     newestFirst(
                         message(BAKER, ms(t), content("Croissants are ready")),
@@ -88,7 +99,7 @@ internal object SyntheticMessageThreads {
             "${courier.folder}/message_1.json" to
                 thread(
                     courier.title,
-                    "message_requests/examplecourier_1003",
+                    courier.threadPath,
                     listOf(COURIER, OWNER),
                     newestFirst(
                         message(COURIER, ms(t), content("Your parcel is at the depot")),

@@ -186,5 +186,8 @@ internal object InstagramMappers {
     private const val AUDIENCE_LIST_LABEL =
         "Advertisers that have uploaded an audience list containing entries that were matched to your Instagram profile"
 
-    fun forFile(fileName: String): InstagramMapper? = byFileName[fileName.lowercase().replace(partSuffix, "")]
+    fun forFile(fileName: String): InstagramMapper? = byFileName[withoutPartSuffix(fileName)]
+
+    /** The file name lowercased and without the `_1`, `_2` part number a large file is split into. */
+    fun withoutPartSuffix(fileName: String): String = fileName.lowercase().replace(partSuffix, "")
 }

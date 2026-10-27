@@ -10,6 +10,9 @@ public data class ExportFile(
     val path: String,
 ) {
     val name: String get() = path.substringAfterLast('/')
+
+    /** The name of the folder the file sits in, or "" at the Export root. */
+    val folderName: String get() = path.substringBeforeLast('/', missingDelimiterValue = "").substringAfterLast('/')
     val extension: String get() = name.substringAfterLast('.', missingDelimiterValue = "").lowercase()
 
     /** The Raw kind this file gives its records: the file name without extension, lowercased. */
@@ -21,10 +24,7 @@ public data class ExportFile(
      * folder: message threads keep attachments there, some of them stored without an extension.
      */
     val isMedia: Boolean
-        get() = extension in MEDIA_EXTENSIONS || (extension.isEmpty() && parentFolderName in MEDIA_FOLDERS)
-
-    private val parentFolderName: String
-        get() = path.substringBeforeLast('/', missingDelimiterValue = "").substringAfterLast('/')
+        get() = extension in MEDIA_EXTENSIONS || (extension.isEmpty() && folderName in MEDIA_FOLDERS)
 
     /** Where the record at [recordIndex] in this file came from. */
     public fun provenanceOf(recordIndex: Int): Provenance = Provenance(exportId, path, recordIndex)
@@ -50,6 +50,8 @@ public data class ExportFile(
                 "mp3",
                 "m4a",
             )
+
+        /** The folders a message thread keeps its attachments in. */
         val MEDIA_FOLDERS = setOf("photos", "videos", "audio")
     }
 }
