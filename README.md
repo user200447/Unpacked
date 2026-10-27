@@ -8,7 +8,7 @@ Nothing leaves the device by default. The domain language and the decisions behi
 
 | Module | Role |
 | --- | --- |
-| `core:model` | Canonical model: Events, Claims, Entities, Kinds, Provenance. Plain Kotlin, no dependencies. |
+| `core:model` | Canonical model: Events, Claims, Entities, Kinds, Provenance, and the Import summary that reports one run. Plain Kotlin, no dependencies. |
 | `core:ingest` | Reads an Export (zip or folder) through a Source adapter into the canonical model. |
 | `core:data` | Local library on Room KMP; the only module that touches persistence. |
 | `core:insights` | Insight cards and the Gap report as pure functions over repository interfaces. |

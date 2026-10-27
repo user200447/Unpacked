@@ -1,5 +1,6 @@
 package com.jassemsendi.unpacked.ingest
 
+import com.jassemsendi.unpacked.model.ExportId
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
@@ -10,7 +11,7 @@ import okio.openZip
  * a zip or an unzipped directory. Zip entries are read in place and never extracted.
  */
 public class Export private constructor(
-    public val id: String,
+    public val id: ExportId,
     private val fileSystem: FileSystem,
     private val root: Path,
 ) {
@@ -18,9 +19,10 @@ public class Export private constructor(
     public fun files(): List<ExportFile> =
         fileSystem
             .listRecursively(root)
-            .filter { path -> path.relativeTo(root).segments.none(::isHidden) }
-            .filter { path -> fileSystem.metadata(path).isRegularFile }
-            .map { path -> ExportFile(path.relativeTo(root).segments.joinToString("/")) }
+            .map { path -> path to path.relativeTo(root).segments }
+            .filter { (_, segments) -> segments.none(::isHidden) }
+            .filter { (path, _) -> fileSystem.metadata(path).isRegularFile }
+            .map { (_, segments) -> ExportFile(id, segments.joinToString("/")) }
             .sortedBy { it.path }
             .toList()
 
@@ -32,7 +34,7 @@ public class Export private constructor(
             fileSystem: FileSystem,
             directory: Path,
         ): Export {
-            val id = directory.name
+            val id = ExportId(directory.name)
             return Export(id, fileSystem, unwrap(fileSystem, directory, id))
         }
 
@@ -41,22 +43,22 @@ public class Export private constructor(
             fileSystem: FileSystem,
             zipFile: Path,
         ): Export {
-            val id = zipFile.name.removeSuffixIgnoreCase(".zip")
+            val id = ExportId(zipFile.name.removeSuffixIgnoreCase(".zip"))
             val zipFileSystem = fileSystem.openZip(zipFile)
             return Export(id, zipFileSystem, unwrap(zipFileSystem, "/".toPath(), id))
         }
 
         /**
-         * A zip made by hand from a folder (macOS "Compress", most archivers) wraps everything in one
-         * folder named like the archive. Look through exactly that one level, and only that.
+         * A zip made by hand from a folder (macOS "Compress", most zip tools) wraps everything in one
+         * folder named like the Export. Look through exactly that one level, and only that.
          */
         private fun unwrap(
             fileSystem: FileSystem,
             root: Path,
-            id: String,
+            id: ExportId,
         ): Path {
             val only = fileSystem.list(root).filterNot { isHidden(it.name) }.singleOrNull() ?: return root
-            val isWrapper = only.name.equals(id, ignoreCase = true) && fileSystem.metadata(only).isDirectory
+            val isWrapper = only.name.equals(id.value, ignoreCase = true) && fileSystem.metadata(only).isDirectory
             return if (isWrapper) only else root
         }
 

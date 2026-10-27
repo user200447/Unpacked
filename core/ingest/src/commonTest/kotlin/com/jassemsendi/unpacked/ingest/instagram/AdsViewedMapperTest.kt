@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.ingest.instagram
 
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
+import com.jassemsendi.unpacked.model.ExportId
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.RawKind
 import kotlin.test.Test
@@ -10,7 +11,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class AdsViewedMapperTest {
-    private val provenance = Provenance("export", InstagramFixtures.ADS_VIEWED_PATH, 7)
+    private val provenance = Provenance(ExportId("export"), InstagramFixtures.ADS_VIEWED_PATH, 7)
     private val rawKind = RawKind("ads_viewed")
     private val time = Instant.fromEpochSeconds(InstagramFixtures.FIRST_AD_TIME_SECONDS)
 
@@ -20,7 +21,7 @@ class AdsViewedMapperTest {
             AdsViewedMapper.map(
                 FlatRecord(mapOf("Owner / Name" to "Someone"), time = null, provenance, rawKind),
             )
-        assertTrue(mapped.events.isEmpty() && mapped.claims.isEmpty())
+        assertTrue(mapped.isEmpty)
     }
 
     @Test

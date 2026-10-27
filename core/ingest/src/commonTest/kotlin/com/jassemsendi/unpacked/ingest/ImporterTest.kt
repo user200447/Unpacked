@@ -4,6 +4,7 @@ import com.jassemsendi.unpacked.ingest.instagram.InstagramFixtures
 import com.jassemsendi.unpacked.ingest.instagram.SyntheticInstagramExport
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
+import com.jassemsendi.unpacked.model.ExportId
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.Inventory
 import com.jassemsendi.unpacked.model.Provenance
@@ -22,11 +23,11 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
-class ImportTest {
+class ImporterTest {
     private val fs = FakeFileSystem()
     private val root = "/exports/instagram-synthetic".toPath()
 
-    private suspend fun import(export: Export): List<ImportStep> = Import(InstagramAdapter).run(export).toList()
+    private suspend fun import(export: Export): List<ImportStep> = Importer(InstagramAdapter).run(export).toList()
 
     private fun List<ImportStep>.finished(): List<ImportStep.FileFinished> = filterIsInstance<ImportStep.FileFinished>()
 
@@ -39,7 +40,7 @@ class ImportTest {
             generator.writeTo(fs, root)
 
             val steps = import(Export.directory(fs, root))
-            val events = steps.finished().flatMap { it.events }
+            val events = steps.finished().flatMap { it.outcome.output.events }
 
             assertEquals(4, events.size)
             events.forEachIndexed { index, event ->
@@ -47,7 +48,7 @@ class ImportTest {
                 assertEquals(EventKind.AdShown, event.kind)
                 assertEquals(RawKind("ads_viewed"), event.rawKind)
                 assertEquals(
-                    Provenance("instagram-synthetic", InstagramFixtures.ADS_VIEWED_PATH, index),
+                    Provenance(ExportId("instagram-synthetic"), InstagramFixtures.ADS_VIEWED_PATH, index),
                     event.provenance,
                 )
                 assertEquals(Instant.fromEpochSeconds(ad.timestampSeconds), event.time)
@@ -94,7 +95,7 @@ class ImportTest {
             assertEquals(Inventory(jsonFiles = 2, mediaFiles = 5, otherFiles = 0), summary.inventory)
             assertEquals(
                 emptyList(),
-                opened.filter { ExportFile(it.toString()).isMedia },
+                opened.filter { ExportFile(ExportId("x"), it.toString()).isMedia },
                 "media files must never be opened",
             )
             assertEquals(2, opened.size)
@@ -125,12 +126,11 @@ class ImportTest {
             val expectedPaths = listOf(InstagramFixtures.ADS_VIEWED_PATH, InstagramFixtures.UNMAPPED_PATH).sorted()
             val started = steps.filterIsInstance<ImportStep.FileStarted>()
             assertEquals(expectedPaths, started.map { it.path })
-            assertEquals(expectedPaths, steps.finished().map { it.result.path })
-            assertEquals(listOf(0, 1), started.map { it.index })
-            assertTrue(started.all { it.total == 2 })
+            assertEquals(expectedPaths, steps.finished().map { it.outcome.result.path })
+            assertEquals(listOf(ImportProgress(0, 2), ImportProgress(1, 2)), started.map { it.progress })
             steps.zipWithNext().filter { (a, _) -> a is ImportStep.FileStarted }.forEach { (a, b) ->
                 assertIs<ImportStep.FileFinished>(b)
-                assertEquals((a as ImportStep.FileStarted).path, b.result.path)
+                assertEquals((a as ImportStep.FileStarted).path, b.outcome.result.path)
             }
             assertEquals(expectedPaths, steps.summary().files.map { it.path })
         }
@@ -138,25 +138,51 @@ class ImportTest {
     @Test
     fun handWrittenFixtureDropsTheUndatedRecordButKeepsItsIndex() =
         runTest {
-            writeFixture(root / InstagramFixtures.ADS_VIEWED_PATH.toPath(), InstagramFixtures.ADS_VIEWED_JSON)
+            fs.writeText(root / InstagramFixtures.ADS_VIEWED_PATH.toPath(), InstagramFixtures.ADS_VIEWED_JSON)
 
             val steps = import(Export.directory(fs, root))
 
-            val events = steps.finished().single().events
+            val events =
+                steps
+                    .finished()
+                    .single()
+                    .outcome.output.events
             assertEquals(listOf(0, 1), events.map { it.provenance.recordIndex })
             assertEquals("logistics, growth", events[1].attributes["Hashtags / Name"])
             assertEquals("instagram:advertiser:examplecourier", events[1].entities.single().id)
             assertEquals(
-                FileResult.Parsed(InstagramFixtures.ADS_VIEWED_PATH, RawKind("ads_viewed"), 3, 2, 0),
+                FileResult.Parsed(
+                    InstagramFixtures.ADS_VIEWED_PATH,
+                    RawKind("ads_viewed"),
+                    recordCount = 3,
+                    eventCount = 2,
+                    claimCount = 0,
+                    droppedCount = 1,
+                ),
                 steps.summary().parsed.single(),
             )
         }
 
-    private fun writeFixture(
-        path: Path,
-        text: String,
-    ) {
-        path.parent?.let { fs.createDirectories(it) }
-        fs.write(path) { writeUtf8(text) }
-    }
+    @Test
+    fun nonJsonNonMediaFilesAreSkippedAsNotJsonAndStillCountedAsOther() =
+        runTest {
+            SyntheticInstagramExport(
+                adsViewed = 1,
+                includeUnmappedFile = false,
+                mediaFiles = 1,
+                otherFiles = 1,
+            ).writeTo(fs, root)
+
+            val steps = import(Export.directory(fs, root))
+
+            val skipped = steps.summary().skipped.single()
+            assertEquals("personal_information/notes_0.txt", skipped.path)
+            assertEquals(RawKind("notes_0"), skipped.rawKind)
+            assertEquals("not a JSON file", skipped.reason)
+            assertEquals(Inventory(jsonFiles = 1, mediaFiles = 1, otherFiles = 1), steps.summary().inventory)
+            assertEquals(
+                listOf(InstagramFixtures.ADS_VIEWED_PATH, "personal_information/notes_0.txt"),
+                steps.finished().map { it.outcome.result.path },
+            )
+        }
 }
