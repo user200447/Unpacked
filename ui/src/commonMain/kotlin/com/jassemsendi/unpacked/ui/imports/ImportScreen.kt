@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jassemsendi.unpacked.ingest.ExportPart
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.ui.ObserveAsEvents
+import com.jassemsendi.unpacked.ui.theme.ErrorNotice
 import com.jassemsendi.unpacked.ui.theme.Spacing
 import com.jassemsendi.unpacked.ui.theme.readable
 import kotlinx.coroutines.launch
@@ -51,6 +52,12 @@ fun ImportRoot(
                     snackbars.showSnackbar(
                         "Deleted the Import of ${event.exportName} and everything it produced",
                     )
+                }
+            }
+
+            is ImportEvent.ImportNotDeleted -> {
+                scope.launch {
+                    snackbars.showSnackbar("Could not delete the Import of ${event.exportName}. ${event.reason}")
                 }
             }
         }
@@ -83,7 +90,8 @@ fun ImportScreen(
         state.part?.let { part -> item { PartNotice(part) } }
         item { RunPanel(state.run, onShowTimeline) }
         item { Text("Your Imports", style = MaterialTheme.typography.titleLarge, modifier = Modifier.readable()) }
-        if (state.imports.isEmpty()) {
+        state.error?.let { error -> item { ErrorNotice(error) } }
+        if (state.error == null && state.imports.isEmpty()) {
             item {
                 Text(
                     "Nothing imported yet.",

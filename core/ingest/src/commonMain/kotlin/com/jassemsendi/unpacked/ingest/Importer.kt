@@ -5,6 +5,7 @@ import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportSummary
 import com.jassemsendi.unpacked.model.Inventory
+import com.jassemsendi.unpacked.model.Result
 import com.jassemsendi.unpacked.model.Source
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -44,19 +45,37 @@ public sealed interface ImportStep {
     public data class Stored(
         val import: Import,
     ) : ImportStep
+
+    /**
+     * The last step of a run that stopped early, in place of [Completed] or [Stored]: before [Started]
+     * when the Export would not open or list, or after any file when the library would not take it.
+     */
+    public data class Failed(
+        val error: ImportError,
+    ) : ImportStep
 }
 
 /**
  * Runs one Import of one Export. Walks every file, hands JSON files to the adapter's reader, records every
  * other non-media file as Skipped, counts media without opening it, and never aborts because one
- * file is bad.
+ * file is bad. Only an Export that will not list ends the run, as [ImportStep.Failed] before anything else.
  */
 public class Importer(
     private val adapter: SourceAdapter,
 ) {
     public fun run(export: Export): Flow<ImportStep> =
         flow {
-            val files = export.files()
+            val files =
+                when (val listed = export.files()) {
+                    is Result.Success -> {
+                        listed.data
+                    }
+
+                    is Result.Error -> {
+                        emit(ImportStep.Failed(ImportError.Reading(listed.error)))
+                        return@flow
+                    }
+                }
             val visited = files.filterNot { it.isMedia }
             val inventory =
                 Inventory(
