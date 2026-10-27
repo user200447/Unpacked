@@ -27,7 +27,10 @@ configure<KotlinMultiplatformExtension> {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
-        withHostTest { }
+        withHostTest {
+            // Host tests run against stub Android classes; a stub that returns a default beats one that throws.
+            isReturnDefaultValues = true
+        }
     }
 
     sourceSets.commonTest.dependencies {

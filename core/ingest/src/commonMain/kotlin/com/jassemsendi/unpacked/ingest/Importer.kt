@@ -1,8 +1,11 @@
 package com.jassemsendi.unpacked.ingest
 
+import com.jassemsendi.unpacked.model.ExportId
 import com.jassemsendi.unpacked.model.FileResult
+import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportSummary
 import com.jassemsendi.unpacked.model.Inventory
+import com.jassemsendi.unpacked.model.Source
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -15,6 +18,13 @@ public data class ImportProgress(
 
 /** One step of an Import, emitted in the order files are visited. */
 public sealed interface ImportStep {
+    /** The first step: the Export has been listed and its inventory is known before any file is read. */
+    public data class Started(
+        val exportId: ExportId,
+        val source: Source,
+        val inventory: Inventory,
+    ) : ImportStep
+
     public data class FileStarted(
         val path: String,
         val progress: ImportProgress,
@@ -25,8 +35,14 @@ public sealed interface ImportStep {
         val progress: ImportProgress,
     ) : ImportStep
 
+    /** The last step of a run that only reads: the summary of every file visited. */
     public data class Completed(
         val summary: ImportSummary,
+    ) : ImportStep
+
+    /** The last step of a run that writes into a library, in place of [Completed]: the Import as stored. */
+    public data class Stored(
+        val import: Import,
     ) : ImportStep
 }
 
@@ -42,6 +58,13 @@ public class Importer(
         flow {
             val files = export.files()
             val visited = files.filterNot { it.isMedia }
+            val inventory =
+                Inventory(
+                    jsonFiles = files.count { it.isJson },
+                    mediaFiles = files.size - visited.size,
+                    otherFiles = visited.count { !it.isJson },
+                )
+            emit(ImportStep.Started(export.id, adapter.source, inventory))
             val results = ArrayList<FileResult>(visited.size)
             visited.forEachIndexed { index, file ->
                 val progress = ImportProgress(index, visited.size)
@@ -50,12 +73,6 @@ public class Importer(
                 results += outcome.result
                 emit(ImportStep.FileFinished(outcome, progress))
             }
-            val inventory =
-                Inventory(
-                    jsonFiles = files.count { it.isJson },
-                    mediaFiles = files.size - visited.size,
-                    otherFiles = visited.count { !it.isJson },
-                )
             emit(ImportStep.Completed(ImportSummary(export.id, adapter.source, results, inventory)))
         }
 

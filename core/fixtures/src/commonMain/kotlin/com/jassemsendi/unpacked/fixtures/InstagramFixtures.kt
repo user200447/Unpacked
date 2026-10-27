@@ -1,10 +1,10 @@
-package com.jassemsendi.unpacked.ingest.instagram
+package com.jassemsendi.unpacked.fixtures
 
 /**
  * Hand-written Instagram records in the `label_values` dialect, shaped exactly like the real
  * Export but with invented content. Shared by every ticket's tests.
  */
-internal object InstagramFixtures {
+object InstagramFixtures {
     const val ADS_VIEWED_PATH = "ads_information/ads_and_topics/ads_viewed.json"
     const val ADS_VIEWED_FILE = "ads_viewed.json"
 
@@ -13,6 +13,7 @@ internal object InstagramFixtures {
         "ads_information/instagram_ads_and_businesses/advertisers_using_your_activity_or_information.json"
 
     const val FIRST_AD_TIME_SECONDS = 1_791_445_719L
+    private const val ONE_MINUTE = 60L
 
     /** Three ad impressions: a plain one, one with hashtags, and one with no timestamp. */
     val ADS_VIEWED_JSON =
@@ -39,7 +40,7 @@ internal object InstagramFixtures {
             "fbid": "1:2:$FIRST_AD_TIME_SECONDS::DYIImpressionsData"
           },
           {
-            "timestamp": ${FIRST_AD_TIME_SECONDS + 60},
+            "timestamp": ${FIRST_AD_TIME_SECONDS + ONE_MINUTE},
             "media": [],
             "label_values": [
               {"label": "URL", "value": "https://www.instagram.com/p/BBB/", "href": "https://www.instagram.com/p/BBB/"},
@@ -54,7 +55,7 @@ internal object InstagramFixtures {
                 {"label": "Username", "value": "ExampleCourier"}
               ], "title": ""}], "title": "Owner"}
             ],
-            "fbid": "1:3:${FIRST_AD_TIME_SECONDS + 60}::DYIImpressionsData"
+            "fbid": "1:3:${FIRST_AD_TIME_SECONDS + ONE_MINUTE}::DYIImpressionsData"
           },
           {
             "timestamp": 0,

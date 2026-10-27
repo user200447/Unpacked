@@ -10,7 +10,10 @@ public data class Event(
     val provenance: Provenance,
     val entities: List<Entity> = emptyList(),
     val attributes: Map<String, String> = emptyMap(),
-)
+) {
+    /** Stable identity: the hash of the Provenance, so re-importing the same Export yields the same id. */
+    val id: Long get() = provenance.hash
+}
 
 /** A standing assertion a Source makes about the user, with no moment of occurrence. */
 public data class Claim(
@@ -20,4 +23,7 @@ public data class Claim(
     val asOf: Instant? = null,
     val entities: List<Entity> = emptyList(),
     val attributes: Map<String, String> = emptyMap(),
-)
+) {
+    /** Stable identity: the hash of the Provenance, so re-importing the same Export yields the same id. */
+    val id: Long get() = provenance.hash
+}

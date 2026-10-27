@@ -1,6 +1,5 @@
-package com.jassemsendi.unpacked.ingest.instagram
+package com.jassemsendi.unpacked.fixtures
 
-import com.jassemsendi.unpacked.ingest.writeText
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
@@ -12,7 +11,7 @@ import kotlin.random.Random
  * malformed ads-viewed file, and non-JSON non-media files such as the HTML notes a real Export carries.
  * Every later ticket adds files to it rather than inventing new fixtures.
  */
-internal class SyntheticInstagramExport(
+class SyntheticInstagramExport(
     val adsViewed: Int = 5,
     val malformedAdsViewed: Boolean = false,
     val includeUnmappedFile: Boolean = true,

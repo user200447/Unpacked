@@ -1,5 +1,6 @@
 package com.jassemsendi.unpacked.ingest.instagram
 
+import com.jassemsendi.unpacked.fixtures.InstagramFixtures
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
