@@ -1,5 +1,6 @@
 package com.jassemsendi.unpacked.ingest.instagram
 
+import com.jassemsendi.unpacked.fixtures.InstagramClaimFixtures
 import com.jassemsendi.unpacked.fixtures.InstagramDialectEdgeCases
 import com.jassemsendi.unpacked.fixtures.InstagramFixtures
 import kotlin.test.Test
@@ -17,10 +18,47 @@ class InstagramDecoderTest {
     }
 
     @Test
-    fun singleObjectFileDecodesAsOneRecordAndJoinsVecValues() {
-        val record = InstagramDecoder.decode(InstagramFixtures.ADVERTISERS_JSON).getOrThrow().single()
-        assertEquals(mapOf("Advertisers" to "Example Hotels, Example Fashion"), record.fields)
+    fun singleObjectFileDecodesAsOneRecordJoinsVecValuesAndKeepsTheListApart() {
+        val record = InstagramDecoder.decode(InstagramClaimFixtures.ADVERTISERS_JSON).getOrThrow().single()
+        val label = InstagramClaimFixtures.ADVERTISERS_LABEL
+        assertEquals(mapOf(label to "Example Hotels, Smith, Jones & Co, Example Fashion"), record.fields)
+        assertEquals(
+            mapOf(label to listOf("Example Hotels", "Smith, Jones & Co", "Example Fashion")),
+            record.lists,
+            "the joined text cannot be split again, so the items are kept as a list too",
+        )
         assertNull(record.time)
+    }
+
+    @Test
+    fun aLeafThatIsOnlyALabelIsKeptWithAnEmptyValue() {
+        val fields =
+            InstagramDecoder
+                .decode(
+                    """[{"label_values": [
+                        {"label": "Consent given"},
+                        {"label": "Empty value", "value": ""},
+                        {"label": "Empty list", "vec": []},
+                        {"title": "Empty group", "dict": []},
+                        {"label": "Unset time", "timestamp_value": 0},
+                        {"label": "History", "dict": [{"dict": [{"label": "Step"}], "title": ""}, {"dict": [{"label": "Step", "value": "done"}], "title": ""}]}
+                    ]}]""",
+                ).getOrThrow()
+                .single()
+                .fields
+        assertEquals(mapOf("Consent given" to "", "History / Step" to "done"), fields)
+    }
+
+    @Test
+    fun fieldValuesHaveMojibakeRepaired() {
+        val fields =
+            InstagramDecoder
+                .decode(
+                    """[{"label_values": [{"label": "Name", "value": "${InstagramClaimFixtures.MOJIBAKE_NAME}"}]}]""",
+                ).getOrThrow()
+                .single()
+                .fields
+        assertEquals(mapOf("Name" to InstagramClaimFixtures.REPAIRED_NAME), fields)
     }
 
     @Test

@@ -13,13 +13,17 @@ internal object InstagramJson {
 
     // label_values dialect
 
-    /** A record of [items]; an empty item is left out, so an optional leaf can be passed as "". */
+    /**
+     * A record of [items]; an empty item is left out, so an optional leaf can be passed as "".
+     * A null [timestamp] makes a record with no time of its own, as the files that state standing facts are.
+     */
     fun labelValues(
-        timestamp: Long,
+        timestamp: Long?,
         vararg items: String,
     ): String {
         val present = items.filter { it.isNotEmpty() }.joinToString(", ")
-        return """{"timestamp": $timestamp, "media": [], "label_values": [$present], "fbid": "synthetic"}"""
+        val timestampField = timestamp?.let { """"timestamp": $it, """ } ?: ""
+        return """{$timestampField"media": [], "label_values": [$present], "fbid": "synthetic"}"""
     }
 
     fun leaf(
@@ -35,6 +39,24 @@ internal object InstagramJson {
         timestamp: Long,
     ): String = """{"label": "$label", "timestamp_value": $timestamp}"""
 
+    /** A leaf that is a label and nothing else, as a consent or an unset setting is written. */
+    fun labelOnly(label: String): String = """{"label": "$label"}"""
+
+    /** A labelled list of plain values, as the files that list advertisers or locations are made of. */
+    fun vec(
+        label: String,
+        values: List<String>,
+    ): String =
+        values.joinToString(", ", prefix = """{"label": "$label", "vec": [""", postfix = "]}") {
+            """{"value": "$it"}"""
+        }
+
+    /** A labelled group of leaves, as `Location` nests its country, region and city. */
+    fun dict(
+        label: String,
+        vararg inner: String,
+    ): String = """{"label": "$label", "dict": [${inner.joinToString(", ")}]}"""
+
     /** A titled group whose one anonymous child holds [inner], as Instagram nests `Owner` and `Media`. */
     fun group(
         title: String,
@@ -45,32 +67,4 @@ internal object InstagramJson {
         names.joinToString(", ", prefix = """{"title": "Hashtags", "dict": [""", postfix = "]}") {
             """{"title": "", "dict": [${leaf("Name", it)}]}"""
         }
-
-    // string_list_data / string_map_data dialect
-
-    fun stringList(
-        title: String,
-        value: String?,
-        href: String,
-        timestamp: Long,
-    ): String {
-        val valueField = value?.let { """"value": "$it", """ } ?: ""
-        return """{"title": "$title", "media_list_data": [], """ +
-            """"string_list_data": [{"href": "$href", $valueField"timestamp": $timestamp}]}"""
-    }
-
-    fun stringMap(
-        title: String?,
-        vararg entries: String,
-    ): String {
-        val titleField = title?.let { """"title": "$it", "media_map_data": {}, """ } ?: ""
-        return """{$titleField"string_map_data": {${entries.joinToString(", ")}}}"""
-    }
-
-    fun entry(
-        label: String,
-        value: String = "",
-        href: String = "",
-        timestamp: Long = 0,
-    ): String = """"$label": {"href": "$href", "value": "$value", "timestamp": $timestamp}"""
 }

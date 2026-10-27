@@ -16,12 +16,19 @@ internal interface DialectRecord {
     fun fields(): Map<String, String>
 
     fun time(): Instant?
+
+    /** The lists of plain values the record carries, by label, for a mapper that needs one Claim per item. */
+    fun lists(): Map<String, List<String>> = emptyMap()
 }
 
-/** One record of any Instagram dialect after decoding and flattening: its label/value pairs and its time. */
+/**
+ * One record of any Instagram dialect after decoding and flattening: its label/value pairs, its
+ * lists kept apart, and its time. Every value has had its mojibake repaired.
+ */
 internal data class InstagramRecord(
     val fields: Map<String, String>,
     val time: Instant?,
+    val lists: Map<String, List<String>> = emptyMap(),
 )
 
 /**
@@ -75,7 +82,11 @@ internal object InstagramDecoder {
                     unsupported("record has none of ${DIALECT_KEYS.joinToString()}")
                 }
             }
-        return InstagramRecord(record.fields(), record.time())
+        return InstagramRecord(
+            fields = record.fields().mapValues { (_, value) -> repairMojibake(value) },
+            time = record.time(),
+            lists = record.lists().mapValues { (_, values) -> values.map(::repairMojibake) },
+        )
     }
 
     private fun unsupported(message: String): Nothing = throw UnsupportedFileShapeException(message)

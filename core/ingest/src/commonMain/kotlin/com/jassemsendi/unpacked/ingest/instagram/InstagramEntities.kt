@@ -90,3 +90,25 @@ private fun profile(
             },
     )
 }
+
+/**
+ * A thing the Source names only by its name, such as an advertiser that uploaded a list holding
+ * the user's contact details, or a place like "Sousse, Sousse Governorate" (ADR 0002).
+ */
+internal fun named(kind: EntityKind): (name: String) -> Entity? =
+    { name -> name.orBlank()?.let { Entity(Source.Instagram, kind, Entity.normalizeKey(it), it) } }
+
+/**
+ * The place a profile is based in, from the `Location` group's city and region, named the way the
+ * locations-of-interest file names its places so the two meet; the country alone when that is all there is.
+ */
+internal fun basedIn(): EntityRule =
+    { fields ->
+        val cityAndRegion = listOfNotNull(fields["Location / City"].orBlank(), fields["Location / Region"].orBlank())
+        val name =
+            cityAndRegion.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: fields["Location / Country"].orEmpty()
+        listOfNotNull(named(EntityKind.Place)(name))
+    }
+
+/** A topic named in [field], as the your-topics file names each one. */
+internal fun topic(field: String): EntityRule = { fields -> listOfNotNull(fields[field]?.let(named(EntityKind.Topic))) }
