@@ -35,6 +35,7 @@ plugins {
 include(":core:model")
 include(":core:ingest")
 include(":core:data")
+include(":core:fixtures")
 include(":core:insights")
 include(":core:agent")
 include(":ui")

@@ -1,7 +1,8 @@
 package com.jassemsendi.unpacked.ingest
 
-import com.jassemsendi.unpacked.ingest.instagram.InstagramFixtures
-import com.jassemsendi.unpacked.ingest.instagram.SyntheticInstagramExport
+import com.jassemsendi.unpacked.fixtures.InstagramFixtures
+import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
+import com.jassemsendi.unpacked.fixtures.writeText
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.ExportId

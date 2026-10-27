@@ -16,6 +16,10 @@ _Avoid_: Dump, download, takeout, archive (as a generic noun)
 One run of reading one Export into the user's local library. The unit the user deletes: removing an Import removes every Event, Claim and Entity it produced.
 _Avoid_: Sync, load, ingestion (as the noun for the result), session
 
+**Library**:
+The user's local store of every Import, held in one on-device database and read only through repository interfaces. The Library is what cards, the agent's Tools and the gap report query; the Export itself is never consulted after its Import.
+_Avoid_: Database, store, cache, local data (as the noun for the thing)
+
 ### Canonical model
 
 **Event**:

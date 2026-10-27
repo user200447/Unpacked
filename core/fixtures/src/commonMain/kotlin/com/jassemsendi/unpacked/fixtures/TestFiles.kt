@@ -1,10 +1,10 @@
-package com.jassemsendi.unpacked.ingest
+package com.jassemsendi.unpacked.fixtures
 
 import okio.FileSystem
 import okio.Path
 
 /** Writes UTF-8 text, creating parent directories first. Shared by the generator and the tests. */
-internal fun FileSystem.writeText(
+public fun FileSystem.writeText(
     path: Path,
     text: String,
 ) {

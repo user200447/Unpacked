@@ -12,6 +12,7 @@ kotlin {
             implementation(libs.kotlinx.serializationJson)
         }
         commonTest.dependencies {
+            implementation(project(":core:fixtures"))
             implementation(libs.kotlinx.coroutinesTest)
             implementation(libs.okio.fakefilesystem)
         }
