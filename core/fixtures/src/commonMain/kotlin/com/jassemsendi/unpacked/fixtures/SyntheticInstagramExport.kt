@@ -9,8 +9,8 @@ import kotlin.random.Random
  * Builds a small Instagram Export in memory with the real folder layout: a deterministic
  * ads-viewed file, an unmapped file, media that must never be opened, and optionally the timed
  * files of every other recognised name ([TIMED_FILE_PATHS]), the untimed files that become Claims
- * ([CLAIM_FILE_PATHS]), a malformed ads-viewed file, and non-JSON non-media files such as the
- * HTML notes a real Export carries.
+ * ([CLAIM_FILE_PATHS]), the message threads counted against the owner's profile ([MESSAGE_THREADS]),
+ * a malformed ads-viewed file, and non-JSON non-media files such as the HTML notes a real Export carries.
  * Every later ticket adds files to it rather than inventing new fixtures.
  */
 public class SyntheticInstagramExport(
@@ -19,6 +19,7 @@ public class SyntheticInstagramExport(
     public val includeUnmappedFile: Boolean = true,
     public val includeTimedFiles: Boolean = false,
     public val includeClaimFiles: Boolean = false,
+    public val includeMessageThreads: Boolean = false,
     public val mediaFiles: Int = 3,
     public val otherFiles: Int = 0,
     seed: Int = 42,
@@ -65,6 +66,18 @@ public class SyntheticInstagramExport(
                 fileSystem.writeText(root / path.toPath(), json)
             }
         }
+        if (includeMessageThreads) {
+            fileSystem.writeText(
+                root / InstagramProfileFixtures.PERSONAL_INFORMATION_PATH.toPath(),
+                InstagramProfileFixtures.PERSONAL_INFORMATION_JSON,
+            )
+            SyntheticMessageThreads.all(MESSAGE_FILES_FIRST_TIME).forEach { (path, json) ->
+                fileSystem.writeText(root / path.toPath(), json)
+            }
+            SyntheticMessageThreads.mediaPaths.forEach { path ->
+                fileSystem.writeText(root / path.toPath(), "not really media")
+            }
+        }
         repeat(mediaFiles) { index ->
             val extension = MEDIA_EXTENSIONS[index % MEDIA_EXTENSIONS.size]
             fileSystem.writeText(root / "media/posts/202610/synthetic_$index.$extension".toPath(), "not really media")
@@ -105,11 +118,28 @@ public class SyntheticInstagramExport(
         /** The dated Claims are "as of" two days after the first ad, one minute apart. */
         public const val CLAIM_FILES_FIRST_TIME: Long = FIRST_TIME + 2 * 24 * 3_600L
 
+        /** The messages start three days after the first ad, one minute apart. */
+        public const val MESSAGE_FILES_FIRST_TIME: Long = FIRST_TIME + 3 * 24 * 3_600L
+
         /** The paths of the timed files written when `includeTimedFiles` is set. */
         public val TIMED_FILE_PATHS: List<String> = SyntheticTimedFiles.all(TIMED_FILES_FIRST_TIME).keys.toList()
 
         /** The paths of the untimed files written when `includeClaimFiles` is set. */
         public val CLAIM_FILE_PATHS: List<String> = SyntheticClaimFiles.all(CLAIM_FILES_FIRST_TIME).keys.toList()
+
+        /** The threads written when `includeMessageThreads` is set, with the counts each must yield. */
+        public val MESSAGE_THREADS: List<SyntheticThread> = SyntheticMessageThreads.threads
+
+        /** The paths of the thread parts written when `includeMessageThreads` is set. */
+        public val MESSAGE_FILE_PATHS: List<String> =
+            SyntheticMessageThreads
+                .all(
+                    MESSAGE_FILES_FIRST_TIME,
+                ).keys
+                .toList()
+
+        /** The media inside thread folders written when `includeMessageThreads` is set, never opened. */
+        public val THREAD_MEDIA_PATHS: List<String> = SyntheticMessageThreads.mediaPaths
         private const val HOUR = 3_600L
         private val ADVERTISERS =
             listOf(

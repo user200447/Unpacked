@@ -5,7 +5,11 @@ public sealed interface FileResult {
     public val path: String
     public val rawKind: RawKind
 
-    /** [droppedCount] is how many records produced neither an Event nor a Claim, such as undated impressions. */
+    /**
+     * [droppedCount] is how many records produced neither an Event nor a Claim, such as undated
+     * impressions. [droppedReason] says why when one reason covers them all, such as a message
+     * thread whose owner is unknown; it is null when the records were simply undated.
+     */
     public data class Parsed(
         override val path: String,
         override val rawKind: RawKind,
@@ -13,6 +17,7 @@ public sealed interface FileResult {
         val eventCount: Int,
         val claimCount: Int,
         val droppedCount: Int = 0,
+        val droppedReason: String? = null,
     ) : FileResult
 
     public data class Skipped(

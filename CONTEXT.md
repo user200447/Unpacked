@@ -16,6 +16,10 @@ _Avoid_: Dump, download, takeout, archive (as a generic noun)
 One run of reading one Export into the user's local library. The unit the user deletes: removing an Import removes every Event, Claim and Entity it produced.
 _Avoid_: Sync, load, ingestion (as the noun for the result), session
 
+**Export owner**:
+The person the Export is about, as the Source names them in the Export's own profile file. Read once before any file is parsed; it is what tells a message sent from one received.
+_Avoid_: User (for this), account holder, me, self
+
 **Library**:
 The user's local store of every Import, held in one on-device database and read only through repository interfaces. The Library is what cards, the agent's Tools and the gap report query; the Export itself is never consulted after its Import.
 _Avoid_: Database, store, cache, local data (as the noun for the thing)
@@ -31,7 +35,7 @@ A standing assertion a Source makes about the user with no moment of occurrence:
 _Avoid_: Fact, inference, attribute, untimed event, metadata
 
 **Entity**:
-A named thing that recurs across Events and Claims and is worth counting or following: an advertiser, an account, a device, a topic, a place. An Entity belongs to exactly one Source; it is what that Source said, nothing more.
+A named thing that recurs across Events and Claims and is worth counting or following: an advertiser, an account, a device, a topic, a place, a message thread. An Entity belongs to exactly one Source; it is what that Source said, nothing more.
 _Avoid_: Actor, object, tag, dimension
 
 **Match**:

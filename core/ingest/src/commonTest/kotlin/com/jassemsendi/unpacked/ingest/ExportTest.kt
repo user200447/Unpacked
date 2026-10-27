@@ -8,6 +8,7 @@ import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ExportTest {
@@ -87,5 +88,16 @@ class ExportTest {
         assertEquals("ads_viewed", file.rawKind.value)
         assertTrue(file.isJson)
         assertTrue(ExportFile(ExportId("export"), "media/posts/a.MP4").isMedia)
+    }
+
+    @Test
+    fun aFileWithNoExtensionInsideAPhotosVideosOrAudioFolderIsMedia() {
+        val export = ExportId("export")
+        assertTrue(ExportFile(export, "your_instagram_activity/messages/inbox/t_1/photos/1066712851843908").isMedia)
+        assertTrue(ExportFile(export, "your_instagram_activity/messages/inbox/t_1/videos/1039734214128312").isMedia)
+        assertTrue(ExportFile(export, "your_instagram_activity/messages/inbox/t_1/audio/1057182629448480").isMedia)
+        assertFalse(ExportFile(export, "your_instagram_activity/messages/inbox/t_1/files/1057182629448480").isMedia)
+        assertFalse(ExportFile(export, "your_instagram_activity/messages/inbox/t_1/photos/notes.txt").isMedia)
+        assertFalse(ExportFile(export, "personal_information/README").isMedia)
     }
 }
