@@ -5,7 +5,10 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 
-/** The local library's schema (ADR 0004). Version 1; the exported schema lives in `core/data/schemas`. */
+/**
+ * The local library's schema (ADR 0004). The exported schema lives in `core/data/schemas`; version 2
+ * added the item index to the Provenance columns.
+ */
 @Database(
     entities = [
         ImportRow::class,
@@ -19,7 +22,7 @@ import androidx.room.RoomDatabaseConstructor
         EntityRow::class,
         EntityAttributeRow::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @ConstructedBy(LibraryDatabaseConstructor::class)

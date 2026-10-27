@@ -1,11 +1,11 @@
 package com.jassemsendi.unpacked.fixtures
 
-import com.jassemsendi.unpacked.fixtures.InstagramJson.entry
 import com.jassemsendi.unpacked.fixtures.InstagramJson.group
 import com.jassemsendi.unpacked.fixtures.InstagramJson.hashtags
 import com.jassemsendi.unpacked.fixtures.InstagramJson.labelValues
 import com.jassemsendi.unpacked.fixtures.InstagramJson.leaf
-import com.jassemsendi.unpacked.fixtures.InstagramJson.stringMap
+import com.jassemsendi.unpacked.fixtures.InstagramStringDataJson.entry
+import com.jassemsendi.unpacked.fixtures.InstagramStringDataJson.stringMap
 
 /** An invented Instagram account, as the Export names one. */
 internal data class Account(
@@ -107,4 +107,25 @@ internal object InstagramRecords {
         creationTimestamp: Long,
         title: String,
     ): String = """{"uri": "$uri", "creation_timestamp": $creationTimestamp, "media_metadata": {}, "title": "$title"}"""
+
+    /** The user's feedback on a piece of content, as the interested-or-not files record it: dated, with the author. */
+    fun feedback(
+        timestamp: Long,
+        feedback: String,
+        source: String,
+        author: Account,
+    ): String =
+        labelValues(
+            timestamp,
+            leaf("Feedback", feedback),
+            leaf("Surface", "Reels"),
+            leaf("Source", source),
+            owner(author),
+        )
+
+    /** One synced contact: a name and a phone number, nothing dated. */
+    fun contact(
+        name: String,
+        phone: String,
+    ): String = stringMap(null, entry("First Name", value = name), entry("Contact Information", value = phone))
 }

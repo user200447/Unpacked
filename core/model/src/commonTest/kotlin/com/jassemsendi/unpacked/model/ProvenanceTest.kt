@@ -20,8 +20,15 @@ class ProvenanceTest {
     @Test
     fun hashChangesWithAnyField() {
         assertNotEquals(provenance.hash, provenance.copy(recordIndex = 4).hash)
+        assertNotEquals(provenance.hash, provenance.copy(itemIndex = 1).hash)
         assertNotEquals(provenance.hash, provenance.copy(path = "ads_information/ads_clicked.json").hash)
         assertNotEquals(provenance.hash, provenance.copy(exportId = ExportId("other")).hash)
+    }
+
+    @Test
+    fun aRecordThatIsOneThingIsItemZero() {
+        assertEquals(0, provenance.itemIndex)
+        assertEquals(provenance.hash, provenance.copy(itemIndex = 0).hash)
     }
 
     @Test

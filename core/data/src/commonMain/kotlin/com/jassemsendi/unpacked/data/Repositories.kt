@@ -37,6 +37,7 @@ public interface ClaimRepository {
 
     public suspend fun byProvenance(provenance: Provenance): Claim?
 
+    /** The Claims of one Import: undated ones first in file order, then dated ones in "as of" order. */
     public suspend fun forImport(importId: ImportId): List<Claim>
 }
 

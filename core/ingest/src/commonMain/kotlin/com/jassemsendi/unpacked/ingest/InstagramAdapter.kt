@@ -37,7 +37,8 @@ public object InstagramAdapter : SourceAdapter {
         var output = Output.NONE
         var dropped = 0
         records.forEachIndexed { index, record ->
-            val mapped = mapper.map(FlatRecord(record.fields, record.time, file.provenanceOf(index), file.rawKind))
+            val flat = FlatRecord(record.fields, record.time, file.provenanceOf(index), file.rawKind, record.lists)
+            val mapped = mapper.map(flat)
             if (mapped.isEmpty) dropped++ else output += mapped
         }
         val result =

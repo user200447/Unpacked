@@ -3,6 +3,7 @@ package com.jassemsendi.unpacked.ingest
 import com.jassemsendi.unpacked.fixtures.InstagramFixtures
 import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
 import com.jassemsendi.unpacked.fixtures.writeText
+import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.ExportId
@@ -92,7 +93,7 @@ class ImporterTest {
 
             val skipped = summary.skipped.single()
             assertEquals(InstagramFixtures.UNMAPPED_PATH, skipped.path)
-            assertEquals(RawKind("advertisers_using_your_activity_or_information"), skipped.rawKind)
+            assertEquals(RawKind("subscription_for_no_ads"), skipped.rawKind)
             assertEquals(Inventory(jsonFiles = 2, mediaFiles = 5, otherFiles = 0), summary.inventory)
             assertEquals(
                 emptyList(),
@@ -234,5 +235,49 @@ class ImporterTest {
             val named = viewed.map { event -> event.entities.single { it.kind != EntityKind.Topic }.id }
             assertEquals(5, named.count { it.startsWith("instagram:advertiser:") }, "every ad names its advertiser")
             assertEquals(9, named.count { it.startsWith("instagram:account:") }, "every view names its author")
+        }
+
+    @Test
+    fun everyUntimedFileIsParsedAndClaimsCountPerKindAsComputedByHandFromTheFixture() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 2, includeClaimFiles = true).writeTo(fs, root)
+
+            val steps = import(Export.directory(fs, root))
+            val summary = steps.summary()
+            val events = steps.finished().flatMap { it.outcome.output.events }
+            val claims = steps.finished().flatMap { it.outcome.output.claims }
+
+            assertEquals(emptyList(), summary.failed)
+            assertEquals(listOf(InstagramFixtures.UNMAPPED_PATH), summary.skipped.map { it.path })
+            assertEquals(23, summary.parsed.size, "the ads file and the 22 untimed files")
+            assertEquals(Inventory(jsonFiles = 24, mediaFiles = 3, otherFiles = 0), summary.inventory)
+            assertEquals(
+                mapOf(
+                    ClaimKind.AdvertiserHoldsContact to 4,
+                    ClaimKind.InferredInterest to 8,
+                    ClaimKind.InferredLocation to 5,
+                    ClaimKind.ReachCategory to 3,
+                    ClaimKind.ConsentGiven to 1,
+                    ClaimKind.ProfileField to 4,
+                    ClaimKind.ContactSynced to 3,
+                    ClaimKind.Other to 6,
+                ),
+                claims.groupingBy { it.kind }.eachCount(),
+            )
+            assertEquals(ClaimKind.entries.toSet(), claims.map { it.kind }.toSet(), "the full Claim vocabulary appears")
+            assertEquals(
+                mapOf(EventKind.AdShown to 2),
+                events
+                    .groupingBy {
+                        it.kind
+                    }.eachCount(),
+                "no untimed file yields an Event",
+            )
+            assertEquals(0, summary.parsed.sumOf { it.droppedCount })
+            assertEquals(claims.size, summary.parsed.sumOf { it.claimCount })
+            val advertisers = claims.filter { it.kind == ClaimKind.AdvertiserHoldsContact }
+            assertTrue(advertisers.all { claim -> claim.entities.single().kind == EntityKind.Advertiser })
+            assertEquals(4, advertisers.map { it.entities.single().id }.distinct().size)
+            assertEquals(claims.size, claims.map { it.id }.distinct().size, "every Claim has its own identity")
         }
 }

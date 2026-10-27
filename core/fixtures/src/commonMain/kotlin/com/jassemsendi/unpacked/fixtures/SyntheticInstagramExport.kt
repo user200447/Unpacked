@@ -8,8 +8,9 @@ import kotlin.random.Random
 /**
  * Builds a small Instagram Export in memory with the real folder layout: a deterministic
  * ads-viewed file, an unmapped file, media that must never be opened, and optionally the timed
- * files of every other recognised name ([TIMED_FILE_PATHS]), a malformed ads-viewed file,
- * and non-JSON non-media files such as the HTML notes a real Export carries.
+ * files of every other recognised name ([TIMED_FILE_PATHS]), the untimed files that become Claims
+ * ([CLAIM_FILE_PATHS]), a malformed ads-viewed file, and non-JSON non-media files such as the
+ * HTML notes a real Export carries.
  * Every later ticket adds files to it rather than inventing new fixtures.
  */
 public class SyntheticInstagramExport(
@@ -17,6 +18,7 @@ public class SyntheticInstagramExport(
     public val malformedAdsViewed: Boolean = false,
     public val includeUnmappedFile: Boolean = true,
     public val includeTimedFiles: Boolean = false,
+    public val includeClaimFiles: Boolean = false,
     public val mediaFiles: Int = 3,
     public val otherFiles: Int = 0,
     seed: Int = 42,
@@ -51,10 +53,15 @@ public class SyntheticInstagramExport(
         val adsJson = if (malformedAdsViewed) InstagramFixtures.MALFORMED_JSON else adsViewedJson()
         fileSystem.writeText(root / InstagramFixtures.ADS_VIEWED_PATH.toPath(), adsJson)
         if (includeUnmappedFile) {
-            fileSystem.writeText(root / InstagramFixtures.UNMAPPED_PATH.toPath(), InstagramFixtures.ADVERTISERS_JSON)
+            fileSystem.writeText(root / InstagramFixtures.UNMAPPED_PATH.toPath(), InstagramFixtures.UNMAPPED_JSON)
         }
         if (includeTimedFiles) {
             SyntheticTimedFiles.all(TIMED_FILES_FIRST_TIME).forEach { (path, json) ->
+                fileSystem.writeText(root / path.toPath(), json)
+            }
+        }
+        if (includeClaimFiles) {
+            SyntheticClaimFiles.all(CLAIM_FILES_FIRST_TIME).forEach { (path, json) ->
                 fileSystem.writeText(root / path.toPath(), json)
             }
         }
@@ -95,8 +102,14 @@ public class SyntheticInstagramExport(
         /** The timed files start a day after the first ad, one minute apart. */
         public const val TIMED_FILES_FIRST_TIME: Long = FIRST_TIME + 24 * 3_600L
 
+        /** The dated Claims are "as of" two days after the first ad, one minute apart. */
+        public const val CLAIM_FILES_FIRST_TIME: Long = FIRST_TIME + 2 * 24 * 3_600L
+
         /** The paths of the timed files written when `includeTimedFiles` is set. */
         public val TIMED_FILE_PATHS: List<String> = SyntheticTimedFiles.all(TIMED_FILES_FIRST_TIME).keys.toList()
+
+        /** The paths of the untimed files written when `includeClaimFiles` is set. */
+        public val CLAIM_FILE_PATHS: List<String> = SyntheticClaimFiles.all(CLAIM_FILES_FIRST_TIME).keys.toList()
         private const val HOUR = 3_600L
         private val ADVERTISERS =
             listOf(
