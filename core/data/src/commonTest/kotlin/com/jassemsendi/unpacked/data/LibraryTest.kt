@@ -137,13 +137,13 @@ abstract class LibraryTest {
                     ClaimKind.ConsentGiven to 1,
                     ClaimKind.ProfileField to 4,
                     ClaimKind.ContactSynced to 3,
-                    ClaimKind.Other to 6,
+                    ClaimKind.Other to 14,
                 ),
                 library.claims.countByKind(import.id),
             )
             assertEquals(mapOf(EventKind.AdShown to 2), library.events.countByKind(import.id))
             val claims = library.claims.forImport(import.id)
-            assertEquals(34, claims.size)
+            assertEquals(42, claims.size)
             val advertisers = claims.filter { it.kind == ClaimKind.AdvertiserHoldsContact }
             assertTrue(advertisers.all { claim -> claim.entities.single().kind == EntityKind.Advertiser })
             assertEquals(4, advertisers.map { it.entities.single().id }.distinct().size)
@@ -207,7 +207,7 @@ abstract class LibraryTest {
 
             assertEquals(mapOf(ClaimKind.AdvertiserHoldsContact to 3), library.claims.countByKind(import.id))
             val second = assertNotNull(library.claims.byProvenance(record.copy(itemIndex = 1)))
-            assertEquals("Smith, Jones & Co", second.attributes.getValue("Advertisers"))
+            assertEquals("Smith, Jones & Co", second.attributes.getValue(InstagramClaimFixtures.ADVERTISERS_LABEL))
             assertEquals("instagram:advertiser:smith, jones & co", second.entities.single().id)
             assertEquals(listOf(0, 1, 2), library.claims.forImport(import.id).map { it.provenance.itemIndex })
             assertNull(library.claims.byProvenance(record.copy(itemIndex = 3)))

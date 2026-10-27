@@ -57,7 +57,7 @@ class InstagramClaimMappersTest {
             assertEquals(3, claims.map { it.id }.distinct().size, "each item has its own identity")
             assertEquals(
                 listOf("Example Hotels", "Smith, Jones & Co", "Example Fashion"),
-                claims.map { it.attributes.getValue("Advertisers") },
+                claims.map { it.attributes.getValue(InstagramClaimFixtures.ADVERTISERS_LABEL) },
                 "a name with a comma stays whole",
             )
             assertEquals(
@@ -142,5 +142,26 @@ class InstagramClaimMappersTest {
                 ),
                 claim.attributes,
             )
+        }
+
+    @Test
+    fun aMojibakeNameIsRepairedBeforeItNamesAnEntity() =
+        runTest {
+            val path = "ads_information/ads_and_topics/profiles_you're_not_interested_in.json"
+            val json =
+                """{"timestamp": 1710582207, "media": [], "label_values": [
+                    {"label": "URL", "value": ""},
+                    {"label": "Name", "value": "${InstagramClaimFixtures.MOJIBAKE_NAME}"},
+                    {"label": "Username", "value": "emilie.example"}
+                ]}"""
+
+            val (_, output) = importFile(path, json)
+
+            val claim = output.claims.single()
+            assertEquals(ClaimKind.InferredInterest, claim.kind)
+            val account = claim.entities.single()
+            assertEquals(InstagramClaimFixtures.REPAIRED_NAME, account.displayName)
+            assertEquals("instagram:account:emilie.example", account.id)
+            assertEquals(InstagramClaimFixtures.REPAIRED_NAME, claim.attributes.getValue("Name"))
         }
 }

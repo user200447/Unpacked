@@ -47,7 +47,7 @@ The Source's own name for where an Event or Claim came from, typically the Expor
 _Avoid_: Source type, file type, original kind
 
 **Provenance**:
-Where one Event or Claim came from: the Export, the file path inside it, the record's position in that file and, when the record lists several things, which of them. Every Event and Claim has exactly one Provenance, and every citation the agent gives is a Provenance. What the user sees when they click through is the record's own label/value pairs plus this location.
+Where one Event or Claim came from: the Export, the file path inside it, the record's position in that file and, when the record lists several things, the item among them. Every Event and Claim has exactly one Provenance, and every citation the agent gives is a Provenance. What the user sees when they click through is the record's own label/value pairs plus this location.
 _Avoid_: Source (in this sense), origin, reference, citation (for the stored thing), evidence
 
 ### Insights

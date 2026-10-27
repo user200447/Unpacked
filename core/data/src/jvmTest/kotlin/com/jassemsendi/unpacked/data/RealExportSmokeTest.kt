@@ -24,18 +24,11 @@ class RealExportSmokeTest {
     @Test
     fun theOwnersExportImportsWithNoFailedFile() =
         runTest(timeout = 10.minutes) {
-            val path = System.getenv(EXPORT_VARIABLE)
-            assumeTrue("$EXPORT_VARIABLE is not set; skipping the real-Export smoke test", !path.isNullOrBlank())
+            val path = System.getenv(EXPORT_VARIABLE)?.takeUnless { it.isBlank() }
+            assumeTrue("$EXPORT_VARIABLE is not set; skipping the real-Export smoke test", path != null)
+            checkNotNull(path)
             val location =
-                if (path!!.endsWith(
-                        ".zip",
-                        ignoreCase = true,
-                    )
-                ) {
-                    ExportLocation.Zip(path)
-                } else {
-                    ExportLocation.Folder(path)
-                }
+                if (path.endsWith(".zip", ignoreCase = true)) ExportLocation.Zip(path) else ExportLocation.Folder(path)
 
             Library.inMemory().use { library ->
                 val steps = library.import(Export.open(FileSystem.SYSTEM, location), InstagramAdapter).toList()

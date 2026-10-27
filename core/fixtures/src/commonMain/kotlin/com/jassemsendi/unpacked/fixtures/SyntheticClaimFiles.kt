@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.fixtures
 
 import com.jassemsendi.unpacked.fixtures.InstagramJson.container
 import com.jassemsendi.unpacked.fixtures.InstagramJson.dict
+import com.jassemsendi.unpacked.fixtures.InstagramJson.group
 import com.jassemsendi.unpacked.fixtures.InstagramJson.labelOnly
 import com.jassemsendi.unpacked.fixtures.InstagramJson.labelValues
 import com.jassemsendi.unpacked.fixtures.InstagramJson.leaf
@@ -26,7 +27,8 @@ internal object SyntheticClaimFiles {
     /** Every file by path, with its JSON text, given the instant the first dated record happens at. */
     fun all(firstTime: Long): Map<String, String> {
         val t = Ticker(firstTime)
-        return advertisers() + interests(t) + locations() + reach() + consents(t) + profile(t) + contacts() + other(t)
+        return advertisers() + interests(t) + locations() + reach() + consents(t) + profile(t) + contacts() +
+            settings(t) + otherActivity(t)
     }
 
     // AdvertiserHoldsContact: 4 Claims from one record listing four advertisers
@@ -36,8 +38,7 @@ internal object SyntheticClaimFiles {
                 labelValues(
                     null,
                     vec(
-                        "Advertisers that have uploaded an audience list containing entries that were matched " +
-                            "to your Instagram profile",
+                        InstagramClaimFixtures.ADVERTISERS_LABEL,
                         listOf("Example Hotels", "Example Fashion", "Example Courier", "Smith, Jones & Co"),
                     ),
                 ),
@@ -173,8 +174,8 @@ internal object SyntheticClaimFiles {
                 ),
         )
 
-    // Other: 1 + 1 + 1 + 1 + 1 + 1 = 6 Claims
-    private fun other(t: Ticker): Map<String, String> =
+    // Other, settings and insights: one record per file, 7 files = 7 Claims
+    private fun settings(t: Ticker): Map<String, String> =
         mapOf(
             "$ADS_BUSINESSES/ad_preferences.json" to
                 labelValues(
@@ -206,6 +207,35 @@ internal object SyntheticClaimFiles {
                     "organic_insights_audience",
                     stringMap("", entry("Date Range", value = "Jul 16 - Oct 13"), entry("Followers", value = "208")),
                 ),
+            "$PERSONAL/instagram_friend_map.json" to
+                labelValues(
+                    null,
+                    leaf("Sharing audience", "Only owner"),
+                    timed("Last time you viewed Friend Map", t.next()),
+                ),
+            "logged_information/past_instagram_insights/content_interactions.json" to
+                container(
+                    "organic_insights_interactions",
+                    stringMap(
+                        "",
+                        entry("Date Range", value = "Jul 16 - Oct 13"),
+                        entry("Content Interactions", value = "0"),
+                    ),
+                ),
+            "logged_information/past_instagram_insights/profiles_reached.json" to
+                container(
+                    "organic_insights_reach",
+                    stringMap(
+                        "",
+                        entry("Date Range", value = "Jul 16 - Oct 13"),
+                        entry("Accounts Reached", value = "0"),
+                    ),
+                ),
+        )
+
+    // Other, the user's activity the vocabulary does not distinguish: one record per file, 7 files = 7 Claims
+    private fun otherActivity(t: Ticker): Map<String, String> =
+        mapOf(
             "your_instagram_activity/monetization/eligibility.json" to
                 container(
                     "monetization_eligibility",
@@ -218,6 +248,38 @@ internal object SyntheticClaimFiles {
                 ),
             "your_instagram_activity/shopping/recently_viewed_items.json" to
                 labelValues(null, vec("Product names", listOf("Example sneaker"))),
+            "your_instagram_activity/other_activity/digital_product_payment_quotes.json" to
+                list(labelValues(null, leaf("Country Code", "TN"), labelOnly("Platform"))),
+            "your_instagram_activity/other_activity/your_ownership_of_digital_items.json" to
+                labelValues(
+                    t.next(),
+                    leaf("Quantity", "1"),
+                    labelOnly("Status"),
+                    timed("Update time", t.next()),
+                    leaf("Active", "False"),
+                ),
+            "your_instagram_activity/shopping/checkout_payment_information.json" to
+                labelValues(
+                    t.next(),
+                    leaf("Region", "Africa"),
+                    timed("Update time", t.next()),
+                    leaf("Name", "Example Owner"),
+                ),
+            "personal_information/device_information/device_camera_effects_support.json" to
+                list(
+                    labelValues(
+                        t.next(),
+                        leaf("Device ID", "63a0ac24d9e87db2a6267d4dd0ff49f3"),
+                        dict("Metadata", leaf("Supported SDK Versions", "149.0,150.0")),
+                    ),
+                ),
+            "$PERSONAL/note_and_repost_interactions.json" to
+                list(
+                    labelValues(
+                        null,
+                        group("Author", leaf("URL", ""), leaf("Name", coach.name), leaf("Username", coach.username)),
+                    ),
+                ),
         )
 
     private const val ADS = "ads_information/ads_and_topics"

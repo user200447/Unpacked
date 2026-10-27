@@ -13,6 +13,10 @@ public object InstagramClaimFixtures {
 
     public const val CONSENT_TIME_SECONDS: Long = 1_560_978_845L
     public const val CONSENT_TIME_ISO: String = "2019-06-19T21:14:05Z"
+
+    /** The sentence Instagram writes above its list of advertisers, and so the attribute each Claim carries. */
+    public const val ADVERTISERS_LABEL: String =
+        "Advertisers that have uploaded an audience list containing entries that were matched to your Instagram profile"
     public const val CONSENT_LABEL: String = "Consent for the processing of user's data by ad partners on Instagram"
 
     /** "Émilie Noël" as the real Export writes it: UTF-8 bytes read back as Latin-1, then JSON-escaped. */
@@ -31,7 +35,7 @@ public object InstagramClaimFixtures {
         {
           "media": [],
           "label_values": [
-            {"label": "Advertisers", "vec": [
+            {"label": "$ADVERTISERS_LABEL", "vec": [
               {"value": "Example Hotels"}, {"value": "Smith, Jones & Co"}, {"value": "Example Fashion"}
             ]}
           ]

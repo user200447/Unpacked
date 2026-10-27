@@ -45,7 +45,7 @@ open iosApp/iosApp.xcodeproj              # iOS: run the iosApp scheme in Xcode
 ./gradlew check                           # lint plus tests on every target the host can run
 ```
 
-An opt-in smoke test imports your own Instagram Export, asserts that no file Failed and prints the count per Kind. It runs only when the variable is set and the Export never enters the repository:
+An opt-in smoke test imports your own Instagram Export, asserts that no file Failed and prints the count per Kind. It runs only when the variable is set, and the Export is never committed:
 
 ```sh
 UNPACKED_INSTAGRAM_EXPORT=~/Downloads/instagram-export.zip ./gradlew :core:data:jvmTest --tests '*RealExportSmokeTest*'

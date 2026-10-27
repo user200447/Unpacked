@@ -20,9 +20,10 @@ class InstagramDecoderTest {
     @Test
     fun singleObjectFileDecodesAsOneRecordJoinsVecValuesAndKeepsTheListApart() {
         val record = InstagramDecoder.decode(InstagramClaimFixtures.ADVERTISERS_JSON).getOrThrow().single()
-        assertEquals(mapOf("Advertisers" to "Example Hotels, Smith, Jones & Co, Example Fashion"), record.fields)
+        val label = InstagramClaimFixtures.ADVERTISERS_LABEL
+        assertEquals(mapOf(label to "Example Hotels, Smith, Jones & Co, Example Fashion"), record.fields)
         assertEquals(
-            mapOf("Advertisers" to listOf("Example Hotels", "Smith, Jones & Co", "Example Fashion")),
+            mapOf(label to listOf("Example Hotels", "Smith, Jones & Co", "Example Fashion")),
             record.lists,
             "the joined text cannot be split again, so the items are kept as a list too",
         )

@@ -108,18 +108,21 @@ internal object InstagramRecords {
         title: String,
     ): String = """{"uri": "$uri", "creation_timestamp": $creationTimestamp, "media_metadata": {}, "title": "$title"}"""
 
-    /** The user's feedback on a piece of content, as the interested-or-not files record it: dated, with the author. */
+    /**
+     * The user's feedback on a piece of content, as the interested-or-not files record it: dated,
+     * given from a post or a menu, with the content's author.
+     */
     fun feedback(
         timestamp: Long,
         feedback: String,
-        source: String,
+        givenFrom: String,
         author: Account,
     ): String =
         labelValues(
             timestamp,
             leaf("Feedback", feedback),
             leaf("Surface", "Reels"),
-            leaf("Source", source),
+            leaf("Source", givenFrom),
             owner(author),
         )
 

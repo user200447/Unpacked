@@ -60,47 +60,37 @@ internal class ClaimMapper(
     private val entities: EntityRule = { emptyList() },
 ) : InstagramMapper {
     override fun map(record: FlatRecord): Output =
-        Output(
-            claims =
-                listOf(
-                    Claim(
-                        kind = kind,
-                        rawKind = record.rawKind,
-                        provenance = record.provenance,
-                        asOf = record.time,
-                        entities = entities(record.fields),
-                        attributes = record.fields,
-                    ),
-                ),
-        )
+        Output(claims = listOf(record.claim(kind, record.provenance, entities(record.fields), record.fields)))
 }
 
 /**
- * A file whose record lists several things, such as every advertiser holding the user's contact
- * details: each item of the record's list is one Claim of [kind], naming the Entity [entity] makes
- * of it and told apart by the item index of its Provenance (ADR 0007). The Claim's attributes are
- * the record's, with the list's label carrying that one item.
+ * A file whose record lists several things under [label], such as every advertiser holding the
+ * user's contact details: each item of that list is one Claim of [kind], naming the Entity [entity]
+ * makes of it and told apart by the item index of its Provenance (ADR 0007). The Claim's attributes
+ * are the record's, with [label] carrying that one item. A record without the list yields nothing.
  */
 internal class ItemClaimMapper(
     private val kind: ClaimKind,
+    private val label: String,
     private val entity: (item: String) -> Entity? = { null },
 ) : InstagramMapper {
     override fun map(record: FlatRecord): Output {
-        val (label, items) = record.lists.entries.firstOrNull() ?: return Output.NONE
+        val items = record.lists[label] ?: return Output.NONE
         val claims =
             items.mapIndexed { index, item ->
-                Claim(
-                    kind = kind,
-                    rawKind = record.rawKind,
-                    provenance = record.provenance.copy(itemIndex = index),
-                    asOf = record.time,
-                    entities = listOfNotNull(entity(item)),
-                    attributes = record.fields.mapValues { (key, value) -> if (key == label) item else value },
-                )
+                val attributes = record.fields.mapValues { (key, value) -> if (key == label) item else value }
+                record.claim(kind, record.provenance.copy(itemIndex = index), listOfNotNull(entity(item)), attributes)
             }
         return Output(claims = claims)
     }
 }
+
+private fun FlatRecord.claim(
+    kind: ClaimKind,
+    provenance: Provenance,
+    entities: List<Entity>,
+    attributes: Map<String, String>,
+): Claim = Claim(kind, rawKind, provenance, asOf = time, entities = entities, attributes = attributes)
 
 /**
  * The registry of mappers for recognised Instagram files, keyed by file name regardless of case
@@ -150,7 +140,7 @@ internal object InstagramMappers {
             "profile_changes.json" to EventMapper(EventKind.Other),
             // Advertisers that uploaded a list holding the user's contact details: one Claim each
             "advertisers_using_your_activity_or_information.json" to
-                ItemClaimMapper(ClaimKind.AdvertiserHoldsContact, named(EntityKind.Advertiser)),
+                ItemClaimMapper(ClaimKind.AdvertiserHoldsContact, AUDIENCE_LIST_LABEL, named(EntityKind.Advertiser)),
             // What the Source infers the user is, or is not, interested in
             "your_topics.json" to ClaimMapper(ClaimKind.InferredInterest, topic("Name")),
             "see_less_topics.json" to ClaimMapper(ClaimKind.InferredInterest),
@@ -159,11 +149,12 @@ internal object InstagramMappers {
             "posts_you're_not_interested_in.json" to ClaimMapper(ClaimKind.InferredInterest, owner(EntityKind.Account)),
             "profiles_you're_not_interested_in.json" to ClaimMapper(ClaimKind.InferredInterest, profile()),
             // Where the Source places the user
-            "locations_of_interest.json" to ItemClaimMapper(ClaimKind.InferredLocation, named(EntityKind.Place)),
+            "locations_of_interest.json" to
+                ItemClaimMapper(ClaimKind.InferredLocation, "Locations of interest", named(EntityKind.Place)),
             "profile_based_in.json" to ClaimMapper(ClaimKind.InferredLocation, basedIn()),
             "last_known_location.json" to ClaimMapper(ClaimKind.InferredLocation),
             // Audience categories advertisers reach the user through: one Claim each
-            "other_categories_used_to_reach_you.json" to ItemClaimMapper(ClaimKind.ReachCategory),
+            "other_categories_used_to_reach_you.json" to ItemClaimMapper(ClaimKind.ReachCategory, "Name"),
             // Consents, profile fields and synced contacts
             "consents.json" to ClaimMapper(ClaimKind.ConsentGiven),
             "personal_information.json" to ClaimMapper(ClaimKind.ProfileField),
@@ -190,6 +181,10 @@ internal object InstagramMappers {
         )
 
     private val partSuffix = Regex("_\\d+(?=\\.json$)")
+
+    /** The one list in the advertisers file, labelled by the sentence Instagram writes above it. */
+    private const val AUDIENCE_LIST_LABEL =
+        "Advertisers that have uploaded an audience list containing entries that were matched to your Instagram profile"
 
     fun forFile(fileName: String): InstagramMapper? = byFileName[fileName.lowercase().replace(partSuffix, "")]
 }

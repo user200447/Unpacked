@@ -249,8 +249,8 @@ class ImporterTest {
 
             assertEquals(emptyList(), summary.failed)
             assertEquals(listOf(InstagramFixtures.UNMAPPED_PATH), summary.skipped.map { it.path })
-            assertEquals(23, summary.parsed.size, "the ads file and the 22 untimed files")
-            assertEquals(Inventory(jsonFiles = 24, mediaFiles = 3, otherFiles = 0), summary.inventory)
+            assertEquals(31, summary.parsed.size, "the ads file and the 30 untimed files")
+            assertEquals(Inventory(jsonFiles = 32, mediaFiles = 3, otherFiles = 0), summary.inventory)
             assertEquals(
                 mapOf(
                     ClaimKind.AdvertiserHoldsContact to 4,
@@ -260,7 +260,7 @@ class ImporterTest {
                     ClaimKind.ConsentGiven to 1,
                     ClaimKind.ProfileField to 4,
                     ClaimKind.ContactSynced to 3,
-                    ClaimKind.Other to 6,
+                    ClaimKind.Other to 14,
                 ),
                 claims.groupingBy { it.kind }.eachCount(),
             )
