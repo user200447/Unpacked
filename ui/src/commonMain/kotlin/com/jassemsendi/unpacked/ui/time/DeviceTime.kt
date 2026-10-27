@@ -3,36 +3,30 @@ package com.jassemsendi.unpacked.ui.time
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
+import kotlinx.datetime.format.DateTimeFormatBuilder
 import kotlinx.datetime.format.char
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
 // Every time on screen goes through here, so all of them read in the device's zone and one style.
 
-private val minuteFormat =
-    LocalDateTime.Format {
-        year()
-        char('-')
-        monthNumber()
-        char('-')
-        day()
-        char(' ')
-        hour()
-        char(':')
-        minute()
-    }
+private fun DateTimeFormatBuilder.WithDateTime.dateToMinute() {
+    year()
+    char('-')
+    monthNumber()
+    char('-')
+    day()
+    char(' ')
+    hour()
+    char(':')
+    minute()
+}
+
+private val minuteFormat = LocalDateTime.Format { dateToMinute() }
 
 private val secondFormat =
     LocalDateTime.Format {
-        year()
-        char('-')
-        monthNumber()
-        char('-')
-        day()
-        char(' ')
-        hour()
-        char(':')
-        minute()
+        dateToMinute()
         char(':')
         second()
     }

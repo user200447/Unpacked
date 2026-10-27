@@ -4,7 +4,10 @@ import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.Provenance
 
 data class HomeState(
-    /** True until the first page and the Kind counts have been read; the list is not yet meaningful. */
+    /**
+     * True from the start until the Kind counts and the first page have been read, and again during a
+     * refresh; what is listed meanwhile is the last read.
+     */
     val isLoading: Boolean = true,
     /** Events in the whole library, before any filter. */
     val totalCount: Int = 0,
@@ -16,8 +19,8 @@ data class HomeState(
     val entries: List<TimelineEntryUi> = emptyList(),
     /** True while the repository holds Events beyond [entries] for the current filter. */
     val hasMore: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    /** The record opened from the timeline, if any. */
+    val isReadingNextPage: Boolean = false,
+    /** The Record opened from the timeline, if any. */
     val detail: RecordDetailUi? = null,
 )
 
@@ -38,7 +41,7 @@ data class TimelineEntryUi(
     val rawKind: String,
 )
 
-/** Which stored record to open: an Event or a Claim, told apart because each has its own repository. */
+/** Whose Record to open: an Event's or a Claim's, told apart because each has its own repository. */
 sealed interface RecordRef {
     val provenance: Provenance
 
@@ -51,24 +54,19 @@ sealed interface RecordRef {
     ) : RecordRef
 }
 
-/** Exactly what was recorded and where it came from: the record's own label and value pairs plus its Provenance. */
+/** A Record as stored and where it came from: its label and value pairs, plus the Provenance carried by [ref]. */
 data class RecordDetailUi(
     val ref: RecordRef,
     val kindLabel: String,
     val time: RecordTimeUi,
     val rawKind: String,
-    /** In the order the record listed them. */
+    /** In the order the Record listed them. */
     val attributes: List<AttributeUi>,
-    /** The display names of the Entities the record refers to, in record order. */
+    /** The display names of the Entities the Record refers to, in Record order. */
     val entities: List<String>,
-    val exportName: String,
-    val path: String,
-    val recordIndex: Int,
-    /** Which item of a record that lists several things; 0 for a record that is one thing. */
-    val itemIndex: Int,
 )
 
-/** How a record's time reads: an Event happened at a moment; a Claim was at most last updated at one. */
+/** How a Record's time reads: an Event happened at a moment; a Claim was at most last updated at one. */
 sealed interface RecordTimeUi {
     data class Happened(
         val at: String,
@@ -94,7 +92,8 @@ sealed interface HomeAction {
         val kind: EventKind?,
     ) : HomeAction
 
-    data object LoadMore : HomeAction
+    /** Read the page after the last one listed. */
+    data object NextPage : HomeAction
 
     data class Open(
         val ref: RecordRef,

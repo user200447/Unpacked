@@ -13,17 +13,24 @@ import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.RawKind
 import com.jassemsendi.unpacked.model.Source
+import kotlinx.coroutines.CompletableDeferred
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
-/** An in-memory library of Events that answers exactly as the Room one does, ignoring Import boundaries. */
+/**
+ * An in-memory library of Events that answers exactly as the Room one does, ignoring Import boundaries.
+ * A test that wants to see the state while a read is in flight holds [gate] and completes it later.
+ */
 class FakeEventRepository(
     vararg initial: Event,
 ) : EventRepository {
     val events = initial.toMutableList()
+    var gate: CompletableDeferred<Unit>? = null
 
-    override suspend fun countByKind(importId: ImportId?): Map<EventKind, Int> =
-        events.groupingBy { it.kind }.eachCount()
+    override suspend fun countByKind(importId: ImportId?): Map<EventKind, Int> {
+        gate?.await()
+        return events.groupingBy { it.kind }.eachCount()
+    }
 
     override suspend fun byProvenance(provenance: Provenance): Event? = events.find { it.provenance == provenance }
 
@@ -34,12 +41,14 @@ class FakeEventRepository(
         kind: EventKind?,
         limit: Int,
         offset: Int,
-    ): List<Event> =
-        events
+    ): List<Event> {
+        gate?.await()
+        return events
             .filter { kind == null || it.kind == kind }
             .sortedWith(compareByDescending<Event> { it.time }.thenByDescending { it.id })
             .drop(offset)
             .take(limit)
+    }
 }
 
 class FakeClaimRepository(

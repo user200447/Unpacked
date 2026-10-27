@@ -20,12 +20,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jassemsendi.unpacked.model.EventKind
@@ -47,7 +50,11 @@ fun HomeRoot(
     HomeScreen(state = state, onAction = viewModel::onAction, onImport = onImport)
 }
 
-/** The timeline, with the opened record beside it on a wide window and in its place on a narrow one. */
+/**
+ * The timeline, with the opened Record beside it on a wide window and over it on a narrow one. The
+ * timeline stays composed underneath, so closing the Record returns to the same place in the list.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun HomeScreen(
     state: HomeState,
@@ -55,31 +62,20 @@ fun HomeScreen(
     onImport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val detail = state.detail
+    val close = { onAction(HomeAction.CloseDetail) }
+    BackHandler(enabled = detail != null, onBack = close)
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val detail = state.detail
         val sideBySide = maxWidth >= TWO_PANE_MIN_WIDTH
-        when {
-            detail != null && !sideBySide -> {
-                RecordDetailPane(
-                    detail,
-                    onClose = { onAction(HomeAction.CloseDetail) },
-                    modifier = Modifier.fillMaxSize(),
-                )
+        Row(modifier = Modifier.fillMaxSize()) {
+            Timeline(state, onAction, onImport, modifier = Modifier.weight(weight = 1f))
+            if (detail != null && sideBySide) {
+                RecordDetailPane(detail, onClose = close, modifier = Modifier.width(DETAIL_PANE_WIDTH).fillMaxSize())
             }
-
-            detail != null -> {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    Timeline(state, onAction, onImport, modifier = Modifier.weight(weight = 1f))
-                    RecordDetailPane(
-                        detail,
-                        onClose = { onAction(HomeAction.CloseDetail) },
-                        modifier = Modifier.width(DETAIL_PANE_WIDTH).fillMaxSize(),
-                    )
-                }
-            }
-
-            else -> {
-                Timeline(state, onAction, onImport, modifier = Modifier.fillMaxSize())
+        }
+        if (detail != null && !sideBySide) {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                RecordDetailPane(detail, onClose = close, modifier = Modifier.fillMaxSize())
             }
         }
     }
@@ -103,7 +99,7 @@ private fun Timeline(
             item { KindFilter(state.kinds, state.totalCount, state.filter) { onAction(HomeAction.Filter(it)) } }
         }
         when {
-            state.isLoading -> {
+            state.isLoading && state.entries.isEmpty() -> {
                 item { CircularProgressIndicator() }
             }
 
@@ -121,7 +117,7 @@ private fun Timeline(
         if (state.hasMore) {
             item {
                 // Reaching the end of what was read asks for the next page; the spinner stays until it lands.
-                LaunchedEffect(state.entries.size) { onAction(HomeAction.LoadMore) }
+                LaunchedEffect(state.entries.size) { onAction(HomeAction.NextPage) }
                 CircularProgressIndicator()
             }
         }

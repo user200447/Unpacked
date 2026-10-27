@@ -31,7 +31,7 @@ class HomeViewModel(
         when (action) {
             HomeAction.Refresh -> reload(_state.value.filter)
             is HomeAction.Filter -> reload(action.kind)
-            HomeAction.LoadMore -> loadMore()
+            HomeAction.NextPage -> nextPage()
             is HomeAction.Open -> open(action.ref)
             HomeAction.CloseDetail -> _state.update { it.copy(detail = null) }
         }
@@ -39,41 +39,55 @@ class HomeViewModel(
 
     private fun reload(requested: EventKind?) {
         val current = ++generation
-        _state.update { it.copy(isLoading = true, filter = requested, entries = emptyList(), hasMore = false) }
+        // A new Kind empties the list at once; a plain refresh keeps the last read on screen until the new one lands.
+        _state.update {
+            if (requested == it.filter) {
+                it.copy(isLoading = true)
+            } else {
+                it.copy(isLoading = true, filter = requested, entries = emptyList(), hasMore = false)
+            }
+        }
         viewModelScope.launch {
             val counts = events.countByKind()
             val kinds = EventKind.entries.mapNotNull { kind -> counts[kind]?.let { kind.toUi(it) } }
             // A Kind the library no longer holds, say after an Import was deleted, is no filter to keep.
             val filter = requested?.takeIf { it in counts }
-            val total = kinds.sumOf { it.count }
-            val visible = if (filter == null) total else counts.getValue(filter)
             val page = events.newestFirst(filter, pageSize, 0).map { it.toEntry(timeZone) }
             if (current != generation) return@launch
+            val total = kinds.sumOf { it.count }
             _state.update {
-                it.copy(
-                    isLoading = false,
-                    filter = filter,
-                    totalCount = total,
-                    kinds = kinds,
-                    entries = page,
-                    hasMore = page.size < visible,
-                )
+                it
+                    .copy(
+                        isLoading = false,
+                        filter = filter,
+                        totalCount = total,
+                        kinds = kinds,
+                        entries = page,
+                    ).withHasMore()
             }
         }
     }
 
-    private fun loadMore() {
+    private fun nextPage() {
         val before = _state.value
-        if (before.isLoading || before.isLoadingMore || !before.hasMore) return
+        if (before.isLoading || before.isReadingNextPage || !before.hasMore) return
         val current = generation
-        _state.update { it.copy(isLoadingMore = true) }
+        _state.update { it.copy(isReadingNextPage = true) }
         viewModelScope.launch {
             val page = events.newestFirst(before.filter, pageSize, before.entries.size).map { it.toEntry(timeZone) }
             if (current != generation) return@launch
+            // An Import landing meanwhile shifts the offsets; an entry read twice is listed once.
             _state.update {
-                it.copy(isLoadingMore = false, entries = it.entries + page, hasMore = page.size == pageSize)
+                val entries = (it.entries + page).distinctBy { entry -> entry.ref }
+                it.copy(isReadingNextPage = false, entries = entries).withHasMore()
             }
         }
+    }
+
+    /** More to read while the repository counts more Events for the filter than are listed. */
+    private fun HomeState.withHasMore(): HomeState {
+        val visible = if (filter == null) totalCount else kinds.first { it.kind == filter }.count
+        return copy(hasMore = entries.size < visible)
     }
 
     private fun open(ref: RecordRef) {

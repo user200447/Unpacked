@@ -1,9 +1,11 @@
 package com.jassemsendi.unpacked.ui.home
 
+import app.cash.turbine.test
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.RawKind
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -120,11 +122,53 @@ class HomeViewModelTest {
         }
 
     @Test
-    fun loadingMoreAppendsTheNextPageUntilTheRepositoryHasNoMore() =
+    fun refreshingPassesThroughLoadingAndKeepsTheLastReadOnScreenMeanwhile() =
+        runTest {
+            val viewModel = HomeViewModel(events, claims, TimeZone.UTC, pageSize = 2)
+
+            viewModel.state.test {
+                assertEquals(HomeState(isLoading = true), awaitItem(), "loading until the screen asks for a refresh")
+                events.gate = CompletableDeferred()
+                viewModel.onAction(HomeAction.Refresh)
+                expectNoEvents()
+                events.gate?.complete(Unit)
+                val loaded = awaitItem()
+                assertFalse(loaded.isLoading)
+                assertEquals(2, loaded.entries.size)
+
+                events.gate = CompletableDeferred()
+                viewModel.onAction(HomeAction.Refresh)
+
+                assertEquals(loaded.copy(isLoading = true), awaitItem(), "the list stays while it is re-read")
+                events.gate?.complete(Unit)
+                assertEquals(loaded, awaitItem())
+            }
+        }
+
+    @Test
+    fun readingTheNextPagePassesThroughAReadingStateAndThenAppendsIt() =
         runTest {
             val viewModel = viewModel()
 
-            viewModel.onAction(HomeAction.LoadMore)
+            viewModel.state.test {
+                val first = awaitItem()
+                events.gate = CompletableDeferred()
+                viewModel.onAction(HomeAction.NextPage)
+                assertEquals(first.copy(isReadingNextPage = true), awaitItem())
+                events.gate?.complete(Unit)
+                val appended = awaitItem()
+                assertFalse(appended.isReadingNextPage)
+                assertEquals(3, appended.entries.size)
+                assertFalse(appended.hasMore)
+            }
+        }
+
+    @Test
+    fun theNextPageIsAppendedUntilTheRepositoryHasNoMore() =
+        runTest {
+            val viewModel = viewModel()
+
+            viewModel.onAction(HomeAction.NextPage)
 
             assertEquals(
                 listOf(login, liked, adShown).map { RecordRef.Event(it.provenance) },
@@ -144,9 +188,9 @@ class HomeViewModelTest {
                 "an Event that names Entities is summarised by them",
             )
             assertFalse(viewModel.state.value.hasMore)
-            assertFalse(viewModel.state.value.isLoadingMore)
+            assertFalse(viewModel.state.value.isReadingNextPage)
 
-            viewModel.onAction(HomeAction.LoadMore)
+            viewModel.onAction(HomeAction.NextPage)
 
             assertEquals(3, viewModel.state.value.entries.size, "nothing more to load changes nothing")
         }
@@ -155,9 +199,9 @@ class HomeViewModelTest {
     fun filteringByKindNarrowsTheTimelineToThatKindAndClearingTheFilterRestoresIt() =
         runTest {
             events.events +=
-                event(EventKind.Login, minutesAfterFirst = 3, path = login.provenance.path, recordIndex = 1)
+                event(EventKind.Login, minutesAfterFirst = 3, path = login.provenance.path, recordIndex = 3)
             events.events +=
-                event(EventKind.Login, minutesAfterFirst = 4, path = login.provenance.path, recordIndex = 2)
+                event(EventKind.Login, minutesAfterFirst = 4, path = login.provenance.path, recordIndex = 4)
             val viewModel = viewModel()
 
             viewModel.onAction(HomeAction.Filter(EventKind.Login))
@@ -168,7 +212,7 @@ class HomeViewModelTest {
             assertTrue(filtered.entries.all { it.kindLabel == "Login" })
             assertTrue(filtered.hasMore, "the third Login is on the next page")
             assertEquals(5, filtered.totalCount, "the counts stay those of the whole library")
-            viewModel.onAction(HomeAction.LoadMore)
+            viewModel.onAction(HomeAction.NextPage)
             assertEquals(3, viewModel.state.value.entries.size)
             assertFalse(viewModel.state.value.hasMore)
 
@@ -202,10 +246,6 @@ class HomeViewModelTest {
                             AttributeUi("URL", "https://example.com/p/1"),
                         ),
                     entities = listOf("Example Courier"),
-                    exportName = "instagram-me-2026-10-20",
-                    path = "ads_information/ads_viewed.json",
-                    recordIndex = 0,
-                    itemIndex = 0,
                 ),
                 viewModel.state.value.detail,
             )
@@ -234,10 +274,6 @@ class HomeViewModelTest {
                             AttributeUi("Update time", "2026-10-27T10:17:00"),
                         ),
                     entities = emptyList(),
-                    exportName = "instagram-me-2026-10-20",
-                    path = "personal_information/consents.json",
-                    recordIndex = 0,
-                    itemIndex = 0,
                 ),
                 viewModel.state.value.detail,
             )
@@ -246,7 +282,7 @@ class HomeViewModelTest {
 
             val undated = viewModel.state.value.detail
             assertEquals(RecordTimeUi.Undated, undated?.time)
-            assertEquals(2, undated?.itemIndex)
+            assertEquals(interest.provenance, undated?.ref?.provenance, "the item index travels with the Provenance")
         }
 
     @Test

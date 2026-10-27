@@ -81,7 +81,7 @@ fun ImportScreen(
     ) {
         item { Picker(state, onAction, onShowTimeline) }
         state.part?.let { part -> item { PartNotice(part) } }
-        item { RunPanel(state.run) }
+        item { RunPanel(state.run, onShowTimeline) }
         item { Text("Your Imports", style = MaterialTheme.typography.titleLarge, modifier = Modifier.readable()) }
         if (state.imports.isEmpty()) {
             item {

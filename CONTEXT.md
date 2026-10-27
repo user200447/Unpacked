@@ -54,8 +54,12 @@ _Avoid_: Source type, file type, original kind
 Where one Event or Claim came from: the Export, the file path inside it, the record's position in that file and, when the record lists several things, the item among them. Every Event and Claim has exactly one Provenance, and every citation the agent gives is a Provenance. What the user sees when they click through is the record's own label/value pairs plus this location.
 _Avoid_: Source (in this sense), origin, reference, citation (for the stored thing), evidence
 
+**Record**:
+One entry of an Export file as the Source wrote it: the label and value pairs an Event or Claim was read from. A Record is what the user sees on clicking through, together with its Provenance; it is never a synonym for the Event or Claim itself.
+_Avoid_: Row, entry, raw event, JSON object
+
 **Timeline**:
-The Home screen's list of the Library's Events, newest first, read a page at a time and narrowed to one Kind on request. Claims never appear in it, even when they carry an "as of" time; opening any entry shows the record's own label and value pairs, its Raw kind and its Provenance, and every time reads in the device's time zone.
+The Home screen's list of the Library's Events, newest first, read a page at a time and narrowed to one Kind on request. Claims never appear in it, even when they carry an "as of" time; opening any entry shows its Record, its Raw kind and its Provenance, and every time reads in the device's time zone.
 _Avoid_: Feed, history, activity log, event list
 
 ### Insights

@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import com.jassemsendi.unpacked.ui.theme.SectionCard
 import com.jassemsendi.unpacked.ui.theme.Spacing
 
-/** One record as stored: its own label and value pairs, its Raw kind, and the Provenance it came from. */
+/** One Record as stored: its label and value pairs, its Raw kind, and the Provenance it came from. */
 @Composable
 internal fun RecordDetailPane(
     detail: RecordDetailUi,
@@ -47,7 +47,7 @@ internal fun RecordDetailPane(
             style = MaterialTheme.typography.bodyMedium,
         )
         Text("Raw kind: ${detail.rawKind}", style = MaterialTheme.typography.bodyMedium)
-        SectionCard(title = "Recorded", modifier = Modifier.fillMaxWidth()) {
+        SectionCard(title = "Record", modifier = Modifier.fillMaxWidth()) {
             if (detail.attributes.isEmpty()) {
                 Text("Nothing but the time and the Kind.", style = MaterialTheme.typography.bodySmall)
             }
@@ -58,11 +58,12 @@ internal fun RecordDetailPane(
                 detail.entities.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
         }
+        val provenance = detail.ref.provenance
         SectionCard(title = "Provenance", modifier = Modifier.fillMaxWidth()) {
-            LabelValue("Export", detail.exportName)
-            LabelValue("File", detail.path)
-            LabelValue("Record", detail.recordIndex.toString())
-            if (detail.itemIndex > 0) LabelValue("Item", detail.itemIndex.toString())
+            LabelValue("Export", provenance.exportId.value)
+            LabelValue("File", provenance.path)
+            LabelValue("Record index", provenance.recordIndex.toString())
+            if (provenance.itemIndex > 0) LabelValue("Item index", provenance.itemIndex.toString())
         }
     }
 }

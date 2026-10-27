@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.ui.imports
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -14,7 +15,10 @@ import com.jassemsendi.unpacked.ui.theme.readable
 // The part of the Import screen that follows one run: progress file by file, then the results.
 
 @Composable
-internal fun RunPanel(run: ImportRunUi) {
+internal fun RunPanel(
+    run: ImportRunUi,
+    onShowTimeline: () -> Unit,
+) {
     when (run) {
         ImportRunUi.Idle -> {
             Unit
@@ -25,7 +29,7 @@ internal fun RunPanel(run: ImportRunUi) {
         }
 
         is ImportRunUi.Finished -> {
-            FinishedPanel(run.import)
+            FinishedPanel(run.import, onShowTimeline)
         }
 
         is ImportRunUi.Failed -> {
@@ -60,9 +64,13 @@ private fun RunningPanel(run: ImportRunUi.Running) {
 }
 
 @Composable
-private fun FinishedPanel(import: ImportUi) {
+private fun FinishedPanel(
+    import: ImportUi,
+    onShowTimeline: () -> Unit,
+) {
     SectionCard(title = "Imported ${import.exportName}", modifier = Modifier.readable()) {
         Text("${import.eventCount} Events and ${import.claimCount} Claims", style = MaterialTheme.typography.bodyMedium)
+        Button(onClick = onShowTimeline) { Text("See your timeline") }
         FileSection("Parsed", import.parsed)
         FileSection("Skipped", import.skipped)
         FileSection("Failed", import.failed)
