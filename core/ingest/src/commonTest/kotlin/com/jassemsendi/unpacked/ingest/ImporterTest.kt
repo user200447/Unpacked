@@ -280,4 +280,48 @@ class ImporterTest {
             assertEquals(4, advertisers.map { it.entities.single().id }.distinct().size)
             assertEquals(claims.size, claims.map { it.id }.distinct().size, "every Claim has its own identity")
         }
+
+    @Test
+    fun messageThreadsAreParsedAsSentAndReceivedCountsPerThreadAndTheirMediaIsCountedUnread() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 1, includeMessageThreads = true, mediaFiles = 2).writeTo(fs, root)
+            val opened = mutableListOf<Path>()
+            val recording =
+                object : ForwardingFileSystem(fs) {
+                    override fun source(file: Path): Source = super.source(file).also { opened += file }
+                }
+
+            val steps = import(Export.directory(recording, root))
+            val summary = steps.summary()
+            val messages =
+                steps.finished().flatMap { it.outcome.output.events }.filter {
+                    it.kind == EventKind.MessageSent || it.kind == EventKind.MessageReceived
+                }
+
+            assertEquals(emptyList(), summary.failed)
+            assertEquals(listOf(InstagramFixtures.UNMAPPED_PATH), summary.skipped.map { it.path })
+            assertTrue(
+                summary.parsed.map { it.path }.containsAll(SyntheticInstagramExport.MESSAGE_FILE_PATHS),
+                "every thread part is a Parsed file",
+            )
+            assertEquals(Inventory(jsonFiles = 7, mediaFiles = 6, otherFiles = 0), summary.inventory)
+            assertEquals(
+                SyntheticInstagramExport.MESSAGE_THREADS.associate { it.key to (it.sent to it.received) },
+                messages.groupBy { it.entities.single().key }.mapValues { (_, events) ->
+                    events.count { it.kind == EventKind.MessageSent } to
+                        events.count { it.kind == EventKind.MessageReceived }
+                },
+            )
+            assertEquals(
+                SyntheticInstagramExport.MESSAGE_THREADS.map { it.title }.toSet(),
+                messages.map { it.entities.single().displayName }.toSet(),
+            )
+            assertEquals(
+                emptyList(),
+                opened.map { it.toString() }.filter { path ->
+                    SyntheticInstagramExport.THREAD_MEDIA_PATHS.any(path::endsWith)
+                },
+                "media inside thread folders must never be opened",
+            )
+        }
 }

@@ -36,7 +36,7 @@ internal fun FileResult.toRow(
                 eventCount = eventCount,
                 claimCount = claimCount,
                 droppedCount = droppedCount,
-                reason = null,
+                reason = droppedReason,
             )
         }
 
@@ -71,7 +71,7 @@ private fun FileResult.notParsed(
 internal fun ImportFileRow.toModel(): FileResult =
     when (status) {
         ImportFileRow.PARSED -> {
-            FileResult.Parsed(path, RawKind(rawKind), recordCount, eventCount, claimCount, droppedCount)
+            FileResult.Parsed(path, RawKind(rawKind), recordCount, eventCount, claimCount, droppedCount, reason)
         }
 
         ImportFileRow.SKIPPED -> {

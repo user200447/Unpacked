@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.data
 
 import com.jassemsendi.unpacked.fixtures.InstagramClaimFixtures
 import com.jassemsendi.unpacked.fixtures.InstagramFixtures
+import com.jassemsendi.unpacked.fixtures.InstagramMessageFixtures
 import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
 import com.jassemsendi.unpacked.fixtures.writeText
 import com.jassemsendi.unpacked.ingest.Export
@@ -166,6 +167,65 @@ abstract class LibraryTest {
                     }.toSet(),
             )
             assertTrue(library.entities.all().any { it.kind == EntityKind.Place }, "locations name their places")
+        }
+
+    @Test
+    fun messageThreadsLandAsSentAndReceivedCountsNamingTheThreadAndStoringNoText() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 1, includeMessageThreads = true, mediaFiles = 2).writeTo(fs, root)
+
+            val import = import(Export.directory(fs, root))
+
+            assertEquals(emptyList(), import.summary.failed)
+            val threads = SyntheticInstagramExport.MESSAGE_THREADS
+            assertEquals(
+                mapOf(
+                    EventKind.AdShown to 1,
+                    EventKind.MessageSent to threads.sumOf { it.sent },
+                    EventKind.MessageReceived to threads.sumOf { it.received },
+                ),
+                library.events.countByKind(import.id),
+            )
+            val messages = library.events.forImport(import.id).filter { it.kind != EventKind.AdShown }
+            assertTrue(messages.all { it.attributes.isEmpty() }, "a message Event stores nothing but its counts")
+            assertTrue(messages.all { it.entities.single().kind == EntityKind.Thread })
+            assertEquals(
+                threads.map { it.title }.toSet(),
+                library.entities
+                    .all()
+                    .filter { it.kind == EntityKind.Thread }
+                    .map { it.displayName }
+                    .toSet(),
+            )
+            assertEquals(
+                2 + SyntheticInstagramExport.THREAD_MEDIA_PATHS.size,
+                import.summary.inventory.mediaFiles,
+                "the media inside thread folders is counted",
+            )
+        }
+
+    @Test
+    fun aThreadWhoseOwnerIsUnknownIsStoredAsParsedWithItsDroppedReason() =
+        runTest {
+            fs.writeText(root / InstagramMessageFixtures.THREAD_PATH.toPath(), InstagramMessageFixtures.THREAD_JSON)
+
+            val import = import(Export.directory(fs, root))
+
+            assertEquals(
+                listOf(
+                    FileResult.Parsed(
+                        InstagramMessageFixtures.THREAD_PATH,
+                        RawKind("message_1"),
+                        recordCount = 3,
+                        eventCount = 0,
+                        claimCount = 0,
+                        droppedCount = 3,
+                        droppedReason = InstagramAdapter.OWNER_UNKNOWN,
+                    ),
+                ),
+                import.summary.files,
+            )
+            assertEquals(emptyMap(), library.events.countByKind(import.id))
         }
 
     @Test

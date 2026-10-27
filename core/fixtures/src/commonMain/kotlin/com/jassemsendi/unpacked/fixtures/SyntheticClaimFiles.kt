@@ -119,19 +119,7 @@ internal object SyntheticClaimFiles {
     // ProfileField: 1 + 1 + 1 + 1 = 4 Claims
     private fun profile(t: Ticker): Map<String, String> =
         mapOf(
-            "$PERSONAL/personal_information.json" to
-                container(
-                    "profile_user",
-                    stringMap(
-                        "User Information",
-                        entry("Email", value = "owner@example.com"),
-                        entry("Username", value = "example.owner"),
-                        entry("Name", value = InstagramClaimFixtures.MOJIBAKE_NAME),
-                        entry("Bio"),
-                        entry("Gender", value = "female"),
-                        entry("Private Account", value = "True"),
-                    ),
-                ),
+            InstagramProfileFixtures.PERSONAL_INFORMATION_PATH to InstagramProfileFixtures.PERSONAL_INFORMATION_JSON,
             "$LOGIN/signup_details.json" to
                 container(
                     "account_history_registration_info",

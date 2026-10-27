@@ -46,6 +46,7 @@ internal data class ImportFileRow(
     @ColumnInfo(name = "event_count") val eventCount: Int,
     @ColumnInfo(name = "claim_count") val claimCount: Int,
     @ColumnInfo(name = "dropped_count") val droppedCount: Int,
+    /** Why a Skipped or Failed file was not parsed, or why a Parsed file's records were dropped; null otherwise. */
     val reason: String?,
 ) {
     companion object {
