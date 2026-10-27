@@ -89,12 +89,23 @@ class ImportViewModelTest {
             viewModel.onAction(ImportAction.PickZip)
 
             assertEquals(listOf(picker.zip), useCase.runs)
-            assertEquals(ImportRunUi.Running(name, 0, 0, null, emptyList()), viewModel.state.value.run)
+            assertEquals(ImportRunUi.Running(name), viewModel.state.value.run)
             useCase.steps.send(ImportStep.Started(earlier.summary.exportId, Source.Instagram, Inventory(2, 3, 1)))
-            assertEquals(ImportRunUi.Running(name, 0, 3, null, emptyList()), viewModel.state.value.run)
+            assertEquals(ImportRunUi.Running(name), viewModel.state.value.run, "still listing: no total yet")
             useCase.steps.send(ImportStep.FileStarted(parsed.path, ImportProgress(0, 3)))
             assertEquals(ImportRunUi.Running(name, 0, 3, parsed.path, emptyList()), viewModel.state.value.run)
             useCase.steps.send(ImportStep.FileFinished(FileOutcome(parsed), ImportProgress(0, 3)))
+            assertEquals(
+                ImportRunUi.Running(
+                    name,
+                    1,
+                    3,
+                    null,
+                    listOf(FileResultUi(parsed.path, "4 records: 4 Events, 0 Claims")),
+                ),
+                viewModel.state.value.run,
+                "between files nothing is being read",
+            )
             useCase.steps.send(ImportStep.FileStarted(skipped.path, ImportProgress(1, 3)))
             useCase.steps.send(ImportStep.FileFinished(FileOutcome(skipped), ImportProgress(1, 3)))
             useCase.steps.send(ImportStep.FileStarted(failed.path, ImportProgress(2, 3)))

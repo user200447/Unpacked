@@ -19,11 +19,13 @@ sealed interface ImportRunUi {
 
     data class Running(
         val exportName: String,
-        val filesDone: Int,
-        val filesTotal: Int,
-        val currentFile: String?,
+        val filesDone: Int = 0,
+        /** Null until the first file starts: the Export is still being listed. */
+        val filesTotal: Int? = null,
+        /** The file being read, or null between files and while the stored Import is being finished. */
+        val currentFile: String? = null,
         /** Files finished so far, in visit order. */
-        val files: List<FileResultUi>,
+        val files: List<FileResultUi> = emptyList(),
     ) : ImportRunUi
 
     data class Finished(

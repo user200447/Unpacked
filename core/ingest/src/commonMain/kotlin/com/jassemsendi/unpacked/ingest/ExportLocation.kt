@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.ingest
 
 import com.jassemsendi.unpacked.model.ExportId
 import okio.FileSystem
+import okio.Path
 import okio.Path.Companion.toPath
 
 /** Where the user's Export is on disk, by absolute path: the zip as downloaded, or the folder it was unzipped into. */
@@ -14,13 +15,13 @@ public sealed interface ExportLocation {
     public data class Zip(
         override val path: String,
     ) : ExportLocation {
-        override val exportId: ExportId get() = ExportId(path.toPath().name.removeSuffixIgnoreCase(".zip"))
+        override val exportId: ExportId get() = exportIdOfZip(path.toPath())
     }
 
     public data class Folder(
         override val path: String,
     ) : ExportLocation {
-        override val exportId: ExportId get() = ExportId(path.toPath().name)
+        override val exportId: ExportId get() = exportIdOfFolder(path.toPath())
     }
 }
 
@@ -34,5 +35,10 @@ public fun Export.Companion.open(
         is ExportLocation.Folder -> directory(fileSystem, location.path.toPath())
     }
 
-internal fun String.removeSuffixIgnoreCase(suffix: String): String =
+// The one place an Export's id is derived from where it sits, shared by the location and by [Export] itself.
+internal fun exportIdOfZip(zipFile: Path): ExportId = ExportId(zipFile.name.removeSuffixIgnoreCase(".zip"))
+
+internal fun exportIdOfFolder(directory: Path): ExportId = ExportId(directory.name)
+
+private fun String.removeSuffixIgnoreCase(suffix: String): String =
     if (endsWith(suffix, ignoreCase = true)) dropLast(suffix.length) else this

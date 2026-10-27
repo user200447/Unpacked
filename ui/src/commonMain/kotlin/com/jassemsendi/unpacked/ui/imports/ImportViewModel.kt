@@ -53,7 +53,7 @@ class ImportViewModel(
     private suspend fun runImport(location: ExportLocation) {
         val name = location.exportId.value
         _state.update {
-            it.copy(part = ExportPart.of(location.exportId), run = ImportRunUi.Running(name, 0, 0, null, emptyList()))
+            it.copy(part = ExportPart.of(location.exportId), run = ImportRunUi.Running(name))
         }
         importUseCase
             .run(location)
@@ -64,14 +64,10 @@ class ImportViewModel(
     private suspend fun advance(step: ImportStep) {
         when (step) {
             is ImportStep.Started -> {
-                updateRun {
-                    it.copy(
-                        filesTotal =
-                            step.inventory.jsonFiles + step.inventory.otherFiles,
-                    )
-                }
+                Unit
             }
 
+            // the first FileStarted brings the total; until then the Export is being listed
             is ImportStep.FileStarted -> {
                 updateRun {
                     it.copy(
@@ -86,6 +82,8 @@ class ImportViewModel(
                 updateRun {
                     it.copy(
                         filesDone = step.progress.index + 1,
+                        filesTotal = step.progress.total,
+                        currentFile = null,
                         files = it.files + step.outcome.result.toUi(),
                     )
                 }

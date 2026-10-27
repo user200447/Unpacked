@@ -11,13 +11,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.jassemsendi.unpacked.model.Source
+import com.jassemsendi.unpacked.ui.theme.SectionCard
 import com.jassemsendi.unpacked.ui.theme.Spacing
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -40,8 +40,8 @@ fun WelcomeScreen(
         ) {
             Text("Welcome to Unpacked", style = MaterialTheme.typography.headlineLarge)
             Text(
-                "Unpacked turns the archive a platform hands you under your right of access into a " +
-                    "searchable timeline, and shows what that archive leaves out.",
+                "Unpacked turns the Export a Source hands you under your right of access into a " +
+                    "searchable timeline, and shows what that Export leaves out.",
                 style = MaterialTheme.typography.bodyLarge,
             )
             PrivacyGuarantee()
@@ -54,18 +54,12 @@ fun WelcomeScreen(
 
 @Composable
 private fun PrivacyGuarantee() {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(Spacing.medium),
-            verticalArrangement = Arrangement.spacedBy(Spacing.small),
-        ) {
-            Text("Your data never leaves this device", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Unpacked reads your Export here, keeps everything it finds in a library on this device, " +
-                    "and sends nothing anywhere. Deleting an Import removes everything it produced.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
+    SectionCard(title = "Your data never leaves this device", modifier = Modifier.fillMaxWidth()) {
+        Text(
+            "Unpacked reads your Export here, keeps everything it finds in a library on this device, " +
+                "and sends nothing anywhere. Deleting an Import removes everything it produced.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 

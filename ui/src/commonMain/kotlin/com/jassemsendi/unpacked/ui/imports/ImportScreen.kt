@@ -66,9 +66,7 @@ fun ImportScreen(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding =
-            androidx.compose.foundation.layout
-                .PaddingValues(Spacing.large),
+        contentPadding = PaddingValues(Spacing.large),
         verticalArrangement = Arrangement.spacedBy(Spacing.medium),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

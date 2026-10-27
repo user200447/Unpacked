@@ -20,14 +20,16 @@ class DesktopExportPicker : ExportPicker {
     override suspend fun pickZip(): ExportLocation? =
         withContext(Dispatchers.Swing) {
             val dialog = FileDialog(null as Frame?, "Choose an Export zip", FileDialog.LOAD)
+            // macOS honours the filter; Windows ignores it and reads the pattern from the file field instead.
             dialog.setFilenameFilter { _, name -> name.endsWith(".zip", ignoreCase = true) }
+            dialog.file = "*.zip"
             dialog.isVisible = true
             dialog.files.firstOrNull()?.let { ExportLocation.Zip(it.absolutePath) }
         }
 
     override suspend fun pickFolder(): ExportLocation? =
         withContext(Dispatchers.Swing) {
-            if (isMacOs) pickFolderNatively() else pickFolderWithSwing()
+            if (HostOs.isMac) pickFolderNatively() else pickFolderWithSwing()
         }
 
     private fun pickFolderNatively(): ExportLocation? {
@@ -56,6 +58,5 @@ class DesktopExportPicker : ExportPicker {
 
     private companion object {
         const val MAC_FOLDER_DIALOG = "apple.awt.fileDialogForDirectories"
-        val isMacOs = System.getProperty("os.name").lowercase().contains("mac")
     }
 }

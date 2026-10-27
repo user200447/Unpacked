@@ -15,14 +15,9 @@ public data class ExportPart(
         // "part-2-of-3", "part 2 of 3", "part2", "(part 2 of 3)"
         private val PART = Regex("""\bpart[\s_-]*(\d+)(?:[\s_-]*of[\s_-]*(\d+))?""", RegexOption.IGNORE_CASE)
 
-        // Google Takeout numbers its parts with a trailing "-001", "-002".
-        private val NUMBERED_SUFFIX = Regex("""-(\d{3})$""")
-
-        public fun of(id: ExportId): ExportPart? {
+        public fun of(id: ExportId): ExportPart? =
             PART.find(id.value)?.let { match ->
-                return ExportPart(match.groupValues[1].toInt(), match.groupValues[2].toIntOrNull())
+                ExportPart(match.groupValues[1].toInt(), match.groupValues[2].toIntOrNull())
             }
-            return NUMBERED_SUFFIX.find(id.value)?.let { ExportPart(it.groupValues[1].toInt(), null) }
-        }
     }
 }

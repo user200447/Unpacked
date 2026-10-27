@@ -18,11 +18,15 @@ class ExportLocationTest {
         SyntheticInstagramExport(adsViewed = 2, mediaFiles = 1).writeTo(fs, folder)
         fs.zipDirectory(folder, "/picked/instagram-synthetic.zip".toPath())
 
-        val fromFolder = Export.open(fs, ExportLocation.Folder(folder.toString()))
-        val fromZip = Export.open(fs, ExportLocation.Zip("/picked/instagram-synthetic.zip"))
+        val folderLocation = ExportLocation.Folder(folder.toString())
+        val zipLocation = ExportLocation.Zip("/picked/instagram-synthetic.zip")
+        val fromFolder = Export.open(fs, folderLocation)
+        val fromZip = Export.open(fs, zipLocation)
 
         assertEquals(ExportId("instagram-synthetic"), fromFolder.id)
         assertEquals(fromFolder.id, fromZip.id)
+        assertEquals(folderLocation.exportId, fromFolder.id, "the id a location promises is the id the Export gets")
+        assertEquals(zipLocation.exportId, fromZip.id)
         assertEquals(fromFolder.files(), fromZip.files())
     }
 
@@ -43,7 +47,6 @@ class ExportLocationTest {
         assertEquals(ExportPart(2, 3), ExportPart.of(ExportId("instagram-me-2026-10-20-part-2-of-3")))
         assertEquals(ExportPart(2, 3), ExportPart.of(ExportId("instagram-me-2026-10-20 (part 2 of 3)")))
         assertEquals(ExportPart(1, null), ExportPart.of(ExportId("instagram-me-2026-10-20-part1")))
-        assertEquals(ExportPart(2, null), ExportPart.of(ExportId("takeout-20261020T120000Z-002")))
         assertNull(ExportPart.of(ExportId("instagram-me-2026-10-20")))
         assertNull(ExportPart.of(ExportId("instagram-synthetic")))
     }

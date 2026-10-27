@@ -38,11 +38,10 @@ fun main() {
 /** The library lives in the per-user application data directory of the host OS. */
 private fun libraryFile(): File {
     val home = File(System.getProperty("user.home"))
-    val os = System.getProperty("os.name").lowercase()
     val dataDir =
         when {
-            os.contains("mac") -> home.resolve("Library/Application Support")
-            os.contains("windows") -> System.getenv("APPDATA")?.let(::File) ?: home.resolve("AppData/Roaming")
+            HostOs.isMac -> home.resolve("Library/Application Support")
+            HostOs.isWindows -> System.getenv("APPDATA")?.let(::File) ?: home.resolve("AppData/Roaming")
             else -> System.getenv("XDG_DATA_HOME")?.let(::File) ?: home.resolve(".local/share")
         }
     return dataDir.resolve("Unpacked").apply { mkdirs() }.resolve("library.db")
