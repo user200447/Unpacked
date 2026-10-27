@@ -9,11 +9,16 @@ import kotlin.time.Instant
 internal data class LabelValueRecord(
     val timestamp: Long? = null,
     @SerialName("label_values") val labelValues: List<LabelValue> = emptyList(),
-)
+) : DialectRecord {
+    override fun time(): Instant? = epochToInstant(timestamp)
+
+    override fun fields(): Map<String, String> = flatten()
+}
 
 /**
- * One labelled value. A leaf has `label` and `value` (or `href`); a group has `title` and `dict`;
- * a list has `label` and `vec`. Anything Instagram adds later is ignored.
+ * One labelled value. A leaf has `label` and `value` (or `href`, or a `timestamp_value`); a group
+ * has `title` and `dict`; a list has `label` and `vec`. Media leaves and anything Instagram adds
+ * later are ignored.
  */
 @Serializable
 internal data class LabelValue(
@@ -21,14 +26,7 @@ internal data class LabelValue(
     val title: String? = null,
     val value: String? = null,
     val href: String? = null,
+    @SerialName("timestamp_value") val timestampValue: Long? = null,
     val vec: List<LabelValue> = emptyList(),
     val dict: List<LabelValue> = emptyList(),
 )
-
-private const val MILLISECONDS_THRESHOLD = 100_000_000_000L
-
-/** The record's time, or null when the Source gave none (a zero timestamp means unknown). */
-internal fun LabelValueRecord.time(): Instant? =
-    timestamp?.takeIf { it > 0 }?.let { value ->
-        if (value > MILLISECONDS_THRESHOLD) Instant.fromEpochMilliseconds(value) else Instant.fromEpochSeconds(value)
-    }

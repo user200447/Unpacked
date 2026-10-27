@@ -15,6 +15,12 @@ style:
     # Compose previews are private by convention and called only by the IDE.
     ignoreAnnotated: ['Preview']
 
+complexity:
+  LongParameterList:
+    # A constructor whose every parameter has a default is a set of named options, not a long signature
+    # (the synthetic Export generator in core:fixtures).
+    ignoreDefaultParameters: true
+
 naming:
   FunctionNaming:
     # Composables are PascalCase by convention.
