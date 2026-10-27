@@ -2,11 +2,14 @@ package com.jassemsendi.unpacked.data
 
 import com.jassemsendi.unpacked.ingest.Export
 import com.jassemsendi.unpacked.ingest.ExportLocation
+import com.jassemsendi.unpacked.ingest.ImportError
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.InstagramAdapter
 import com.jassemsendi.unpacked.ingest.open
+import com.jassemsendi.unpacked.model.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import okio.FileSystem
@@ -16,7 +19,10 @@ import okio.FileSystem
  * the UI writes to the library; it observes the run as [ImportStep]s and ends with [ImportStep.Stored].
  */
 public fun interface ImportUseCase {
-    /** Fails, rather than emitting, when the location cannot be opened as an Export at all. */
+    /**
+     * Never throws for what can go wrong in use: a location that will not open as an Export, or a
+     * library that will not take a write, ends the run with [ImportStep.Failed] naming the [ImportError].
+     */
     public fun run(location: ExportLocation): Flow<ImportStep>
 }
 
@@ -27,7 +33,9 @@ public class LibraryImportUseCase(
 ) : ImportUseCase {
     override fun run(location: ExportLocation): Flow<ImportStep> =
         flow {
-            val export = Export.open(fileSystem, location)
-            library.import(export, InstagramAdapter).collect { emit(it) }
+            when (val opened = Export.open(fileSystem, location)) {
+                is Result.Success -> emitAll(library.import(opened.data, InstagramAdapter))
+                is Result.Error -> emit(ImportStep.Failed(ImportError.Reading(opened.error)))
+            }
         }.flowOn(Dispatchers.Default)
 }

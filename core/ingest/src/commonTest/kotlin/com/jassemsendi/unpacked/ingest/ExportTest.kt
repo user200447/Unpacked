@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.ingest
 
 import com.jassemsendi.unpacked.fixtures.InstagramFixtures
 import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
+import com.jassemsendi.unpacked.fixtures.orFail
 import com.jassemsendi.unpacked.fixtures.writeText
 import com.jassemsendi.unpacked.model.ExportId
 import okio.Path.Companion.toPath
@@ -28,7 +29,7 @@ class ExportTest {
                 InstagramFixtures.ADS_VIEWED_PATH,
                 "media/posts/202610/synthetic_0.jpg",
             ).sorted(),
-            export.files().map { it.path },
+            export.files().orFail().map { it.path },
         )
     }
 
@@ -43,7 +44,7 @@ class ExportTest {
         val pathsBefore = fs.allPaths
 
         val export = Export.zip(fs, zip)
-        val adsFile = export.files().single()
+        val adsFile = export.files().orFail().single()
 
         assertEquals(ExportId("instagram-synthetic"), export.id)
         assertEquals(InstagramFixtures.ADS_VIEWED_PATH, adsFile.path)
@@ -56,7 +57,12 @@ class ExportTest {
         val root = "/exports/instagram-wrapped".toPath()
         SyntheticInstagramExport(adsViewed = 1, mediaFiles = 0).writeTo(fs, root / "instagram-wrapped")
 
-        val paths = Export.directory(fs, root).files().map { it.path }
+        val paths =
+            Export
+                .directory(fs, root)
+                .files()
+                .orFail()
+                .map { it.path }
 
         assertTrue(paths.none { it.startsWith("instagram-wrapped/") }, paths.toString())
         assertTrue(InstagramFixtures.ADS_VIEWED_PATH in paths)
@@ -67,7 +73,14 @@ class ExportTest {
         val root = "/exports/instagram-small".toPath()
         SyntheticInstagramExport(adsViewed = 1, mediaFiles = 0, includeUnmappedFile = false).writeTo(fs, root)
 
-        assertEquals(listOf(InstagramFixtures.ADS_VIEWED_PATH), Export.directory(fs, root).files().map { it.path })
+        assertEquals(
+            listOf(InstagramFixtures.ADS_VIEWED_PATH),
+            Export
+                .directory(fs, root)
+                .files()
+                .orFail()
+                .map { it.path },
+        )
     }
 
     @Test
@@ -77,7 +90,14 @@ class ExportTest {
         fs.writeText(root / ".DS_Store", "junk")
         fs.writeText(root / "__MACOSX" / "._ads_viewed.json", "junk")
 
-        assertEquals(listOf(InstagramFixtures.ADS_VIEWED_PATH), Export.directory(fs, root).files().map { it.path })
+        assertEquals(
+            listOf(InstagramFixtures.ADS_VIEWED_PATH),
+            Export
+                .directory(fs, root)
+                .files()
+                .orFail()
+                .map { it.path },
+        )
     }
 
     @Test

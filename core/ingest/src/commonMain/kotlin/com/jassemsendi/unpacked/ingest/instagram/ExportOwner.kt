@@ -1,6 +1,7 @@
 package com.jassemsendi.unpacked.ingest.instagram
 
 import com.jassemsendi.unpacked.ingest.Export
+import com.jassemsendi.unpacked.model.Result
 
 /**
  * Whose Export this is, as the Source names them in their own profile: the name every message
@@ -14,10 +15,11 @@ internal data class ExportOwner(
 internal object ExportOwners {
     private const val PROFILE_FILE = "personal_information.json"
 
-    /** Null when the Export has no profile file, it cannot be read, or it names nobody. */
+    /** Null when the Export will not list, has no profile file, it cannot be read, or it names nobody. */
     fun of(export: Export): ExportOwner? =
-        export
-            .files()
+        (export.files() as? Result.Success)
+            ?.data
+            .orEmpty()
             .filter { it.name.equals(PROFILE_FILE, ignoreCase = true) }
             .firstNotNullOfOrNull { file -> runCatching { export.readText(file) }.getOrNull()?.let(::ownerIn) }
 

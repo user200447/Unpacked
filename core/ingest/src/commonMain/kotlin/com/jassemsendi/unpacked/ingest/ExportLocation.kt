@@ -1,6 +1,7 @@
 package com.jassemsendi.unpacked.ingest
 
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.Result
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
@@ -25,14 +26,19 @@ public sealed interface ExportLocation {
     }
 }
 
-/** Opens the Export at [location], reading a zip in place and a folder as it is. */
+/**
+ * Opens the Export at [location], reading a zip in place and a folder as it is. Never throws for a
+ * location the user may have picked: what is not there, or not an Export, comes back as an [ExportError].
+ */
 public fun Export.Companion.open(
     fileSystem: FileSystem,
     location: ExportLocation,
-): Export =
-    when (location) {
-        is ExportLocation.Zip -> zip(fileSystem, location.path.toPath())
-        is ExportLocation.Folder -> directory(fileSystem, location.path.toPath())
+): Result<Export, ExportError> =
+    exportCall {
+        when (location) {
+            is ExportLocation.Zip -> zip(fileSystem, location.path.toPath())
+            is ExportLocation.Folder -> directory(fileSystem, location.path.toPath())
+        }
     }
 
 // The one place an Export's id is derived from where it sits, shared by the location and by [Export] itself.

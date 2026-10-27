@@ -4,13 +4,20 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.jassemsendi.unpacked.data.db.LibraryDatabase
 import com.jassemsendi.unpacked.ingest.Export
+import com.jassemsendi.unpacked.ingest.ImportError
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.Importer
 import com.jassemsendi.unpacked.ingest.SourceAdapter
+import com.jassemsendi.unpacked.model.DataError
+import com.jassemsendi.unpacked.model.Result
+import com.jassemsendi.unpacked.model.map
+import com.jassemsendi.unpacked.model.onSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.transformWhile
 import kotlin.time.Clock
 
 /**
@@ -30,7 +37,8 @@ public class Library internal constructor(
     /**
      * Runs one Import of [export] through [adapter] and writes it into the library file by file.
      * Emits the Importer's steps as they happen and ends with [ImportStep.Stored] in place of
-     * [ImportStep.Completed]. If the flow fails or is cancelled, the Import stays with no completion time.
+     * [ImportStep.Completed]. A write the library refuses ends the run with [ImportStep.Failed] instead,
+     * and the Import stays with no completion time, as it does when the flow is cancelled.
      */
     public fun import(
         export: Export,
@@ -38,32 +46,52 @@ public class Library internal constructor(
     ): Flow<ImportStep> =
         flow {
             var write: ImportWrite? = null
-            Importer(adapter).run(export).collect { step ->
-                when (step) {
-                    is ImportStep.Started -> {
-                        write = ImportWrite.begin(db, step, clock.now())
-                        emit(step)
-                    }
+            val steps =
+                Importer(adapter).run(export).transformWhile { step ->
+                    val written: Result<ImportStep, DataError.Local> =
+                        when (step) {
+                            is ImportStep.Started -> {
+                                localCall { ImportWrite.begin(db, step, clock.now()) }
+                                    .onSuccess { write = it }
+                                    .map { step }
+                            }
 
-                    is ImportStep.FileStarted -> {
-                        emit(step)
-                    }
+                            is ImportStep.FileStarted, is ImportStep.Failed -> {
+                                Result.Success(step)
+                            }
 
-                    is ImportStep.FileFinished -> {
-                        checkNotNull(write).writeFile(step.outcome)
-                        emit(step)
-                    }
+                            is ImportStep.FileFinished -> {
+                                localCall { checkNotNull(write).writeFile(step.outcome) }.map { step }
+                            }
 
-                    is ImportStep.Completed -> {
-                        val id = checkNotNull(write).also { it.complete(clock.now()) }.id
-                        emit(ImportStep.Stored(checkNotNull(imports.get(id))))
-                    }
+                            is ImportStep.Completed -> {
+                                stored(checkNotNull(write))
+                            }
 
-                    is ImportStep.Stored -> {
-                        error("an Importer never emits Stored")
+                            is ImportStep.Stored -> {
+                                error("an Importer never emits Stored")
+                            }
+                        }
+                    when (written) {
+                        is Result.Success -> {
+                            emit(written.data)
+                            written.data !is ImportStep.Failed
+                        }
+
+                        is Result.Error -> {
+                            emit(ImportStep.Failed(ImportError.Writing(written.error)))
+                            false
+                        }
                     }
                 }
-            }
+            emitAll(steps)
+        }
+
+    /** Marks the Import complete and reads it back as the run's last step. */
+    private suspend fun stored(write: ImportWrite): Result<ImportStep, DataError.Local> =
+        when (val completed = localCall { write.complete(clock.now()) }) {
+            is Result.Error -> completed
+            is Result.Success -> imports.get(write.id).map { ImportStep.Stored(it) }
         }
 
     override fun close(): Unit = db.close()

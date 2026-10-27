@@ -11,6 +11,8 @@ data class ImportState(
     val run: ImportRunUi = ImportRunUi.Idle,
     /** Set when the picked Export's name says it is one part of several; the run still goes ahead. */
     val part: ExportPart? = null,
+    /** Why the stored Imports could not be listed, when they could not; the list is then the last one read. */
+    val error: String? = null,
 )
 
 /** The Import in progress on screen, if any. One runs at a time. */
@@ -73,5 +75,11 @@ sealed interface ImportAction {
 sealed interface ImportEvent {
     data class ImportDeleted(
         val exportName: String,
+    ) : ImportEvent
+
+    /** The Import is still there; [reason] is what the library said. */
+    data class ImportNotDeleted(
+        val exportName: String,
+        val reason: String,
     ) : ImportEvent
 }

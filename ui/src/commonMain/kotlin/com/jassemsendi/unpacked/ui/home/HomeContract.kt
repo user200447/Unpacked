@@ -22,6 +22,8 @@ data class HomeState(
     val isReadingNextPage: Boolean = false,
     /** The Record opened from the timeline, if any. */
     val detail: RecordDetailUi? = null,
+    /** Why the last read failed, until the next one succeeds; what is listed is the last successful read. */
+    val error: String? = null,
 )
 
 data class KindCountUi(
