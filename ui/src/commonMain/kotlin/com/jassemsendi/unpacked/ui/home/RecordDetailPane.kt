@@ -38,14 +38,7 @@ internal fun RecordDetailPane(
             )
             TextButton(onClick = onClose) { Text("Close") }
         }
-        Text(
-            when (val time = detail.time) {
-                is RecordTimeUi.Happened -> "Happened ${time.at}"
-                is RecordTimeUi.LastUpdated -> "Last updated ${time.at}"
-                RecordTimeUi.Undated -> "No time recorded"
-            },
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        Text(detail.time.text(), style = MaterialTheme.typography.bodyMedium)
         Text("Raw kind: ${detail.rawKind}", style = MaterialTheme.typography.bodyMedium)
         SectionCard(title = "Record", modifier = Modifier.fillMaxWidth()) {
             if (detail.attributes.isEmpty()) {

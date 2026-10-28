@@ -11,6 +11,7 @@ import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.Result
+import kotlin.time.Instant
 
 // The boundary of the library: everything outside core:data reads through these and never sees Room.
 // Every call answers with a Result (ADR 0009): a library that cannot be read is a DataError.Local, never a throw.
@@ -67,4 +68,40 @@ public interface EntityRepository {
 
     /** Every Entity any Event or Claim in the library refers to, in id order. */
     public suspend fun all(): Result<List<Entity>, DataError.Local>
+}
+
+public interface SearchRepository {
+    /**
+     * One page of the Events and Claims whose attribute values or Entity names contain every word of
+     * [text], each word matched from its start without regard to case or accents. Newest first: Events by
+     * their time, Claims by their "as of" time, Claims with none last; ties keep a fixed order across
+     * pages. Blank text finds nothing. Hits are in time order, not relevance order (ADR 0004).
+     */
+    public suspend fun search(
+        text: String,
+        limit: Int,
+        offset: Int,
+    ): Result<List<SearchHit>, DataError.Local>
+}
+
+/** One Event or Claim a search found, told apart because each has its own repository and reads differently. */
+public sealed interface SearchHit {
+    public val provenance: Provenance
+
+    /** What the hit sorts by: an Event's moment, a Claim's "as of" time, or nothing. */
+    public val time: Instant?
+
+    public data class OfEvent(
+        val event: Event,
+    ) : SearchHit {
+        override val provenance: Provenance get() = event.provenance
+        override val time: Instant get() = event.time
+    }
+
+    public data class OfClaim(
+        val claim: Claim,
+    ) : SearchHit {
+        override val provenance: Provenance get() = claim.provenance
+        override val time: Instant? get() = claim.asOf
+    }
 }

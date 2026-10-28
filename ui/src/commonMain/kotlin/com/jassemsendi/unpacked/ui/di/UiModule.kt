@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.ui.di
 
 import com.jassemsendi.unpacked.ui.home.HomeViewModel
 import com.jassemsendi.unpacked.ui.imports.ImportViewModel
+import com.jassemsendi.unpacked.ui.search.SearchViewModel
 import kotlinx.datetime.TimeZone
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
@@ -13,6 +14,7 @@ val uiModule: Module =
     module {
         single { TimeZone.currentSystemDefault() }
         viewModelOf(::ImportViewModel)
-        // Spelled out because the page size has a default Koin cannot resolve.
+        // Spelled out because the page sizes have defaults Koin cannot resolve.
         viewModel { HomeViewModel(get(), get(), get()) }
+        viewModel { SearchViewModel(get(), get(), get(), get()) }
     }

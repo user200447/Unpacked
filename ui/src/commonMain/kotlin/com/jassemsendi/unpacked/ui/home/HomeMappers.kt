@@ -25,11 +25,7 @@ fun Event.toEntry(timeZone: TimeZone): TimelineEntryUi =
         ref = RecordRef.Event(provenance),
         kindLabel = kind.label(),
         time = time.toDeviceMinute(timeZone),
-        summary =
-            entities.joinToString { it.displayName }.ifEmpty {
-                attributes.values.firstOrNull { it.isNotBlank() }
-                    ?: ""
-            },
+        summary = summaryOf(entities, attributes),
         rawKind = rawKind.value,
     )
 
@@ -52,6 +48,23 @@ fun Claim.toDetail(timeZone: TimeZone): RecordDetailUi =
         attributes = attributes.toUi(),
         entities = entities.names(),
     )
+
+/** What a record concerned, in one line: the Entities it names, or failing that its first recorded value. */
+fun summaryOf(
+    entities: List<Entity>,
+    attributes: Map<String, String>,
+): String =
+    entities.joinToString { it.displayName }.ifEmpty {
+        attributes.values.firstOrNull { it.isNotBlank() } ?: ""
+    }
+
+/** How a Record's time reads on screen, whichever screen shows it. */
+fun RecordTimeUi.text(): String =
+    when (this) {
+        is RecordTimeUi.Happened -> "Happened $at"
+        is RecordTimeUi.LastUpdated -> "Last updated $at"
+        RecordTimeUi.Undated -> "No time recorded"
+    }
 
 /** Label and value pairs in the order the Record listed them. */
 private fun Map<String, String>.toUi(): List<AttributeUi> = map { (label, value) -> AttributeUi(label, value) }

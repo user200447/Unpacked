@@ -3,14 +3,12 @@ package com.jassemsendi.unpacked.ui.home
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -20,16 +18,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.ExportId
@@ -43,42 +37,26 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeRoot(
     onImport: () -> Unit,
+    onSearch: () -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Imports may have come or gone while another screen was up, so every appearance re-reads the library.
     LaunchedEffect(viewModel) { viewModel.onAction(HomeAction.Refresh) }
-    HomeScreen(state = state, onAction = viewModel::onAction, onImport = onImport)
+    HomeScreen(state = state, onAction = viewModel::onAction, onImport = onImport, onSearch = onSearch)
 }
 
-/**
- * The timeline, with the opened Record beside it on a wide window and over it on a narrow one. The
- * timeline stays composed underneath, so closing the Record returns to the same place in the list.
- */
-@OptIn(ExperimentalComposeUiApi::class)
+/** The timeline, with the opened Record beside or over it. */
 @Composable
 fun HomeScreen(
     state: HomeState,
     onAction: (HomeAction) -> Unit,
     onImport: () -> Unit,
+    onSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val detail = state.detail
-    val close = { onAction(HomeAction.CloseDetail) }
-    BackHandler(enabled = detail != null, onBack = close)
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val sideBySide = maxWidth >= TWO_PANE_MIN_WIDTH
-        Row(modifier = Modifier.fillMaxSize()) {
-            Timeline(state, onAction, onImport, modifier = Modifier.weight(weight = 1f))
-            if (detail != null && sideBySide) {
-                RecordDetailPane(detail, onClose = close, modifier = Modifier.width(DETAIL_PANE_WIDTH).fillMaxSize())
-            }
-        }
-        if (detail != null && !sideBySide) {
-            Surface(modifier = Modifier.fillMaxSize()) {
-                RecordDetailPane(detail, onClose = close, modifier = Modifier.fillMaxSize())
-            }
-        }
+    RecordDetailLayout(detail = state.detail, onClose = { onAction(HomeAction.CloseDetail) }, modifier = modifier) {
+        Timeline(state, onAction, onImport, onSearch, modifier = it)
     }
 }
 
@@ -87,6 +65,7 @@ private fun Timeline(
     state: HomeState,
     onAction: (HomeAction) -> Unit,
     onImport: () -> Unit,
+    onSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -95,7 +74,7 @@ private fun Timeline(
         verticalArrangement = Arrangement.spacedBy(Spacing.medium),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        item { Header(state.totalCount, onImport) }
+        item { Header(state.totalCount, onImport, onSearch) }
         state.error?.let { error -> item { ErrorNotice(error) } }
         if (state.kinds.isNotEmpty()) {
             item { KindFilter(state.kinds, state.totalCount, state.filter) { onAction(HomeAction.Filter(it)) } }
@@ -130,6 +109,7 @@ private fun Timeline(
 private fun Header(
     totalCount: Int,
     onImport: () -> Unit,
+    onSearch: () -> Unit,
 ) {
     Row(
         modifier = Modifier.readable(),
@@ -140,6 +120,7 @@ private fun Header(
             Text("Your timeline", style = MaterialTheme.typography.headlineMedium)
             Text("$totalCount Events, newest first", style = MaterialTheme.typography.bodyMedium)
         }
+        OutlinedButton(onClick = onSearch) { Text("Search") }
         OutlinedButton(onClick = onImport) { Text("Imports") }
     }
 }
@@ -183,33 +164,18 @@ private fun EntryCard(
     selected: Boolean,
     onOpen: () -> Unit,
 ) {
-    val colors =
-        if (selected) {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-        } else {
-            CardDefaults.cardColors()
-        }
-    Card(modifier = Modifier.readable().clickable(onClick = onOpen), colors = colors) {
-        Column(
-            modifier = Modifier.padding(Spacing.medium).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Spacing.small / 2),
-        ) {
-            Text(entry.time, style = MaterialTheme.typography.bodySmall)
-            Text(entry.kindLabel, style = MaterialTheme.typography.titleMedium)
-            if (entry.summary.isNotEmpty()) {
-                Text(entry.summary, style = MaterialTheme.typography.bodyMedium)
-            }
-            Text(
-                "Raw kind: ${entry.rawKind}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    RecordCard(
+        lines =
+            RecordCardLines(
+                time = entry.time,
+                kindLabel = entry.kindLabel,
+                summary = entry.summary,
+                footnote = "Raw kind: ${entry.rawKind}",
+            ),
+        selected = selected,
+        onOpen = onOpen,
+    )
 }
-
-private val TWO_PANE_MIN_WIDTH = 840.dp
-private val DETAIL_PANE_WIDTH = 360.dp
 
 @Preview
 @Composable
@@ -233,6 +199,7 @@ private fun HomeScreenPreview() {
                 ),
             onAction = {},
             onImport = {},
+            onSearch = {},
         )
     }
 }

@@ -62,6 +62,10 @@ _Avoid_: Row, entry, raw event, JSON object
 The Home screen's list of the Library's Events, newest first, read a page at a time and narrowed to one Kind on request. Claims never appear in it, even when they carry an "as of" time; opening any entry shows its Record, its Raw kind and its Provenance, and every time reads in the device's time zone.
 _Avoid_: Feed, history, activity log, event list
 
+**Search**:
+The screen that finds the Events and Claims whose Record values or Entity names contain every word the user types, each word matched from its start ("cour" finds "courier") without regard to case or accents. Hits are listed newest first by an Event's time or a Claim's "as of" time, undated Claims last, never by relevance (ADR 0004, 0010); each opens to the same Record detail as the Timeline, with its Provenance.
+_Avoid_: Find, lookup, query (for the screen), filter (for this)
+
 ### Insights
 
 **Insight card**:
