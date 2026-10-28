@@ -33,6 +33,12 @@ class SearchViewModel(
     /** Bumped by every change of text so a page that was in flight for older text is dropped on arrival. */
     private var generation = 0
 
+    /**
+     * How many hits the repository has handed over for the current text, which is where the next page
+     * starts. Kept apart from the listed hits, which may hold fewer once a hit read twice is listed once.
+     */
+    private var offset = 0
+
     fun onAction(action: SearchAction) {
         when (action) {
             is SearchAction.TextChanged -> textChanged(action.text)
@@ -56,6 +62,7 @@ class SearchViewModel(
             _state.update { state ->
                 when (read) {
                     is Result.Success -> {
+                        offset = read.data.size
                         state.copy(
                             isSearching = false,
                             isReadingNextPage = false,
@@ -79,12 +86,13 @@ class SearchViewModel(
         val current = generation
         _state.update { it.copy(isReadingNextPage = true) }
         viewModelScope.launch {
-            val read = search.search(before.text, pageSize, before.hits.size)
+            val read = search.search(before.text, pageSize, offset)
             if (current != generation) return@launch
             _state.update { state ->
                 when (read) {
                     is Result.Success -> {
                         // An Import landing meanwhile shifts the offsets; a hit read twice is listed once.
+                        offset += read.data.size
                         val hits = (state.hits + read.data.map { it.toUi(timeZone) }).distinctBy { it.ref }
                         state.copy(
                             isReadingNextPage = false,

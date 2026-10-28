@@ -164,29 +164,17 @@ private fun EntryCard(
     selected: Boolean,
     onOpen: () -> Unit,
 ) {
-    val colors =
-        if (selected) {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-        } else {
-            CardDefaults.cardColors()
-        }
-    Card(modifier = Modifier.readable().clickable(onClick = onOpen), colors = colors) {
-        Column(
-            modifier = Modifier.padding(Spacing.medium).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Spacing.small / 2),
-        ) {
-            Text(entry.time, style = MaterialTheme.typography.bodySmall)
-            Text(entry.kindLabel, style = MaterialTheme.typography.titleMedium)
-            if (entry.summary.isNotEmpty()) {
-                Text(entry.summary, style = MaterialTheme.typography.bodyMedium)
-            }
-            Text(
-                "Raw kind: ${entry.rawKind}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    RecordCard(
+        lines =
+            RecordCardLines(
+                time = entry.time,
+                kindLabel = entry.kindLabel,
+                summary = entry.summary,
+                footnote = "Raw kind: ${entry.rawKind}",
+            ),
+        selected = selected,
+        onOpen = onOpen,
+    )
 }
 
 @Preview

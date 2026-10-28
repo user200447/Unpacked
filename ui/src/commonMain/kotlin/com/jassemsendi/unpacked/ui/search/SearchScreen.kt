@@ -26,6 +26,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jassemsendi.unpacked.model.ExportId
 import com.jassemsendi.unpacked.model.Provenance
+import com.jassemsendi.unpacked.ui.home.RecordCard
+import com.jassemsendi.unpacked.ui.home.RecordCardLines
 import com.jassemsendi.unpacked.ui.home.RecordDetailLayout
 import com.jassemsendi.unpacked.ui.home.RecordRef
 import com.jassemsendi.unpacked.ui.home.RecordTimeUi
@@ -98,8 +100,11 @@ private fun Hits(
         }
         if (state.hasMore) {
             item {
-                // Reaching the end of what was read asks for the next page; the spinner stays until it lands.
-                LaunchedEffect(state.hits.size) { onAction(SearchAction.NextPage) }
+                // Reaching the end of what was read asks for the next page, and asks again whenever a read ends
+                // while the end is still in view, even one that listed nothing new; the spinner stays until it lands.
+                LaunchedEffect(state.hits.size, state.isSearching, state.isReadingNextPage) {
+                    onAction(SearchAction.NextPage)
+                }
                 CircularProgressIndicator()
             }
         }
@@ -155,31 +160,20 @@ private fun HitCard(
     selected: Boolean,
     onOpen: () -> Unit,
 ) {
-    val colors =
-        if (selected) {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-        } else {
-            CardDefaults.cardColors()
-        }
     val provenance = hit.ref.provenance
-    Card(modifier = Modifier.readable().clickable(onClick = onOpen), colors = colors) {
-        Column(
-            modifier = Modifier.padding(Spacing.medium).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Spacing.small / 2),
-        ) {
-            Text(hit.time.text(), style = MaterialTheme.typography.bodySmall)
-            Text(hit.kindLabel, style = MaterialTheme.typography.titleMedium)
-            if (hit.summary.isNotEmpty()) {
-                Text(hit.summary, style = MaterialTheme.typography.bodyMedium)
-            }
-            Text(
-                "${provenance.path}, record ${provenance.recordIndex}" +
-                    if (provenance.itemIndex > 0) ", item ${provenance.itemIndex}" else "",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    RecordCard(
+        lines =
+            RecordCardLines(
+                time = hit.time.text(),
+                kindLabel = hit.kindLabel,
+                summary = hit.summary,
+                footnote =
+                    "${provenance.path}, record ${provenance.recordIndex}" +
+                        if (provenance.itemIndex > 0) ", item ${provenance.itemIndex}" else "",
+            ),
+        selected = selected,
+        onOpen = onOpen,
+    )
 }
 
 /** A list key the platform can save: an Event and a Claim read from the same record share a Provenance hash. */

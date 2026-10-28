@@ -5,6 +5,7 @@ import androidx.room.useWriterConnection
 import com.jassemsendi.unpacked.data.db.ClaimRow
 import com.jassemsendi.unpacked.data.db.EntityLink
 import com.jassemsendi.unpacked.data.db.EventRow
+import com.jassemsendi.unpacked.data.db.HitType
 import com.jassemsendi.unpacked.data.db.LibraryDatabase
 import com.jassemsendi.unpacked.data.db.OwnedByRecord
 import com.jassemsendi.unpacked.data.db.SearchHitRow
@@ -158,12 +159,12 @@ internal class RoomClaimRepository(
         }
 }
 
+/** Reads hits back through the Event and Claim repositories, so a hit is the same object the timeline reads. */
 internal class RoomSearchRepository(
     private val db: LibraryDatabase,
+    private val events: RoomEventRepository,
+    private val claims: RoomClaimRepository,
 ) : SearchRepository {
-    private val events = RoomEventRepository(db)
-    private val claims = RoomClaimRepository(db)
-
     override suspend fun search(
         text: String,
         limit: Int,
@@ -172,18 +173,16 @@ internal class RoomSearchRepository(
         val match = matchExpression(text) ?: return Result.Success(emptyList())
         return localCall {
             val rows = db.searchDao().hits(match, limit, offset)
-            val eventById = events.byIds(rows.idsOf(SearchHitRow.EVENT)).associateBy { it.id }
-            val claimById = claims.byIds(rows.idsOf(SearchHitRow.CLAIM)).associateBy { it.id }
+            val eventById = events.byIds(rows.idsOf(HitType.EVENT)).associateBy { it.id }
+            val claimById = claims.byIds(rows.idsOf(HitType.CLAIM)).associateBy { it.id }
             rows.mapNotNull { row ->
-                when (row.recordType) {
-                    SearchHitRow.EVENT -> eventById[row.recordId]?.let { SearchHit.OfEvent(it) }
-                    SearchHitRow.CLAIM -> claimById[row.recordId]?.let { SearchHit.OfClaim(it) }
-                    else -> error("unknown record type ${row.recordType}")
+                when (row.hitType) {
+                    HitType.EVENT -> eventById[row.hitId]?.let { SearchHit.OfEvent(it) }
+                    HitType.CLAIM -> claimById[row.hitId]?.let { SearchHit.OfClaim(it) }
                 }
             }
         }
     }
 
-    private fun List<SearchHitRow>.idsOf(recordType: String): List<Long> =
-        filter { it.recordType == recordType }.map { it.recordId }
+    private fun List<SearchHitRow>.idsOf(type: HitType): List<Long> = filter { it.hitType == type }.map { it.hitId }
 }

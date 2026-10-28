@@ -294,17 +294,18 @@ internal data class ClaimSearchRow(
     val text: String,
 )
 
-/** One search hit before it is read back in full: which table, which row, and the time it sorts by. */
-internal data class SearchHitRow(
-    @ColumnInfo(name = "record_type") val recordType: String,
-    @ColumnInfo(name = "record_id") val recordId: Long,
-    val time: Long?,
-) {
-    companion object {
-        const val EVENT = "event"
-        const val CLAIM = "claim"
-    }
+/** Which table a search hit lives in; stored by name, which is what the search query selects as a literal. */
+internal enum class HitType {
+    EVENT,
+    CLAIM,
 }
+
+/** One search hit before the Event or Claim is read back in full: its table, its id, and the time it sorts by. */
+internal data class SearchHitRow(
+    @ColumnInfo(name = "hit_type") val hitType: HitType,
+    @ColumnInfo(name = "hit_id") val hitId: Long,
+    val time: Long?,
+)
 
 /** One row of a `GROUP BY kind` count. */
 internal data class KindCount(

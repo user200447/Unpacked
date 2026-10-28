@@ -162,15 +162,46 @@ class SearchViewModelTest {
         }
 
     @Test
-    fun clearingTheTextClearsTheHitsWithoutAskingTheLibrary() =
+    fun clearingTheTextClearsTheHitsButNotTheOpenRecordAndAsksTheLibraryNothing() =
         runTest {
             val viewModel = viewModel()
             viewModel.onAction(SearchAction.TextChanged("sourdough"))
+            viewModel.onAction(SearchAction.Open(RecordRef.Event(bakeryAd.provenance)))
 
             viewModel.onAction(SearchAction.TextChanged(""))
 
-            assertEquals(SearchState(), viewModel.state.value)
+            assertEquals(SearchState(detail = bakeryAd.toDetail(TimeZone.UTC)), viewModel.state.value)
             assertEquals(listOf("sourdough"), search.searches)
+        }
+
+    @Test
+    fun theNextPageStartsWhereTheRepositoryLeftOffEvenWhenAHitWasListedAlready() =
+        runTest {
+            val viewModel = viewModel(pageSize = 2)
+            viewModel.onAction(SearchAction.TextChanged("sourdough"))
+            // An Import lands meanwhile with a newer Event, so what was the third hit is now the second page's first.
+            events.events +=
+                event(EventKind.AdShown, minutesAfterFirst = 3, attributes = mapOf("Caption" to "Sourdough"))
+
+            viewModel.onAction(SearchAction.NextPage)
+
+            assertEquals(
+                sourdoughHits.take(3).map { it.ref },
+                viewModel.state.value.hits
+                    .map { it.ref },
+                "listed once",
+            )
+            assertTrue(viewModel.state.value.hasMore)
+
+            viewModel.onAction(SearchAction.NextPage)
+
+            assertEquals(
+                sourdoughHits.map { it.ref },
+                viewModel.state.value.hits
+                    .map { it.ref },
+                "no hit is read twice",
+            )
+            assertFalse(viewModel.state.value.hasMore)
         }
 
     @Test

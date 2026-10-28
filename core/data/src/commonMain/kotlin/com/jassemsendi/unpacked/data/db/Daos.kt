@@ -162,19 +162,20 @@ internal interface SearchDao {
     suspend fun insertClaims(rows: List<ClaimTextRow>)
 
     /**
-     * One page of the records whose text matches [match], an FTS4 expression: newest first by an Event's
-     * time or a Claim's "as of" time, undated Claims last, ties in a fixed order so pages never overlap.
+     * One page of the Events and Claims whose text matches [match], an FTS4 expression: newest first by an
+     * Event's time or a Claim's "as of" time, undated Claims last, ties in a fixed order so pages never
+     * overlap. The literals are the names of [HitType].
      */
     @Query(
         """
         SELECT * FROM (
-            SELECT '${SearchHitRow.EVENT}' AS record_type, id AS record_id, time FROM events
+            SELECT 'EVENT' AS hit_type, id AS hit_id, time FROM events
             WHERE id IN (SELECT rowid FROM event_search WHERE event_search MATCH :match)
             UNION ALL
-            SELECT '${SearchHitRow.CLAIM}' AS record_type, id AS record_id, as_of AS time FROM claims
+            SELECT 'CLAIM' AS hit_type, id AS hit_id, as_of AS time FROM claims
             WHERE id IN (SELECT rowid FROM claim_search WHERE claim_search MATCH :match)
         )
-        ORDER BY time IS NULL, time DESC, record_type, record_id DESC
+        ORDER BY time IS NULL, time DESC, hit_type, hit_id DESC
         LIMIT :limit OFFSET :offset
         """,
     )

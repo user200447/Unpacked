@@ -29,11 +29,13 @@ public class Library internal constructor(
     private val db: LibraryDatabase,
     private val clock: Clock,
 ) : AutoCloseable {
+    private val roomEvents = RoomEventRepository(db)
+    private val roomClaims = RoomClaimRepository(db)
     public val imports: ImportRepository = RoomImportRepository(db)
-    public val events: EventRepository = RoomEventRepository(db)
-    public val claims: ClaimRepository = RoomClaimRepository(db)
+    public val events: EventRepository = roomEvents
+    public val claims: ClaimRepository = roomClaims
     public val entities: EntityRepository = RoomEntityRepository(db)
-    public val search: SearchRepository = RoomSearchRepository(db)
+    public val search: SearchRepository = RoomSearchRepository(db, roomEvents, roomClaims)
 
     /**
      * Runs one Import of [export] through [adapter] and writes it into the library file by file.

@@ -8,10 +8,13 @@ import com.jassemsendi.unpacked.model.Event
 
 // What a search reads of a record, and what the typed text becomes before SQLite sees it.
 
-/** Anything that is not a letter or a digit ends a word, for the typed text as for the unicode61 tokenizer. */
-private val wordBreak = Regex("[^\\p{L}\\p{N}]+")
+/**
+ * Anything that is not a letter, a digit or a combining mark ends a word. A mark stays with its letter so
+ * that an accent typed as a separate code point reaches the tokenizer as part of the word, not as a word break.
+ */
+private val wordBreak = Regex("[^\\p{L}\\p{M}\\p{N}]+")
 
-/** The words of a record a search can find: its attribute values and the names of its Entities, never its labels. */
+/** The words of an Event or Claim a search can find: its attribute values and the names of its Entities, never its labels. */
 private fun searchTextOf(
     attributes: Map<String, String>,
     entities: List<Entity>,
