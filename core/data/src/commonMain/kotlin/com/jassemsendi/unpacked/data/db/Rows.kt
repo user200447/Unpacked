@@ -4,6 +4,8 @@ import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Fts4
+import androidx.room.FtsOptions
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -234,6 +236,75 @@ internal data class EntityAttributeRow(
     val label: String,
     val value: String,
 )
+
+/**
+ * The words of one Event that a search can find: its attribute values and the names of its Entities, under
+ * the Event's own id so it goes when the Event goes. Room keeps [EventSearchRow] in step with this table
+ * through triggers, so writing a row here is all an Import does for search.
+ */
+@Entity(
+    tableName = "event_text",
+    foreignKeys = [
+        ForeignKey(
+            entity = EventRow::class,
+            parentColumns = ["id"],
+            childColumns = ["event_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+internal data class EventTextRow(
+    /** An INTEGER primary key is SQLite's rowid, which is the docid the FTS table files the text under. */
+    @PrimaryKey @ColumnInfo(name = "event_id") val eventId: Long,
+    val text: String,
+)
+
+/** The words of one Claim that a search can find; see [EventTextRow]. */
+@Entity(
+    tableName = "claim_text",
+    foreignKeys = [
+        ForeignKey(
+            entity = ClaimRow::class,
+            parentColumns = ["id"],
+            childColumns = ["claim_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+internal data class ClaimTextRow(
+    @PrimaryKey @ColumnInfo(name = "claim_id") val claimId: Long,
+    val text: String,
+)
+
+/**
+ * The FTS4 index over [EventTextRow] (ADR 0004), queried by `rowid`, which is the Event's id. The unicode61
+ * tokenizer folds case and accents, so "zoe" finds "Zoë". An external-content table rather than a
+ * standalone one because Room's native processor cannot read the latter's default content marker.
+ */
+@Fts4(contentEntity = EventTextRow::class, tokenizer = FtsOptions.TOKENIZER_UNICODE61)
+@Entity(tableName = "event_search")
+internal data class EventSearchRow(
+    val text: String,
+)
+
+/** The FTS4 index over [ClaimTextRow]; see [EventSearchRow]. */
+@Fts4(contentEntity = ClaimTextRow::class, tokenizer = FtsOptions.TOKENIZER_UNICODE61)
+@Entity(tableName = "claim_search")
+internal data class ClaimSearchRow(
+    val text: String,
+)
+
+/** One search hit before it is read back in full: which table, which row, and the time it sorts by. */
+internal data class SearchHitRow(
+    @ColumnInfo(name = "record_type") val recordType: String,
+    @ColumnInfo(name = "record_id") val recordId: Long,
+    val time: Long?,
+) {
+    companion object {
+        const val EVENT = "event"
+        const val CLAIM = "claim"
+    }
+}
 
 /** One row of a `GROUP BY kind` count. */
 internal data class KindCount(

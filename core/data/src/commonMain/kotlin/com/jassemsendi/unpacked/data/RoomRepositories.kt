@@ -7,6 +7,7 @@ import com.jassemsendi.unpacked.data.db.EntityLink
 import com.jassemsendi.unpacked.data.db.EventRow
 import com.jassemsendi.unpacked.data.db.LibraryDatabase
 import com.jassemsendi.unpacked.data.db.OwnedByRecord
+import com.jassemsendi.unpacked.data.db.SearchHitRow
 import com.jassemsendi.unpacked.data.db.inChunks
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
@@ -113,7 +114,7 @@ internal class RoomEventRepository(
         localCall { dao.countByKind(importId?.value).toMap(EventKind::valueOf) }
 
     override suspend fun byProvenance(provenance: Provenance): Result<Event, DataError.Local> =
-        localCall { dao.byId(provenance.hash)?.let { hydrate(listOf(it)).single() } }.orNotFound()
+        localCall { byIds(listOf(provenance.hash)).singleOrNull() }.orNotFound()
 
     override suspend fun forImport(importId: ImportId): Result<List<Event>, DataError.Local> =
         localCall { hydrate(dao.forImport(importId.value)) }
@@ -123,6 +124,9 @@ internal class RoomEventRepository(
         limit: Int,
         offset: Int,
     ): Result<List<Event>, DataError.Local> = localCall { hydrate(dao.newestFirst(kind?.name, limit, offset)) }
+
+    /** The Events with these ids, in no particular order; ids that no longer exist are left out. */
+    suspend fun byIds(ids: List<Long>): List<Event> = hydrate(ids.inChunks { dao.byIds(it) })
 
     private suspend fun hydrate(rows: List<EventRow>): List<Event> =
         entities.hydrate(rows, { it.id }, dao::attributes, dao::links) { row, attributes, linked ->
@@ -140,13 +144,46 @@ internal class RoomClaimRepository(
         localCall { dao.countByKind(importId?.value).toMap(ClaimKind::valueOf) }
 
     override suspend fun byProvenance(provenance: Provenance): Result<Claim, DataError.Local> =
-        localCall { dao.byId(provenance.hash)?.let { hydrate(listOf(it)).single() } }.orNotFound()
+        localCall { byIds(listOf(provenance.hash)).singleOrNull() }.orNotFound()
 
     override suspend fun forImport(importId: ImportId): Result<List<Claim>, DataError.Local> =
         localCall { hydrate(dao.forImport(importId.value)) }
+
+    /** The Claims with these ids, in no particular order; ids that no longer exist are left out. */
+    suspend fun byIds(ids: List<Long>): List<Claim> = hydrate(ids.inChunks { dao.byIds(it) })
 
     private suspend fun hydrate(rows: List<ClaimRow>): List<Claim> =
         entities.hydrate(rows, { it.id }, dao::attributes, dao::links) { row, attributes, linked ->
             row.toModel(attributes, linked)
         }
+}
+
+internal class RoomSearchRepository(
+    private val db: LibraryDatabase,
+) : SearchRepository {
+    private val events = RoomEventRepository(db)
+    private val claims = RoomClaimRepository(db)
+
+    override suspend fun search(
+        text: String,
+        limit: Int,
+        offset: Int,
+    ): Result<List<SearchHit>, DataError.Local> {
+        val match = matchExpression(text) ?: return Result.Success(emptyList())
+        return localCall {
+            val rows = db.searchDao().hits(match, limit, offset)
+            val eventById = events.byIds(rows.idsOf(SearchHitRow.EVENT)).associateBy { it.id }
+            val claimById = claims.byIds(rows.idsOf(SearchHitRow.CLAIM)).associateBy { it.id }
+            rows.mapNotNull { row ->
+                when (row.recordType) {
+                    SearchHitRow.EVENT -> eventById[row.recordId]?.let { SearchHit.OfEvent(it) }
+                    SearchHitRow.CLAIM -> claimById[row.recordId]?.let { SearchHit.OfClaim(it) }
+                    else -> error("unknown record type ${row.recordType}")
+                }
+            }
+        }
+    }
+
+    private fun List<SearchHitRow>.idsOf(recordType: String): List<Long> =
+        filter { it.recordType == recordType }.map { it.recordId }
 }

@@ -34,10 +34,12 @@ internal class ImportWrite private constructor(
                 db.eventDao().insert(events.map { it.toRow(id) })
                 db.eventDao().insertAttributes(events.flatMap { it.attributeRows() })
                 db.eventDao().insertLinks(events.flatMap { it.linkRows() })
+                db.searchDao().insertEvents(events.mapNotNull { it.searchRow() })
                 claims.map { it.id }.forEachChunk { db.claimDao().delete(it) }
                 db.claimDao().insert(claims.map { it.toRow(id) })
                 db.claimDao().insertAttributes(claims.flatMap { it.attributeRows() })
                 db.claimDao().insertLinks(claims.flatMap { it.linkRows() })
+                db.searchDao().insertClaims(claims.mapNotNull { it.searchRow() })
             }
         }
 

@@ -7,6 +7,7 @@ enum class Screen {
     Welcome,
     Import,
     Home,
+    Search,
     ;
 
     companion object {

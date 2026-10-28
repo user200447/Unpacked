@@ -134,11 +134,7 @@ class HomeViewModel(
 
     private fun open(ref: RecordRef) {
         viewModelScope.launch {
-            val read =
-                when (ref) {
-                    is RecordRef.Event -> events.byProvenance(ref.provenance).map { it.toDetail(timeZone) }
-                    is RecordRef.Claim -> claims.byProvenance(ref.provenance).map { it.toDetail(timeZone) }
-                }
+            val read = readRecord(ref, events, claims, timeZone)
             _state.update {
                 when (read) {
                     is Result.Success -> it.copy(detail = read.data, error = null)

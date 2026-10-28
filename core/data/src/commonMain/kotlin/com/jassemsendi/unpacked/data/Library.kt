@@ -33,6 +33,7 @@ public class Library internal constructor(
     public val events: EventRepository = RoomEventRepository(db)
     public val claims: ClaimRepository = RoomClaimRepository(db)
     public val entities: EntityRepository = RoomEntityRepository(db)
+    public val search: SearchRepository = RoomSearchRepository(db)
 
     /**
      * Runs one Import of [export] through [adapter] and writes it into the library file by file.

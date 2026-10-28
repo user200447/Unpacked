@@ -17,5 +17,6 @@ public fun libraryModule(
         single<EventRepository> { library.events }
         single<ClaimRepository> { library.claims }
         single<EntityRepository> { library.entities }
+        single<SearchRepository> { library.search }
         single<ImportUseCase> { LibraryImportUseCase(library, fileSystem) }
     }
