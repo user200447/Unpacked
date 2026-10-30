@@ -27,6 +27,13 @@ public inline fun <T, E : Error, R> Result<T, E>.map(map: (T) -> R): Result<R, E
         is Result.Success -> Result.Success(map(data))
     }
 
+/** The next call that depends on this one's value; the first failure in a chain is the chain's failure. */
+public inline fun <T, E : Error, R> Result<T, E>.andThen(next: (T) -> Result<R, E>): Result<R, E> =
+    when (this) {
+        is Result.Error -> Result.Error(error)
+        is Result.Success -> next(data)
+    }
+
 public inline fun <T, E : Error> Result<T, E>.onSuccess(action: (T) -> Unit): Result<T, E> =
     when (this) {
         is Result.Error -> {

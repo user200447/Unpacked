@@ -104,6 +104,21 @@ internal interface ClaimDao {
     @Query("SELECT * FROM claims WHERE import_id = :importId ORDER BY as_of, path, record_index, item_index")
     suspend fun forImport(importId: Long): List<ClaimRow>
 
+    /** Dated Claims newest first, then undated ones in file order. */
+    @Query(
+        """
+        SELECT * FROM claims
+        WHERE kind = :kind
+        ORDER BY as_of IS NULL, as_of DESC, path, record_index, item_index
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun byKind(
+        kind: String,
+        limit: Int,
+        offset: Int,
+    ): List<ClaimRow>
+
     @Query("SELECT * FROM claim_attributes WHERE claim_id IN (:ids) ORDER BY claim_id, position")
     suspend fun attributes(ids: List<Long>): List<ClaimAttributeRow>
 
@@ -147,6 +162,75 @@ internal interface EntityDao {
         """,
     )
     suspend fun deleteOrphans()
+}
+
+/**
+ * Who names an Entity: how many Events and Claims link to each, and the Events and Claims behind one. Apart
+ * from [EntityDao] so each stays within the size a DAO should have.
+ */
+@Dao
+internal interface ReferenceDao {
+    @Query("SELECT kind, COUNT(*) AS count FROM entities GROUP BY kind")
+    suspend fun countByKind(): List<KindCount>
+
+    /**
+     * Every Kind when [kind] is null. Most named first when [byCount], otherwise by name; name and id break
+     * ties either way, so pages never overlap. `COLLATE NOCASE` folds ASCII case, as the Kinds' names need.
+     */
+    @Query(
+        """
+        SELECT entities.*,
+            (SELECT COUNT(*) FROM event_entities WHERE entity_id = entities.id) AS event_count,
+            (SELECT COUNT(*) FROM claim_entities WHERE entity_id = entities.id) AS claim_count
+        FROM entities
+        WHERE :kind IS NULL OR kind = :kind
+        ORDER BY CASE WHEN :byCount THEN event_count + claim_count ELSE 0 END DESC, display_name COLLATE NOCASE, id
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun list(
+        kind: String?,
+        byCount: Boolean,
+        limit: Int,
+        offset: Int,
+    ): List<EntityReferenceRow>
+
+    @Query(
+        """
+        SELECT entities.*,
+            (SELECT COUNT(*) FROM event_entities WHERE entity_id = entities.id) AS event_count,
+            (SELECT COUNT(*) FROM claim_entities WHERE entity_id = entities.id) AS claim_count
+        FROM entities
+        WHERE id = :id
+        """,
+    )
+    suspend fun references(id: String): EntityReferenceRow?
+
+    @Query(
+        """
+        SELECT events.* FROM events
+        JOIN event_entities ON event_entities.event_id = events.id
+        WHERE event_entities.entity_id = :entityId
+        ORDER BY time DESC, id DESC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun events(
+        entityId: String,
+        limit: Int,
+        offset: Int,
+    ): List<EventRow>
+
+    /** Dated Claims newest first, then undated ones in file order, as [ClaimDao.byKind] orders them. */
+    @Query(
+        """
+        SELECT claims.* FROM claims
+        JOIN claim_entities ON claim_entities.claim_id = claims.id
+        WHERE claim_entities.entity_id = :entityId
+        ORDER BY as_of IS NULL, as_of DESC, path, record_index, item_index
+        """,
+    )
+    suspend fun claims(entityId: String): List<ClaimRow>
 }
 
 /**

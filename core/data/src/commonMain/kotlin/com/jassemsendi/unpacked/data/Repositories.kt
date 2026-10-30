@@ -5,6 +5,7 @@ import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.EmptyResult
 import com.jassemsendi.unpacked.model.Entity
+import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.Event
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.Import
@@ -49,6 +50,13 @@ public interface EventRepository {
         limit: Int,
         offset: Int,
     ): Result<List<Event>, DataError.Local>
+
+    /** One page of the Events that name the Entity with [entityId], newest first; empty for an unknown Entity. */
+    public suspend fun forEntity(
+        entityId: String,
+        limit: Int,
+        offset: Int,
+    ): Result<List<Event>, DataError.Local>
 }
 
 public interface ClaimRepository {
@@ -60,6 +68,19 @@ public interface ClaimRepository {
 
     /** The Claims of one Import: undated ones first in file order, then dated ones in "as of" order. */
     public suspend fun forImport(importId: ImportId): Result<List<Claim>, DataError.Local>
+
+    /**
+     * One page of the whole library's Claims of one Kind: those with an "as of" time newest first, then
+     * those without in file order, so paging never repeats or skips one.
+     */
+    public suspend fun byKind(
+        kind: ClaimKind,
+        limit: Int,
+        offset: Int,
+    ): Result<List<Claim>, DataError.Local>
+
+    /** The Claims that name the Entity with [entityId], in the order of [byKind]; empty for an unknown Entity. */
+    public suspend fun forEntity(entityId: String): Result<List<Claim>, DataError.Local>
 }
 
 public interface EntityRepository {
@@ -68,6 +89,41 @@ public interface EntityRepository {
 
     /** Every Entity any Event or Claim in the library refers to, in id order. */
     public suspend fun all(): Result<List<Entity>, DataError.Local>
+
+    /** Entities per Kind across the whole library. Kinds with no Entity are absent. */
+    public suspend fun countByKind(): Result<Map<EntityKind, Int>, DataError.Local>
+
+    /**
+     * One page of the library's Entities with how many Events and Claims name each, narrowed to one Kind when
+     * [kind] is given. Ties keep a fixed order across pages, so paging never repeats or skips one.
+     */
+    public suspend fun list(
+        kind: EntityKind?,
+        order: EntityOrder,
+        limit: Int,
+        offset: Int,
+    ): Result<List<EntityReferences>, DataError.Local>
+
+    /** One Entity with its counts; [DataError.Local.NOT_FOUND] when no Entity has that id. */
+    public suspend fun references(id: String): Result<EntityReferences, DataError.Local>
+}
+
+/** How an Entity list is ordered: by how often the Entity is named, or by its name. */
+public enum class EntityOrder {
+    /** Most Events and Claims first, then by name, so the names the Source leans on most come first. */
+    MostReferenced,
+
+    /** By display name without regard to case, then by id, so two Entities named alike keep a fixed order. */
+    Name,
+}
+
+/** An Entity and how many Events and Claims name it, which is what the Entities screen lists. */
+public data class EntityReferences(
+    val entity: Entity,
+    val eventCount: Int,
+    val claimCount: Int,
+) {
+    val total: Int get() = eventCount + claimCount
 }
 
 public interface SearchRepository {

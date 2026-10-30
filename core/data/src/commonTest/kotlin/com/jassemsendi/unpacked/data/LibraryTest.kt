@@ -88,6 +88,14 @@ abstract class LibraryTest {
             }
         }
 
+    /** How the Claims screen and an Entity's Claims order them: dated ones newest first, undated ones in file order. */
+    private val claimsNewestFirst =
+        compareBy<Claim> { it.asOf == null }
+            .thenByDescending { it.asOf }
+            .thenBy { it.provenance.path }
+            .thenBy { it.provenance.recordIndex }
+            .thenBy { it.provenance.itemIndex }
+
     /** Whether any of these texts has a word that starts with [word], the way the search reads them. */
     private fun Iterable<String>.mention(word: String): Boolean =
         any { text -> text.split(nonWord).any { it.startsWith(word, ignoreCase = true) } }
@@ -598,6 +606,161 @@ abstract class LibraryTest {
             library.imports.delete(importB.id).orFail()
 
             assertEquals(emptyList(), found())
+        }
+
+    @Test
+    fun claimsOfOneKindReadDatedOnesNewestFirstThenUndatedOnesInFileOrderInPages() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 1, includeClaimFiles = true).writeTo(fs, root)
+            val import = import(Export.directory(fs, root))
+            val interests =
+                library.claims
+                    .forImport(import.id)
+                    .orFail()
+                    .filter { it.kind == ClaimKind.InferredInterest }
+            val expected = interests.sortedWith(claimsNewestFirst)
+            assertEquals(8, interests.size)
+            assertTrue(interests.any { it.asOf == null } && interests.any { it.asOf != null }, "dated and undated")
+
+            val pages =
+                buildList {
+                    var page = library.claims.byKind(ClaimKind.InferredInterest, limit = 3, offset = 0).orFail()
+                    while (page.isNotEmpty()) {
+                        add(page)
+                        page = library.claims.byKind(ClaimKind.InferredInterest, limit = 3, offset = size * 3).orFail()
+                    }
+                }
+
+            assertEquals(listOf(3, 3, 2), pages.map { it.size })
+            assertEquals(expected, pages.flatten())
+            assertEquals(
+                library.claims
+                    .forImport(import.id)
+                    .orFail()
+                    .filter { it.kind == ClaimKind.ConsentGiven },
+                library.claims.byKind(ClaimKind.ConsentGiven, limit = 10, offset = 0).orFail(),
+            )
+            assertEquals(emptyList(), library.claims.byKind(ClaimKind.ConsentGiven, limit = 10, offset = 1).orFail())
+        }
+
+    @Test
+    fun entitiesAreListedWithHowManyEventsAndClaimsNameThemMostNamedFirstOrByName() =
+        runTest {
+            SyntheticInstagramExport(
+                adsViewed = 12,
+                includeTimedFiles = true,
+                includeClaimFiles = true,
+            ).writeTo(fs, root)
+            val import = import(Export.directory(fs, root))
+            val events = library.events.forImport(import.id).orFail()
+            val claims = library.claims.forImport(import.id).orFail()
+            val all = library.entities.all().orFail()
+            val expected =
+                all.map { entity ->
+                    EntityReferences(
+                        entity,
+                        eventCount = events.count { event -> event.entities.any { it.id == entity.id } },
+                        claimCount = claims.count { claim -> claim.entities.any { it.id == entity.id } },
+                    )
+                }
+            val mostShown = expected.filter { it.entity.kind == EntityKind.Advertiser }.maxBy { it.eventCount }
+            assertTrue(mostShown.eventCount > 2, "twelve ads over four advertisers")
+            assertTrue(expected.any { it.claimCount > 0 && it.eventCount == 0 }, "an Entity only Claims name")
+
+            assertEquals(all.groupingBy { it.kind }.eachCount(), library.entities.countByKind().orFail())
+            assertEquals(
+                expected.sortedWith(
+                    compareByDescending<EntityReferences> { it.total }
+                        .thenBy { it.entity.displayName.lowercase() }
+                        .thenBy { it.entity.id },
+                ),
+                library.entities
+                    .list(
+                        kind = null,
+                        order = EntityOrder.MostReferenced,
+                        limit = all.size,
+                        offset = 0,
+                    ).orFail(),
+            )
+            assertEquals(
+                expected
+                    .filter { it.entity.kind == EntityKind.Advertiser }
+                    .sortedWith(
+                        compareBy<EntityReferences> { it.entity.displayName.lowercase() }.thenBy { it.entity.id },
+                    ),
+                library.entities.list(EntityKind.Advertiser, EntityOrder.Name, limit = all.size, offset = 0).orFail(),
+            )
+            assertEquals(mostShown, library.entities.references(mostShown.entity.id).orFail())
+            assertEquals(notFound, library.entities.references("instagram:advertiser:nobody"))
+        }
+
+    @Test
+    fun entityPagesNeverRepeatOrSkipAnEntity() =
+        runTest {
+            SyntheticInstagramExport(
+                adsViewed = 12,
+                includeTimedFiles = true,
+                includeClaimFiles = true,
+            ).writeTo(fs, root)
+            import(Export.directory(fs, root))
+            val all = library.entities.all().orFail()
+            val pageSize = 5
+
+            val paged =
+                buildList {
+                    var page = library.entities.list(null, EntityOrder.MostReferenced, pageSize, 0).orFail()
+                    while (page.isNotEmpty()) {
+                        add(page)
+                        page =
+                            library.entities.list(null, EntityOrder.MostReferenced, pageSize, size * pageSize).orFail()
+                    }
+                }
+
+            assertTrue(paged.size > 1 && paged.dropLast(1).all { it.size == pageSize })
+            assertEquals(all.toSet(), paged.flatten().map { it.entity }.toSet())
+            assertEquals(paged.flatten().distinct(), paged.flatten(), "no page repeats an Entity")
+        }
+
+    @Test
+    fun anEntityHasItsOwnTimelineNewestFirstInPagesAndItsOwnClaims() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 12, includeClaimFiles = true).writeTo(fs, root)
+            val import = import(Export.directory(fs, root))
+            val allEvents = library.events.forImport(import.id).orFail()
+            val allClaims = library.claims.forImport(import.id).orFail()
+            // Ads name advertisers by username and the audience-list file by name, so the two never meet (ADR 0002).
+            val advertiser =
+                allEvents
+                    .flatMap { it.entities }
+                    .groupingBy { it.id }
+                    .eachCount()
+                    .maxBy { it.value }
+                    .key
+            val listed = allClaims.flatMap { it.entities }.first { it.kind == EntityKind.Advertiser }.id
+            val events = allEvents.filter { event -> event.entities.any { it.id == advertiser } }
+            val claims = allClaims.filter { claim -> claim.entities.any { it.id == listed } }
+            assertTrue(events.size > 2, "twelve ads over four advertisers fill more than one page of two")
+            assertTrue(claims.isNotEmpty())
+
+            assertEquals(
+                events.sortedWith(compareByDescending<Event> { it.time }.thenByDescending { it.id }),
+                library.events.forEntity(advertiser, limit = 2, offset = 0).orFail() +
+                    library.events.forEntity(advertiser, limit = events.size, offset = 2).orFail(),
+            )
+            assertEquals(emptyList(), library.events.forEntity(advertiser, limit = 2, offset = events.size).orFail())
+            assertEquals(emptyList(), library.claims.forEntity(advertiser).orFail())
+            assertEquals(claims.sortedWith(claimsNewestFirst), library.claims.forEntity(listed).orFail())
+            assertEquals(emptyList(), library.events.forEntity(listed, limit = 2, offset = 0).orFail())
+            assertEquals(
+                emptyList(),
+                library.events.forEntity("instagram:advertiser:nobody", limit = 2, offset = 0).orFail(),
+            )
+            assertEquals(emptyList(), library.claims.forEntity("instagram:advertiser:nobody").orFail())
+
+            library.imports.delete(import.id).orFail()
+
+            assertEquals(emptyList(), library.events.forEntity(advertiser, limit = 2, offset = 0).orFail())
+            assertEquals(emptyMap(), library.entities.countByKind().orFail())
         }
 
     @Test

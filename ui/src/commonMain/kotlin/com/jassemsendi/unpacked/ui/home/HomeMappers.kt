@@ -3,7 +3,6 @@ package com.jassemsendi.unpacked.ui.home
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.Entity
 import com.jassemsendi.unpacked.model.Event
-import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.ui.time.toDeviceMinute
 import com.jassemsendi.unpacked.ui.time.toDeviceSecond
 import kotlinx.datetime.TimeZone
@@ -18,7 +17,13 @@ fun Enum<*>.label(): String =
             it.lowercase()
         }.replaceFirstChar { it.uppercase() }
 
-fun EventKind.toUi(count: Int): KindCountUi = KindCountUi(this, label(), count)
+fun <K : Enum<K>> K.toUi(count: Int): KindCountUi<K> = KindCountUi(this, label(), count)
+
+/** "1 Event", "2 Events": a count with its noun, for the lines that count things. */
+fun counted(
+    count: Int,
+    noun: String,
+): String = if (count == 1) "$count $noun" else "$count ${noun}s"
 
 fun Event.toEntry(timeZone: TimeZone): TimelineEntryUi =
     TimelineEntryUi(
@@ -35,7 +40,7 @@ fun Event.toDetail(timeZone: TimeZone): RecordDetailUi =
         kindLabel = kind.label(),
         time = RecordTimeUi.Happened(time.toDeviceSecond(timeZone)),
         rawKind = rawKind.value,
-        attributes = attributes.toUi(),
+        attributes = attributes.toAttributes(),
         entities = entities.names(),
     )
 
@@ -45,7 +50,7 @@ fun Claim.toDetail(timeZone: TimeZone): RecordDetailUi =
         kindLabel = kind.label(),
         time = asOf?.let { RecordTimeUi.LastUpdated(it.toDeviceSecond(timeZone)) } ?: RecordTimeUi.Undated,
         rawKind = rawKind.value,
-        attributes = attributes.toUi(),
+        attributes = attributes.toAttributes(),
         entities = entities.names(),
     )
 
@@ -58,15 +63,7 @@ fun summaryOf(
         attributes.values.firstOrNull { it.isNotBlank() } ?: ""
     }
 
-/** How a Record's time reads on screen, whichever screen shows it. */
-fun RecordTimeUi.text(): String =
-    when (this) {
-        is RecordTimeUi.Happened -> "Happened $at"
-        is RecordTimeUi.LastUpdated -> "Last updated $at"
-        RecordTimeUi.Undated -> "No time recorded"
-    }
-
 /** Label and value pairs in the order the Record listed them. */
-private fun Map<String, String>.toUi(): List<AttributeUi> = map { (label, value) -> AttributeUi(label, value) }
+fun Map<String, String>.toAttributes(): List<AttributeUi> = map { (label, value) -> AttributeUi(label, value) }
 
 private fun List<Entity>.names(): List<String> = map { it.displayName }
