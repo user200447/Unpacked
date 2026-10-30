@@ -33,7 +33,7 @@ class HomeViewModel(
 
     /** The Kind counts and the first page, read together so the screen never shows one without the other. */
     private data class FirstPage(
-        val kinds: List<KindCountUi>,
+        val kinds: List<KindCountUi<EventKind>>,
         val filter: EventKind?,
         val entries: List<TimelineEntryUi>,
     )

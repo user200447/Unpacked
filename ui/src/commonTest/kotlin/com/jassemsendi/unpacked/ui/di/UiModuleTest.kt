@@ -1,10 +1,14 @@
 package com.jassemsendi.unpacked.ui.di
 
 import com.jassemsendi.unpacked.data.ClaimRepository
+import com.jassemsendi.unpacked.data.EntityRepository
 import com.jassemsendi.unpacked.data.EventRepository
 import com.jassemsendi.unpacked.data.ImportRepository
 import com.jassemsendi.unpacked.data.ImportUseCase
 import com.jassemsendi.unpacked.data.SearchRepository
+import com.jassemsendi.unpacked.ui.claims.ClaimsViewModel
+import com.jassemsendi.unpacked.ui.entities.EntitiesViewModel
+import com.jassemsendi.unpacked.ui.entities.FakeEntityRepository
 import com.jassemsendi.unpacked.ui.home.FakeClaimRepository
 import com.jassemsendi.unpacked.ui.home.FakeEventRepository
 import com.jassemsendi.unpacked.ui.home.HomeViewModel
@@ -46,6 +50,7 @@ class UiModuleTest {
                 single<EventRepository> { events }
                 single<ClaimRepository> { claims }
                 single<SearchRepository> { FakeSearchRepository(events, claims) }
+                single<EntityRepository> { FakeEntityRepository(events, claims) }
                 single<ExportPicker> { FakeExportPicker() }
             }
 
@@ -54,6 +59,8 @@ class UiModuleTest {
         assertNotNull(koin.get<ImportViewModel>())
         assertNotNull(koin.get<HomeViewModel>())
         assertNotNull(koin.get<SearchViewModel>())
+        assertNotNull(koin.get<ClaimsViewModel>())
+        assertNotNull(koin.get<EntitiesViewModel>())
         koin.close()
     }
 }

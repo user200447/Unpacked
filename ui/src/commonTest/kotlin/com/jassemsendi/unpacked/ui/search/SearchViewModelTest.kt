@@ -10,6 +10,7 @@ import com.jassemsendi.unpacked.ui.home.FIRST_EVENT_MILLIS
 import com.jassemsendi.unpacked.ui.home.FakeClaimRepository
 import com.jassemsendi.unpacked.ui.home.FakeEventRepository
 import com.jassemsendi.unpacked.ui.home.RecordRef
+import com.jassemsendi.unpacked.ui.home.RecordRowUi
 import com.jassemsendi.unpacked.ui.home.RecordTimeUi
 import com.jassemsendi.unpacked.ui.home.advertiser
 import com.jassemsendi.unpacked.ui.home.event
@@ -77,25 +78,25 @@ class SearchViewModelTest {
 
     private val sourdoughHits =
         listOf(
-            SearchHitUi(
+            RecordRowUi(
                 RecordRef.Claim(datedInterest.provenance),
                 "Inferred interest",
                 RecordTimeUi.LastUpdated("2026-10-27 10:17"),
                 "Sourdough baking",
             ),
-            SearchHitUi(
+            RecordRowUi(
                 RecordRef.Event(likedBread.provenance),
                 "Content liked",
                 RecordTimeUi.Happened("2026-10-27 10:13"),
                 "https://example.com/p/sourdough-tips",
             ),
-            SearchHitUi(
+            RecordRowUi(
                 RecordRef.Event(bakeryAd.provenance),
                 "Ad shown",
                 RecordTimeUi.Happened("2026-10-27 10:12"),
                 "Example Bakery",
             ),
-            SearchHitUi(
+            RecordRowUi(
                 RecordRef.Claim(undatedInterest.provenance),
                 "Inferred interest",
                 RecordTimeUi.Undated,

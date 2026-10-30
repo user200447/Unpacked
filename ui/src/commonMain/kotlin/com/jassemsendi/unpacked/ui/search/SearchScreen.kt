@@ -1,17 +1,12 @@
 package com.jassemsendi.unpacked.ui.search
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -26,12 +21,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jassemsendi.unpacked.model.ExportId
 import com.jassemsendi.unpacked.model.Provenance
-import com.jassemsendi.unpacked.ui.home.RecordCard
-import com.jassemsendi.unpacked.ui.home.RecordCardLines
 import com.jassemsendi.unpacked.ui.home.RecordDetailLayout
 import com.jassemsendi.unpacked.ui.home.RecordRef
+import com.jassemsendi.unpacked.ui.home.RecordRow
+import com.jassemsendi.unpacked.ui.home.RecordRowUi
 import com.jassemsendi.unpacked.ui.home.RecordTimeUi
-import com.jassemsendi.unpacked.ui.home.text
+import com.jassemsendi.unpacked.ui.home.listKey
 import com.jassemsendi.unpacked.ui.theme.ErrorNotice
 import com.jassemsendi.unpacked.ui.theme.Spacing
 import com.jassemsendi.unpacked.ui.theme.readable
@@ -96,7 +91,7 @@ private fun Hits(
             }
         }
         items(state.hits, key = { it.ref.listKey() }) { hit ->
-            HitCard(hit, selected = state.detail?.ref == hit.ref) { onAction(SearchAction.Open(hit.ref)) }
+            RecordRow(hit, selected = state.detail?.ref == hit.ref) { onAction(SearchAction.Open(hit.ref)) }
         }
         if (state.hasMore) {
             item {
@@ -154,35 +149,6 @@ private fun Hint() {
     }
 }
 
-@Composable
-private fun HitCard(
-    hit: SearchHitUi,
-    selected: Boolean,
-    onOpen: () -> Unit,
-) {
-    val provenance = hit.ref.provenance
-    RecordCard(
-        lines =
-            RecordCardLines(
-                time = hit.time.text(),
-                kindLabel = hit.kindLabel,
-                summary = hit.summary,
-                footnote =
-                    "${provenance.path}, record ${provenance.recordIndex}" +
-                        if (provenance.itemIndex > 0) ", item ${provenance.itemIndex}" else "",
-            ),
-        selected = selected,
-        onOpen = onOpen,
-    )
-}
-
-/** A list key the platform can save: an Event and a Claim read from the same record share a Provenance hash. */
-private fun RecordRef.listKey(): String =
-    when (this) {
-        is RecordRef.Event -> "event:${provenance.hash}"
-        is RecordRef.Claim -> "claim:${provenance.hash}"
-    }
-
 @Preview
 @Composable
 private fun SearchScreenPreview() {
@@ -194,13 +160,13 @@ private fun SearchScreenPreview() {
                     text = "courier",
                     hits =
                         listOf(
-                            SearchHitUi(
+                            RecordRowUi(
                                 ref = RecordRef.Claim(Provenance(export, "ads_information/advertisers.json", 0, 2)),
                                 kindLabel = "Advertiser holds contact",
                                 time = RecordTimeUi.Undated,
                                 summary = "Example Courier",
                             ),
-                            SearchHitUi(
+                            RecordRowUi(
                                 ref = RecordRef.Event(Provenance(export, "ads_information/ads_viewed.json", 1)),
                                 kindLabel = "Ad shown",
                                 time = RecordTimeUi.Happened("2026-10-27 10:12"),

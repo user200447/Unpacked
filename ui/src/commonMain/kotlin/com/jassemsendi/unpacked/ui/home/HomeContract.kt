@@ -12,7 +12,7 @@ data class HomeState(
     /** Events in the whole library, before any filter. */
     val totalCount: Int = 0,
     /** Every Kind with at least one Event, in Kind order, each with its count from the repository. */
-    val kinds: List<KindCountUi> = emptyList(),
+    val kinds: List<KindCountUi<EventKind>> = emptyList(),
     /** The Kind the timeline is narrowed to, or null for every Kind. */
     val filter: EventKind? = null,
     /** The Events read so far, newest first. */
@@ -26,10 +26,21 @@ data class HomeState(
     val error: String? = null,
 )
 
-data class KindCountUi(
-    val kind: EventKind,
+/** One Kind of Event, Claim or Entity with how many the library holds, as a filter or a group lists it. */
+data class KindCountUi<K>(
+    val kind: K,
     val label: String,
     val count: Int,
+)
+
+/** One Event or Claim as a list other than the timeline shows it; its Provenance travels in [ref]. */
+data class RecordRowUi(
+    val ref: RecordRef,
+    val kindLabel: String,
+    /** An Event happened at its time; a Claim was at most last updated at its "as of" time. */
+    val time: RecordTimeUi,
+    /** What it concerned: the Entities it names, or failing that its first recorded value. */
+    val summary: String,
 )
 
 /** One Event as the timeline lists it. */
@@ -92,6 +103,14 @@ sealed interface RecordTimeUi {
 data class AttributeUi(
     val label: String,
     val value: String,
+)
+
+/** Where the Home screen leads: the other top-level screens, each a button in its header. */
+data class HomeDestinations(
+    val onImport: () -> Unit,
+    val onSearch: () -> Unit,
+    val onClaims: () -> Unit,
+    val onEntities: () -> Unit,
 )
 
 sealed interface HomeAction {

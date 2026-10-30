@@ -8,6 +8,8 @@ enum class Screen {
     Import,
     Home,
     Search,
+    Claims,
+    Entities,
     ;
 
     companion object {
