@@ -95,8 +95,11 @@ private fun Groups(
                 }
                 if (state.hasMore) {
                     item(key = "more:${group.kind}") {
-                        // Reaching the end of what was read asks for the next page; the spinner stays until it lands.
-                        LaunchedEffect(state.claims.size) { onAction(ClaimsAction.NextPage) }
+                        // Reaching the end of what was read asks for the next page, and again whenever a read ends with
+                        // the end still in view, even one that listed nothing new; the spinner stays until it lands.
+                        LaunchedEffect(state.claims.size, state.isLoading, state.isReadingNextPage) {
+                            onAction(ClaimsAction.NextPage)
+                        }
                         CircularProgressIndicator()
                     }
                 }

@@ -3,8 +3,8 @@ package com.jassemsendi.unpacked.data
 import androidx.room.immediateTransaction
 import androidx.room.useWriterConnection
 import com.jassemsendi.unpacked.data.db.ClaimRow
+import com.jassemsendi.unpacked.data.db.EntityCountRow
 import com.jassemsendi.unpacked.data.db.EntityLink
-import com.jassemsendi.unpacked.data.db.EntityReferenceRow
 import com.jassemsendi.unpacked.data.db.EventRow
 import com.jassemsendi.unpacked.data.db.HitType
 import com.jassemsendi.unpacked.data.db.LibraryDatabase
@@ -70,27 +70,27 @@ internal class RoomEntityRepository(
     override suspend fun all(): Result<List<Entity>, DataError.Local> = localCall { hydrate(dao.all().map { it.id }) }
 
     override suspend fun countByKind(): Result<Map<EntityKind, Int>, DataError.Local> =
-        localCall { db.referenceDao().countByKind().toMap(EntityKind::valueOf) }
+        localCall { db.entityCountDao().countByKind().toMap(EntityKind::valueOf) }
 
     override suspend fun list(
         kind: EntityKind?,
         order: EntityOrder,
         limit: Int,
         offset: Int,
-    ): Result<List<EntityReferences>, DataError.Local> =
+    ): Result<List<EntityCounts>, DataError.Local> =
         localCall {
-            val byCount = order == EntityOrder.MostReferenced
-            withCounts(db.referenceDao().list(kind?.name, byCount, limit, offset))
+            val byCount = order == EntityOrder.MostNamed
+            withCounts(db.entityCountDao().list(kind?.name, byCount, limit, offset))
         }
 
-    override suspend fun references(id: String): Result<EntityReferences, DataError.Local> =
-        localCall { db.referenceDao().references(id)?.let { withCounts(listOf(it)).single() } }.orNotFound()
+    override suspend fun counts(id: String): Result<EntityCounts, DataError.Local> =
+        localCall { db.entityCountDao().counts(id)?.let { withCounts(listOf(it)).singleOrNull() } }.orNotFound()
 
     /** The Entities behind counted rows, in row order, with their attributes read in bulk. */
-    private suspend fun withCounts(rows: List<EntityReferenceRow>): List<EntityReferences> {
+    private suspend fun withCounts(rows: List<EntityCountRow>): List<EntityCounts> {
         val entityById = hydrate(rows.map { it.entity.id }).associateBy { it.id }
         return rows.mapNotNull { row ->
-            entityById[row.entity.id]?.let { EntityReferences(it, row.eventCount, row.claimCount) }
+            entityById[row.entity.id]?.let { EntityCounts(it, row.eventCount, row.claimCount) }
         }
     }
 
@@ -157,7 +157,7 @@ internal class RoomEventRepository(
         entityId: String,
         limit: Int,
         offset: Int,
-    ): Result<List<Event>, DataError.Local> = localCall { hydrate(db.referenceDao().events(entityId, limit, offset)) }
+    ): Result<List<Event>, DataError.Local> = localCall { hydrate(db.entityCountDao().events(entityId, limit, offset)) }
 
     /** The Events with these ids, in no particular order; ids that no longer exist are left out. */
     suspend fun byIds(ids: List<Long>): List<Event> = hydrate(ids.inChunks { dao.byIds(it) })
@@ -190,7 +190,7 @@ internal class RoomClaimRepository(
     ): Result<List<Claim>, DataError.Local> = localCall { hydrate(dao.byKind(kind.name, limit, offset)) }
 
     override suspend fun forEntity(entityId: String): Result<List<Claim>, DataError.Local> =
-        localCall { hydrate(db.referenceDao().claims(entityId)) }
+        localCall { hydrate(db.entityCountDao().claims(entityId)) }
 
     /** The Claims with these ids, in no particular order; ids that no longer exist are left out. */
     suspend fun byIds(ids: List<Long>): List<Claim> = hydrate(ids.inChunks { dao.byIds(it) })

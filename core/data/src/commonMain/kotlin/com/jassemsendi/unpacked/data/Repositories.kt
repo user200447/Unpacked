@@ -102,23 +102,23 @@ public interface EntityRepository {
         order: EntityOrder,
         limit: Int,
         offset: Int,
-    ): Result<List<EntityReferences>, DataError.Local>
+    ): Result<List<EntityCounts>, DataError.Local>
 
-    /** One Entity with its counts; [DataError.Local.NOT_FOUND] when no Entity has that id. */
-    public suspend fun references(id: String): Result<EntityReferences, DataError.Local>
+    /** One Entity with how many Events and Claims name it; [DataError.Local.NOT_FOUND] when no Entity has that id. */
+    public suspend fun counts(id: String): Result<EntityCounts, DataError.Local>
 }
 
 /** How an Entity list is ordered: by how often the Entity is named, or by its name. */
 public enum class EntityOrder {
-    /** Most Events and Claims first, then by name, so the names the Source leans on most come first. */
-    MostReferenced,
+    /** Named by the most Events and Claims first, then by name, so what the Source leans on most comes first. */
+    MostNamed,
 
     /** By display name without regard to case, then by id, so two Entities named alike keep a fixed order. */
     Name,
 }
 
-/** An Entity and how many Events and Claims name it, which is what the Entities screen lists. */
-public data class EntityReferences(
+/** An Entity and how many Events and Claims name it, which is what the Entities screen lists and sorts by. */
+public data class EntityCounts(
     val entity: Entity,
     val eventCount: Int,
     val claimCount: Int,

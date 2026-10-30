@@ -17,7 +17,7 @@ data class EntitiesState(
     val kinds: List<KindCountUi<EntityKind>> = emptyList(),
     /** The Kind the list is narrowed to, or null for every Kind. */
     val filter: EntityKind? = null,
-    val order: EntityOrder = EntityOrder.MostReferenced,
+    val order: EntityOrder = EntityOrder.MostNamed,
     /** The Entities read so far, in [order]. */
     val entities: List<EntityRowUi> = emptyList(),
     /** True while the repository holds Entities beyond [entities] for the current filter. */

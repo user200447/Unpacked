@@ -95,8 +95,11 @@ private fun EntityList(
         }
         if (state.hasMore) {
             item {
-                // Reaching the end of what was read asks for the next page; the spinner stays until it lands.
-                LaunchedEffect(state.entities.size) { onAction(EntitiesAction.NextPage) }
+                // Reaching the end of what was read asks for the next page, and again whenever a read ends with the
+                // end still in view, even one that listed nothing new; the spinner stays until it lands.
+                LaunchedEffect(state.entities.size, state.isLoading, state.isReadingNextPage) {
+                    onAction(EntitiesAction.NextPage)
+                }
                 CircularProgressIndicator()
             }
         }
@@ -116,7 +119,7 @@ private fun ListHeader(
         Column(modifier = Modifier.weight(weight = 1f)) {
             Text("Entities", style = MaterialTheme.typography.headlineMedium)
             Text(
-                "${counted(totalCount, "named thing")} in your library, each kept to its Source",
+                "${counted(totalCount, "Entity", "Entities")} in your library, each kept to its Source",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -131,8 +134,8 @@ private fun OrderChips(
 ) {
     Row(modifier = Modifier.readable(), horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
         FilterChip(
-            selected = order == EntityOrder.MostReferenced,
-            onClick = { onOrder(EntityOrder.MostReferenced) },
+            selected = order == EntityOrder.MostNamed,
+            onClick = { onOrder(EntityOrder.MostNamed) },
             label = { Text("Most named first") },
         )
         FilterChip(
@@ -167,7 +170,7 @@ private fun EntityCard(
         ) {
             Text(entity.name, style = MaterialTheme.typography.titleMedium)
             Text("${entity.kindLabel} on ${entity.sourceName}", style = MaterialTheme.typography.bodySmall)
-            Text(entity.references(), style = MaterialTheme.typography.bodyMedium)
+            Text(entity.counts(), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

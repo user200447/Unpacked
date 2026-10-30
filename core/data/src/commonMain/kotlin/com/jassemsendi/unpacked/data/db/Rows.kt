@@ -308,7 +308,7 @@ internal data class SearchHitRow(
 )
 
 /** An Entity row with how many Events and Claims link to it, as the reference queries select them. */
-internal data class EntityReferenceRow(
+internal data class EntityCountRow(
     @Embedded val entity: EntityRow,
     @ColumnInfo(name = "event_count") val eventCount: Int,
     @ColumnInfo(name = "claim_count") val claimCount: Int,

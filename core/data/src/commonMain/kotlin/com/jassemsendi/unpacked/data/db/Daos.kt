@@ -5,6 +5,17 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 
+/** How Claims list wherever they are not the timeline: dated ones newest first, then undated ones in file order. */
+private const val CLAIMS_NEWEST_FIRST = "as_of IS NULL, as_of DESC, path, record_index, item_index"
+
+/** Every Entity column plus how many Events and Claims link to it, as [EntityCountRow] reads them. */
+private const val ENTITY_COUNTS = """
+    SELECT entities.*,
+        (SELECT COUNT(*) FROM event_entities WHERE entity_id = entities.id) AS event_count,
+        (SELECT COUNT(*) FROM claim_entities WHERE entity_id = entities.id) AS claim_count
+    FROM entities
+    """
+
 @Dao
 internal interface ImportDao {
     @Insert
@@ -104,15 +115,7 @@ internal interface ClaimDao {
     @Query("SELECT * FROM claims WHERE import_id = :importId ORDER BY as_of, path, record_index, item_index")
     suspend fun forImport(importId: Long): List<ClaimRow>
 
-    /** Dated Claims newest first, then undated ones in file order. */
-    @Query(
-        """
-        SELECT * FROM claims
-        WHERE kind = :kind
-        ORDER BY as_of IS NULL, as_of DESC, path, record_index, item_index
-        LIMIT :limit OFFSET :offset
-        """,
-    )
+    @Query("SELECT * FROM claims WHERE kind = :kind ORDER BY $CLAIMS_NEWEST_FIRST LIMIT :limit OFFSET :offset")
     suspend fun byKind(
         kind: String,
         limit: Int,
@@ -165,11 +168,11 @@ internal interface EntityDao {
 }
 
 /**
- * Who names an Entity: how many Events and Claims link to each, and the Events and Claims behind one. Apart
- * from [EntityDao] so each stays within the size a DAO should have.
+ * Who names an Entity: how many Events and Claims link to each, and the Events and Claims behind one. These
+ * reads cross the Entity, Event and Claim tables, so they sit in their own DAO rather than in any one table's.
  */
 @Dao
-internal interface ReferenceDao {
+internal interface EntityCountDao {
     @Query("SELECT kind, COUNT(*) AS count FROM entities GROUP BY kind")
     suspend fun countByKind(): List<KindCount>
 
@@ -179,10 +182,7 @@ internal interface ReferenceDao {
      */
     @Query(
         """
-        SELECT entities.*,
-            (SELECT COUNT(*) FROM event_entities WHERE entity_id = entities.id) AS event_count,
-            (SELECT COUNT(*) FROM claim_entities WHERE entity_id = entities.id) AS claim_count
-        FROM entities
+        $ENTITY_COUNTS
         WHERE :kind IS NULL OR kind = :kind
         ORDER BY CASE WHEN :byCount THEN event_count + claim_count ELSE 0 END DESC, display_name COLLATE NOCASE, id
         LIMIT :limit OFFSET :offset
@@ -193,18 +193,10 @@ internal interface ReferenceDao {
         byCount: Boolean,
         limit: Int,
         offset: Int,
-    ): List<EntityReferenceRow>
+    ): List<EntityCountRow>
 
-    @Query(
-        """
-        SELECT entities.*,
-            (SELECT COUNT(*) FROM event_entities WHERE entity_id = entities.id) AS event_count,
-            (SELECT COUNT(*) FROM claim_entities WHERE entity_id = entities.id) AS claim_count
-        FROM entities
-        WHERE id = :id
-        """,
-    )
-    suspend fun references(id: String): EntityReferenceRow?
+    @Query("$ENTITY_COUNTS WHERE id = :id")
+    suspend fun counts(id: String): EntityCountRow?
 
     @Query(
         """
@@ -221,13 +213,12 @@ internal interface ReferenceDao {
         offset: Int,
     ): List<EventRow>
 
-    /** Dated Claims newest first, then undated ones in file order, as [ClaimDao.byKind] orders them. */
     @Query(
         """
         SELECT claims.* FROM claims
         JOIN claim_entities ON claim_entities.claim_id = claims.id
         WHERE claim_entities.entity_id = :entityId
-        ORDER BY as_of IS NULL, as_of DESC, path, record_index, item_index
+        ORDER BY $CLAIMS_NEWEST_FIRST
         """,
     )
     suspend fun claims(entityId: String): List<ClaimRow>

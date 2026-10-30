@@ -235,6 +235,52 @@ class EntitiesViewModelTest {
         }
 
     @Test
+    fun openingAnotherEntityDropsAReadStillInFlightForTheFirst() =
+        runTest {
+            val viewModel = viewModel()
+
+            viewModel.state.test {
+                val list = awaitItem()
+                entities.gate = CompletableDeferred()
+                viewModel.onAction(EntitiesAction.OpenEntity(courier.id))
+                viewModel.onAction(EntitiesAction.OpenEntity(bakery.id))
+                expectNoEvents()
+                entities.gate?.complete(Unit)
+
+                val opened = awaitItem()
+                assertEquals(bakeryRow, opened.opened?.entity)
+                assertEquals(list.entities, opened.entities)
+                expectNoEvents()
+            }
+        }
+
+    @Test
+    fun theNextPageOfAnEntitysEventsStartsWhereTheRepositoryLeftOffEvenWhenOneWasListedAlready() =
+        runTest {
+            val viewModel = viewModel()
+            viewModel.onAction(EntitiesAction.OpenEntity(courier.id))
+            // An Import lands meanwhile with a newer ad, so what was the third Event is now the second page's first.
+            events.events += event(EventKind.AdShown, minutesAfterFirst = 9, entities = listOf(courier))
+
+            viewModel.onAction(EntitiesAction.MoreEvents)
+
+            val listed =
+                viewModel.state.value.opened
+                    ?.events
+                    ?.map { it.ref }
+            assertEquals(
+                courierAds.reversed().map { RecordRef.Event(it.provenance) },
+                listed,
+                "listed once, none twice",
+            )
+            assertEquals(
+                false,
+                viewModel.state.value.opened
+                    ?.hasMoreEvents,
+            )
+        }
+
+    @Test
     fun anEntityTheLibraryNoLongerHoldsIsReportedAndClosed() =
         runTest {
             val viewModel = viewModel()

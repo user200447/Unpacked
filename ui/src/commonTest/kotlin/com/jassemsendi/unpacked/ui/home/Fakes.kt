@@ -124,7 +124,7 @@ class FakeClaimRepository(
 }
 
 /** Absence answers as the Room repositories answer it. */
-private fun <T : Any> Result<T?, DataError.Local>.orNotFound(): Result<T, DataError.Local> =
+fun <T : Any> Result<T?, DataError.Local>.orNotFound(): Result<T, DataError.Local> =
     when (this) {
         is Result.Error -> this
         is Result.Success -> data?.let { Result.Success(it) } ?: Result.Error(DataError.Local.NOT_FOUND)

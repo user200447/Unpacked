@@ -42,6 +42,15 @@ class EntitiesViewModel(
     /** Bumped by every reload so a page that was in flight for an older filter or order is dropped on arrival. */
     private var generation = 0
 
+    /** Bumped by every Entity opened or closed so a read that was in flight for an earlier one is dropped on arrival. */
+    private var opening = 0
+
+    /** How many Entities the repository has handed over for the current list, which is where the next page starts. */
+    private var offset = 0
+
+    /** How many Events the repository has handed over for the opened Entity, which is where its next page starts. */
+    private var eventOffset = 0
+
     /** The Kind counts and the first page, read together so the screen never shows one without the other. */
     private data class FirstPage(
         val kinds: List<KindCountUi<EntityKind>>,
@@ -52,6 +61,7 @@ class EntitiesViewModel(
     fun onAction(action: EntitiesAction) {
         val before = _state.value
         when (action) {
+            // The list and the opened Entity are re-read side by side; an Entity that is gone closes, the list stays.
             EntitiesAction.Refresh -> {
                 reload(before.filter, before.order)
                 before.opened?.let { openEntity(it.entity.id) }
@@ -74,6 +84,7 @@ class EntitiesViewModel(
             }
 
             EntitiesAction.CloseEntity -> {
+                opening++
                 _state.update { it.copy(opened = null, detail = null) }
             }
 
@@ -111,6 +122,7 @@ class EntitiesViewModel(
                 when (read) {
                     is Result.Success -> {
                         val page = read.data
+                        offset = page.entities.size
                         state
                             .copy(
                                 isLoading = false,
@@ -156,12 +168,13 @@ class EntitiesViewModel(
         val current = generation
         _state.update { it.copy(isReadingNextPage = true) }
         viewModelScope.launch {
-            val read = entities.list(before.filter, before.order, pageSize, before.entities.size)
+            val read = entities.list(before.filter, before.order, pageSize, offset)
             if (current != generation) return@launch
             _state.update { state ->
                 when (read) {
                     is Result.Success -> {
                         // An Import landing meanwhile shifts the offsets; an Entity read twice is listed once.
+                        offset += read.data.size
                         val rows = (state.entities + read.data.map { it.toRow() }).distinctBy { it.id }
                         state.copy(isReadingNextPage = false, error = null, entities = rows).withHasMore()
                     }
@@ -182,14 +195,21 @@ class EntitiesViewModel(
     }
 
     private fun openEntity(id: String) {
+        val current = ++opening
         viewModelScope.launch {
             val read = readEntity(id)
+            if (current != opening) return@launch
             _state.update {
                 when (read) {
-                    is Result.Success -> it.copy(opened = read.data, error = null)
+                    is Result.Success -> {
+                        eventOffset = read.data.events.size
+                        it.copy(opened = read.data, error = null)
+                    }
 
                     // An Entity that is gone, say with its Import, closes; the list is what the next Refresh re-reads.
-                    is Result.Error -> it.copy(opened = null, detail = null, error = read.error.toMessage())
+                    is Result.Error -> {
+                        it.copy(opened = null, detail = null, error = read.error.toMessage())
+                    }
                 }
             }
         }
@@ -197,7 +217,7 @@ class EntitiesViewModel(
 
     /** The Entity, its first page of Events and every Claim, read together so the pane never shows one without the others. */
     private suspend fun readEntity(id: String): Result<EntityDetailUi, DataError.Local> =
-        entities.references(id).andThen { references ->
+        entities.counts(id).andThen { references ->
             events.forEntity(id, pageSize, 0).andThen { firstEvents ->
                 claims.forEntity(id).map { claimRows ->
                     EntityDetailUi(
@@ -214,25 +234,28 @@ class EntitiesViewModel(
     private fun moreEvents() {
         val opened = _state.value.opened ?: return
         if (opened.isReadingMoreEvents || !opened.hasMoreEvents) return
+        val current = opening
         _state.update { it.copy(opened = opened.copy(isReadingMoreEvents = true)) }
         viewModelScope.launch {
-            val read = events.forEntity(opened.entity.id, pageSize, opened.events.size)
+            val read = events.forEntity(opened.entity.id, pageSize, eventOffset)
+            // The pane may have moved on, or re-read this Entity, meanwhile; a page for what it showed before is dropped.
+            if (current != opening) return@launch
             _state.update { state ->
-                // The pane may have moved on to another Entity meanwhile; a page for the old one is dropped.
-                val current = state.opened?.takeIf { it.entity.id == opened.entity.id } ?: return@update state
+                val shown = state.opened ?: return@update state
                 when (read) {
                     is Result.Success -> {
-                        val rows = (current.events + read.data.map { it.toRow(timeZone) }).distinctBy { it.ref }
-                        val more = rows.size < current.entity.eventCount
+                        eventOffset += read.data.size
+                        val rows = (shown.events + read.data.map { it.toRow(timeZone) }).distinctBy { it.ref }
+                        val more = rows.size < shown.entity.eventCount
                         state.copy(
-                            opened = current.copy(events = rows, hasMoreEvents = more, isReadingMoreEvents = false),
+                            opened = shown.copy(events = rows, hasMoreEvents = more, isReadingMoreEvents = false),
                             error = null,
                         )
                     }
 
                     is Result.Error -> {
                         state.copy(
-                            opened = current.copy(hasMoreEvents = false, isReadingMoreEvents = false),
+                            opened = shown.copy(hasMoreEvents = false, isReadingMoreEvents = false),
                             error = read.error.toMessage(),
                         )
                     }

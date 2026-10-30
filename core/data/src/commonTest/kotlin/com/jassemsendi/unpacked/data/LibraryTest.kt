@@ -646,18 +646,21 @@ abstract class LibraryTest {
     @Test
     fun entitiesAreListedWithHowManyEventsAndClaimsNameThemMostNamedFirstOrByName() =
         runTest {
-            SyntheticInstagramExport(
-                adsViewed = 12,
-                includeTimedFiles = true,
-                includeClaimFiles = true,
-            ).writeTo(fs, root)
+            val export = SyntheticInstagramExport(adsViewed = 12, includeTimedFiles = true, includeClaimFiles = true)
+            export.writeTo(fs, root)
             val import = import(Export.directory(fs, root))
             val events = library.events.forImport(import.id).orFail()
             val claims = library.claims.forImport(import.id).orFail()
             val all = library.entities.all().orFail()
+
+            // Straight from the fixture: every ad names its advertiser by username, and no Claim file names one that way.
+            export.ads.groupingBy { it.username }.eachCount().forEach { (username, shown) ->
+                val counts = library.entities.counts("instagram:advertiser:$username").orFail()
+                assertEquals(shown to 0, counts.eventCount to counts.claimCount, username)
+            }
             val expected =
                 all.map { entity ->
-                    EntityReferences(
+                    EntityCounts(
                         entity,
                         eventCount = events.count { event -> event.entities.any { it.id == entity.id } },
                         claimCount = claims.count { claim -> claim.entities.any { it.id == entity.id } },
@@ -670,14 +673,14 @@ abstract class LibraryTest {
             assertEquals(all.groupingBy { it.kind }.eachCount(), library.entities.countByKind().orFail())
             assertEquals(
                 expected.sortedWith(
-                    compareByDescending<EntityReferences> { it.total }
+                    compareByDescending<EntityCounts> { it.total }
                         .thenBy { it.entity.displayName.lowercase() }
                         .thenBy { it.entity.id },
                 ),
                 library.entities
                     .list(
                         kind = null,
-                        order = EntityOrder.MostReferenced,
+                        order = EntityOrder.MostNamed,
                         limit = all.size,
                         offset = 0,
                     ).orFail(),
@@ -686,12 +689,12 @@ abstract class LibraryTest {
                 expected
                     .filter { it.entity.kind == EntityKind.Advertiser }
                     .sortedWith(
-                        compareBy<EntityReferences> { it.entity.displayName.lowercase() }.thenBy { it.entity.id },
+                        compareBy<EntityCounts> { it.entity.displayName.lowercase() }.thenBy { it.entity.id },
                     ),
                 library.entities.list(EntityKind.Advertiser, EntityOrder.Name, limit = all.size, offset = 0).orFail(),
             )
-            assertEquals(mostShown, library.entities.references(mostShown.entity.id).orFail())
-            assertEquals(notFound, library.entities.references("instagram:advertiser:nobody"))
+            assertEquals(mostShown, library.entities.counts(mostShown.entity.id).orFail())
+            assertEquals(notFound, library.entities.counts("instagram:advertiser:nobody"))
         }
 
     @Test
@@ -708,11 +711,11 @@ abstract class LibraryTest {
 
             val paged =
                 buildList {
-                    var page = library.entities.list(null, EntityOrder.MostReferenced, pageSize, 0).orFail()
+                    var page = library.entities.list(null, EntityOrder.MostNamed, pageSize, 0).orFail()
                     while (page.isNotEmpty()) {
                         add(page)
                         page =
-                            library.entities.list(null, EntityOrder.MostReferenced, pageSize, size * pageSize).orFail()
+                            library.entities.list(null, EntityOrder.MostNamed, pageSize, size * pageSize).orFail()
                     }
                 }
 

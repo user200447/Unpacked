@@ -38,6 +38,12 @@ class ClaimsViewModel(
     /** Bumped by every reload so a page that was in flight for an older group is dropped on arrival. */
     private var generation = 0
 
+    /**
+     * How many Claims the repository has handed over for the open group, which is where the next page starts.
+     * Kept apart from the listed Claims, which may hold fewer once one read twice is listed once.
+     */
+    private var offset = 0
+
     /** The Kind counts and the opened group's first page, read together so the screen never shows one without the other. */
     private data class FirstPage(
         val kinds: List<KindCountUi<ClaimKind>>,
@@ -72,6 +78,7 @@ class ClaimsViewModel(
                 when (read) {
                     is Result.Success -> {
                         val page = read.data
+                        offset = page.claims.size
                         state
                             .copy(
                                 isLoading = false,
@@ -119,12 +126,13 @@ class ClaimsViewModel(
         val current = generation
         _state.update { it.copy(isReadingNextPage = true) }
         viewModelScope.launch {
-            val read = claims.byKind(expanded, pageSize, before.claims.size)
+            val read = claims.byKind(expanded, pageSize, offset)
             if (current != generation) return@launch
             _state.update { state ->
                 when (read) {
                     is Result.Success -> {
                         // An Import landing meanwhile shifts the offsets; a Claim read twice is listed once.
+                        offset += read.data.size
                         val rows = (state.claims + read.data.map { it.toRow(timeZone) }).distinctBy { it.ref }
                         state.copy(isReadingNextPage = false, error = null, claims = rows).withHasMore()
                     }

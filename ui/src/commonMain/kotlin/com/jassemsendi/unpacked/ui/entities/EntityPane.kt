@@ -53,7 +53,7 @@ internal fun EntityPane(
         section("Events, newest first", opened.events, selected, onAction)
         if (opened.hasMoreEvents) {
             item {
-                LaunchedEffect(opened.events.size) { onAction(EntitiesAction.MoreEvents) }
+                LaunchedEffect(opened.events.size, opened.isReadingMoreEvents) { onAction(EntitiesAction.MoreEvents) }
                 CircularProgressIndicator()
             }
         }
@@ -91,7 +91,7 @@ private fun PaneHeader(
         Column(modifier = Modifier.weight(weight = 1f)) {
             Text(entity.name, style = MaterialTheme.typography.headlineMedium)
             Text("${entity.kindLabel} on ${entity.sourceName}", style = MaterialTheme.typography.bodyMedium)
-            Text(entity.references(), style = MaterialTheme.typography.bodyMedium)
+            Text(entity.counts(), style = MaterialTheme.typography.bodyMedium)
         }
         OutlinedButton(onClick = onClose) { Text("Entities") }
     }

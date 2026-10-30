@@ -19,11 +19,12 @@ fun Enum<*>.label(): String =
 
 fun <K : Enum<K>> K.toUi(count: Int): KindCountUi<K> = KindCountUi(this, label(), count)
 
-/** "1 Event", "2 Events": a count with its noun, for the lines that count things. */
+/** "1 Event", "2 Events", "2 Entities": a count with its noun, for the lines that count things. */
 fun counted(
     count: Int,
     noun: String,
-): String = if (count == 1) "$count $noun" else "$count ${noun}s"
+    plural: String = "${noun}s",
+): String = if (count == 1) "$count $noun" else "$count $plural"
 
 fun Event.toEntry(timeZone: TimeZone): TimelineEntryUi =
     TimelineEntryUi(

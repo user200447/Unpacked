@@ -1,7 +1,7 @@
 package com.jassemsendi.unpacked.ui.entities
 
+import com.jassemsendi.unpacked.data.EntityCounts
 import com.jassemsendi.unpacked.data.EntityOrder
-import com.jassemsendi.unpacked.data.EntityReferences
 import com.jassemsendi.unpacked.data.EntityRepository
 import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.Entity
@@ -9,6 +9,7 @@ import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.Result
 import com.jassemsendi.unpacked.ui.home.FakeClaimRepository
 import com.jassemsendi.unpacked.ui.home.FakeEventRepository
+import com.jassemsendi.unpacked.ui.home.orNotFound
 import kotlinx.coroutines.CompletableDeferred
 
 /**
@@ -26,10 +27,10 @@ class FakeEntityRepository(
     private val entities: List<Entity>
         get() = (events.events.flatMap { it.entities } + claims.claims.flatMap { it.entities }).distinctBy { it.id }
 
-    private val referenced: List<EntityReferences>
+    private val referenced: List<EntityCounts>
         get() =
             entities.map { entity ->
-                EntityReferences(
+                EntityCounts(
                     entity,
                     eventCount = events.events.count { event -> event.entities.any { it.id == entity.id } },
                     claimCount = claims.claims.count { claim -> claim.entities.any { it.id == entity.id } },
@@ -51,12 +52,12 @@ class FakeEntityRepository(
         order: EntityOrder,
         limit: Int,
         offset: Int,
-    ): Result<List<EntityReferences>, DataError.Local> {
+    ): Result<List<EntityCounts>, DataError.Local> {
         gate?.await()
-        val byName = compareBy<EntityReferences> { it.entity.displayName.lowercase() }.thenBy { it.entity.id }
+        val byName = compareBy<EntityCounts> { it.entity.displayName.lowercase() }.thenBy { it.entity.id }
         val ordering =
             when (order) {
-                EntityOrder.MostReferenced -> compareByDescending<EntityReferences> { it.total }.then(byName)
+                EntityOrder.MostNamed -> compareByDescending<EntityCounts> { it.total }.then(byName)
                 EntityOrder.Name -> byName
             }
         return answer {
@@ -68,15 +69,11 @@ class FakeEntityRepository(
         }
     }
 
-    override suspend fun references(id: String): Result<EntityReferences, DataError.Local> =
-        answer { referenced.find { it.entity.id == id } }.orNotFound()
+    override suspend fun counts(id: String): Result<EntityCounts, DataError.Local> {
+        gate?.await()
+        return answer { referenced.find { it.entity.id == id } }.orNotFound()
+    }
 
     private fun <T> answer(read: () -> T): Result<T, DataError.Local> =
         failure?.let { Result.Error(it) } ?: Result.Success(read())
-
-    private fun <T : Any> Result<T?, DataError.Local>.orNotFound(): Result<T, DataError.Local> =
-        when (this) {
-            is Result.Error -> this
-            is Result.Success -> data?.let { Result.Success(it) } ?: Result.Error(DataError.Local.NOT_FOUND)
-        }
 }
