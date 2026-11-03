@@ -86,7 +86,7 @@ public sealed interface InsightCard {
         public val follows: Figure,
         public val unfollows: Figure,
         /** Every month from the first with a follow or unfollow to the last, quiet months between included. */
-        public val byMonth: List<MonthOfFollows>,
+        public val byMonth: List<MonthCounts>,
     ) : InsightCard {
         override val isEmpty: Boolean get() = follows.value == 0 && unfollows.value == 0
     }
@@ -101,7 +101,7 @@ public sealed interface InsightCard {
         override val isEmpty: Boolean get() = locations.value == 0 && interests.value == 0
     }
 
-    /** How the user is followed beyond the app: the links visited, and the settings over activity off the platform. */
+    /** How the user is tracked beyond the app: the links visited, and the settings over activity off the platform. */
     public data class OffPlatform(
         public val linksVisited: Figure,
         public val settings: Figure,
@@ -114,22 +114,17 @@ public sealed interface InsightCard {
         public val sent: Figure,
         public val received: Figure,
         /** Every month from the first with a message to the last, quiet months between included. */
-        public val byMonth: List<MonthOfMessages>,
+        public val byMonth: List<MonthCounts>,
     ) : InsightCard {
         override val isEmpty: Boolean get() = sent.value == 0 && received.value == 0
     }
 }
 
-/** One month of the social graph card's series, in the device's zone. */
-public data class MonthOfFollows(
+/**
+ * One month of a card that counts over time, in the device's zone: the card's numbers counted within that month
+ * alone, in the card's order (follows then unfollows; sent then received), each opening the Timeline of its Kind.
+ */
+public data class MonthCounts(
     public val month: YearMonth,
-    public val follows: Int,
-    public val unfollows: Int,
-)
-
-/** One month of the messages card's series, in the device's zone. */
-public data class MonthOfMessages(
-    public val month: YearMonth,
-    public val sent: Int,
-    public val received: Int,
+    public val counts: List<Figure>,
 )

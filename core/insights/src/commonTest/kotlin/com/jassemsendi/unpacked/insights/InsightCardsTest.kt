@@ -209,10 +209,10 @@ class InsightCardsTest {
             assertEquals(Figure(1, Opens.Timeline(EventKind.Unfollow)), card.unfollows)
             assertEquals(
                 listOf(
-                    MonthOfFollows(YearMonth(2026, 7), follows = 1, unfollows = 0),
-                    MonthOfFollows(YearMonth(2026, 8), follows = 0, unfollows = 0),
-                    MonthOfFollows(YearMonth(2026, 9), follows = 0, unfollows = 0),
-                    MonthOfFollows(YearMonth(2026, 10), follows = 2, unfollows = 1),
+                    follows(YearMonth(2026, 7), 1, 0),
+                    follows(YearMonth(2026, 8), 0, 0),
+                    follows(YearMonth(2026, 9), 0, 0),
+                    follows(YearMonth(2026, 10), 2, 1),
                 ),
                 card.byMonth,
             )
@@ -222,8 +222,8 @@ class InsightCardsTest {
             assertEquals(card.follows, east.follows)
             assertEquals(
                 listOf(
-                    MonthOfFollows(YearMonth(2026, 10), follows = 1, unfollows = 1),
-                    MonthOfFollows(YearMonth(2026, 11), follows = 1, unfollows = 0),
+                    follows(YearMonth(2026, 10), 1, 1),
+                    follows(YearMonth(2026, 11), 1, 0),
                 ),
                 east.byMonth.takeLast(2),
             )
@@ -258,8 +258,8 @@ class InsightCardsTest {
             assertEquals(Figure(3, Opens.Timeline(EventKind.MessageReceived)), card.received)
             assertEquals(
                 listOf(
-                    MonthOfMessages(YearMonth(2026, 9), sent = 1, received = 0),
-                    MonthOfMessages(YearMonth(2026, 10), sent = 1, received = 3),
+                    messages(YearMonth(2026, 9), 1, 0),
+                    messages(YearMonth(2026, 10), 1, 3),
                 ),
                 card.byMonth,
             )
@@ -267,9 +267,9 @@ class InsightCardsTest {
             val east = MessagesReader(events, TimeZone.of("UTC+03:00")).read().orFail()
             assertEquals(
                 listOf(
-                    MonthOfMessages(YearMonth(2026, 9), sent = 1, received = 0),
-                    MonthOfMessages(YearMonth(2026, 10), sent = 0, received = 1),
-                    MonthOfMessages(YearMonth(2026, 11), sent = 1, received = 2),
+                    messages(YearMonth(2026, 9), 1, 0),
+                    messages(YearMonth(2026, 10), 0, 1),
+                    messages(YearMonth(2026, 11), 1, 2),
                 ),
                 east.byMonth,
             )
@@ -281,11 +281,15 @@ class InsightCardsTest {
             val onlyUnfollows = FakeEventRepository(event(EventKind.Unfollow, monday, 0))
             val social = SocialGraphReader(onlyUnfollows, TimeZone.UTC).read().orFail()
             assertFalse(social.isEmpty)
-            assertEquals(listOf(MonthOfFollows(YearMonth(2026, 10), follows = 0, unfollows = 1)), social.byMonth)
+            assertEquals(listOf(follows(YearMonth(2026, 10), 0, 1)), social.byMonth)
 
             val onlySettings = FakeClaimRepository(claim(ClaimKind.OffPlatformSetting, "settings.json", 0))
             assertFalse(OffPlatformReader(FakeEventRepository(), onlySettings).read().orFail().isEmpty)
             assertTrue(OffPlatformReader(FakeEventRepository(), FakeClaimRepository()).read().orFail().isEmpty)
+
+            val onlyInterests = FakeClaimRepository(claim(ClaimKind.InferredInterest, "your_topics.json", 0, cooking))
+            assertFalse(InferredReader(onlyInterests).read().orFail().isEmpty)
+            assertTrue(InferredReader(FakeClaimRepository()).read().orFail().isEmpty)
         }
 
     private companion object {
@@ -305,6 +309,30 @@ class InsightCardsTest {
         fun place(name: String) = Entity(Source.Instagram, EntityKind.Place, Entity.normalizeKey(name), name)
 
         fun topic(name: String) = Entity(Source.Instagram, EntityKind.Topic, Entity.normalizeKey(name), name)
+
+        fun follows(
+            month: YearMonth,
+            follows: Int,
+            unfollows: Int,
+        ) = MonthCounts(
+            month,
+            listOf(
+                Figure(follows, Opens.Timeline(EventKind.Follow)),
+                Figure(unfollows, Opens.Timeline(EventKind.Unfollow)),
+            ),
+        )
+
+        fun messages(
+            month: YearMonth,
+            sent: Int,
+            received: Int,
+        ) = MonthCounts(
+            month,
+            listOf(
+                Figure(sent, Opens.Timeline(EventKind.MessageSent)),
+                Figure(received, Opens.Timeline(EventKind.MessageReceived)),
+            ),
+        )
 
         fun claim(
             kind: ClaimKind,

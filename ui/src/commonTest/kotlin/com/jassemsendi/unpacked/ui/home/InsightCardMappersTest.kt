@@ -2,8 +2,7 @@ package com.jassemsendi.unpacked.ui.home
 
 import com.jassemsendi.unpacked.insights.Figure
 import com.jassemsendi.unpacked.insights.InsightCard
-import com.jassemsendi.unpacked.insights.MonthOfFollows
-import com.jassemsendi.unpacked.insights.MonthOfMessages
+import com.jassemsendi.unpacked.insights.MonthCounts
 import com.jassemsendi.unpacked.insights.Opens
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.EventKind
@@ -95,7 +94,7 @@ class InsightCardMappersTest {
                 .SocialGraph(
                     follows = Figure(9, Opens.Timeline(EventKind.Follow)),
                     unfollows = Figure(1, Opens.Timeline(EventKind.Unfollow)),
-                    byMonth = (1..8).map { MonthOfFollows(YearMonth(2026, it), follows = it, unfollows = 0) },
+                    byMonth = (1..8).map { month(YearMonth(2026, it), it, EventKind.Follow, 0, EventKind.Unfollow) },
                 ).toUi()
 
         assertEquals("9" to "follows", card.headline.value to card.headline.caption)
@@ -121,7 +120,10 @@ class InsightCardMappersTest {
                 .Messages(
                     sent = Figure(1, Opens.Timeline(EventKind.MessageSent)),
                     received = Figure(3, Opens.Timeline(EventKind.MessageReceived)),
-                    byMonth = listOf(MonthOfMessages(YearMonth(2026, 10), sent = 1, received = 3)),
+                    byMonth =
+                        listOf(
+                            month(YearMonth(2026, 10), 1, EventKind.MessageSent, 3, EventKind.MessageReceived),
+                        ),
                 ).toUi()
 
         assertEquals("1" to "message sent", card.headline.value to card.headline.caption)
@@ -166,4 +168,12 @@ class InsightCardMappersTest {
         assertEquals(Opens.Claims(ClaimKind.OffPlatformSetting), offPlatform.details.single().opens)
         assertNull(offPlatform.emptyText, "links were visited, so the card has something to show")
     }
+
+    private fun month(
+        month: YearMonth,
+        first: Int,
+        firstKind: EventKind,
+        second: Int,
+        secondKind: EventKind,
+    ) = MonthCounts(month, listOf(Figure(first, Opens.Timeline(firstKind)), Figure(second, Opens.Timeline(secondKind))))
 }

@@ -62,14 +62,16 @@ private fun FigureLine(
     figure: FigureUi,
     style: TextStyle,
     onOpen: (Opens) -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    captionStyle: TextStyle = MaterialTheme.typography.bodyMedium,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable { onOpen(figure.opens) },
+        modifier = modifier.clickable { onOpen(figure.opens) },
         horizontalArrangement = Arrangement.spacedBy(Spacing.small),
         verticalAlignment = Alignment.Bottom,
     ) {
         Text(figure.value, style = style, color = MaterialTheme.colorScheme.primary)
-        Text(figure.caption, style = MaterialTheme.typography.bodyMedium)
+        Text(figure.caption, style = captionStyle)
     }
 }
 
@@ -100,21 +102,10 @@ private fun MonthLine(
     row: MonthRowUi,
     onOpen: (Opens) -> Unit,
 ) {
+    val small = MaterialTheme.typography.bodySmall
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-        Text(row.label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(weight = 1f))
-        row.figures.forEach { figure ->
-            Row(
-                modifier = Modifier.clickable { onOpen(figure.opens) },
-                horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-            ) {
-                Text(
-                    figure.value,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(figure.caption, style = MaterialTheme.typography.bodySmall)
-            }
-        }
+        Text(row.label, style = small, modifier = Modifier.weight(weight = 1f))
+        row.figures.forEach { FigureLine(it, small, onOpen, modifier = Modifier, captionStyle = small) }
     }
 }
 

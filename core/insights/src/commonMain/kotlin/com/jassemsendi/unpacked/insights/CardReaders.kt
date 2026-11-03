@@ -109,14 +109,8 @@ public class SocialGraphReader(
     private val timeZone: TimeZone,
 ) : CardReader<InsightCard.SocialGraph> {
     override suspend fun read(): Result<InsightCard.SocialGraph, DataError.Local> =
-        events.timesOf(EventKind.Follow).andThen { follows ->
-            events.timesOf(EventKind.Unfollow).map { unfollows ->
-                InsightCard.SocialGraph(
-                    follows = Figure(follows.size, Opens.Timeline(EventKind.Follow)),
-                    unfollows = Figure(unfollows.size, Opens.Timeline(EventKind.Unfollow)),
-                    byMonth = byMonth(follows, unfollows, timeZone, ::MonthOfFollows),
-                )
-            }
+        events.overTime(EventKind.Follow, EventKind.Unfollow, timeZone).map { (follows, unfollows, byMonth) ->
+            InsightCard.SocialGraph(follows, unfollows, byMonth)
         }
 }
 
@@ -169,33 +163,52 @@ public class MessagesReader(
     private val timeZone: TimeZone,
 ) : CardReader<InsightCard.Messages> {
     override suspend fun read(): Result<InsightCard.Messages, DataError.Local> =
-        events.timesOf(EventKind.MessageSent).andThen { sent ->
-            events.timesOf(EventKind.MessageReceived).map { received ->
-                InsightCard.Messages(
-                    sent = Figure(sent.size, Opens.Timeline(EventKind.MessageSent)),
-                    received = Figure(received.size, Opens.Timeline(EventKind.MessageReceived)),
-                    byMonth = byMonth(sent, received, timeZone, ::MonthOfMessages),
-                )
-            }
+        events.overTime(EventKind.MessageSent, EventKind.MessageReceived, timeZone).map { (sent, received, byMonth) ->
+            InsightCard.Messages(sent, received, byMonth)
         }
 }
 
+/** What a card that counts two Kinds over time reads: each Kind in all, and both by month. */
+private data class OverTime(
+    val first: Figure,
+    val second: Figure,
+    val byMonth: List<MonthCounts>,
+)
+
 /**
- * Two series of moments as one row per calendar month of [timeZone], from the first month either has a moment
- * in to the last, so that a quiet month between shows as zero rather than vanishing. Empty when both are empty.
+ * Two Kinds of Event counted in all and per calendar month of [timeZone], from the first month either has an Event
+ * in to the last, so that a quiet month between shows as zero rather than vanishing. No months when neither has any.
  */
-private fun <M> byMonth(
-    first: List<Instant>,
-    second: List<Instant>,
+private suspend fun EventRepository.overTime(
+    first: EventKind,
+    second: EventKind,
     timeZone: TimeZone,
-    row: (month: YearMonth, first: Int, second: Int) -> M,
-): List<M> {
-    val firstByMonth = first.countByMonth(timeZone)
-    val secondByMonth = second.countByMonth(timeZone)
-    val months = firstByMonth.keys + secondByMonth.keys
-    if (months.isEmpty()) return emptyList()
-    return (months.min()..months.max()).map { month -> row(month, firstByMonth[month] ?: 0, secondByMonth[month] ?: 0) }
-}
+): Result<OverTime, DataError.Local> =
+    timesOf(first).andThen { firstTimes ->
+        timesOf(second).map { secondTimes ->
+            val firstByMonth = firstTimes.countByMonth(timeZone)
+            val secondByMonth = secondTimes.countByMonth(timeZone)
+            val months = firstByMonth.keys + secondByMonth.keys
+            OverTime(
+                first = Figure(firstTimes.size, Opens.Timeline(first)),
+                second = Figure(secondTimes.size, Opens.Timeline(second)),
+                byMonth =
+                    if (months.isEmpty()) {
+                        emptyList()
+                    } else {
+                        (months.min()..months.max()).map { month ->
+                            MonthCounts(
+                                month,
+                                listOf(
+                                    Figure(firstByMonth[month] ?: 0, Opens.Timeline(first)),
+                                    Figure(secondByMonth[month] ?: 0, Opens.Timeline(second)),
+                                ),
+                            )
+                        }
+                    },
+            )
+        }
+    }
 
 private fun List<Instant>.countByMonth(timeZone: TimeZone): Map<YearMonth, Int> =
     groupingBy { it.toLocalDateTime(timeZone).date.yearMonth }.eachCount()

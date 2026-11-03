@@ -3,10 +3,8 @@ package com.jassemsendi.unpacked.ui.home
 import com.jassemsendi.unpacked.data.EntityTally
 import com.jassemsendi.unpacked.insights.Figure
 import com.jassemsendi.unpacked.insights.InsightCard
-import com.jassemsendi.unpacked.insights.MonthOfFollows
-import com.jassemsendi.unpacked.insights.MonthOfMessages
+import com.jassemsendi.unpacked.insights.MonthCounts
 import com.jassemsendi.unpacked.insights.Opens
-import com.jassemsendi.unpacked.model.EventKind
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.YearMonth
 import kotlin.math.roundToInt
@@ -82,7 +80,7 @@ internal fun InsightCard.toUi(): InsightCardUi =
                 headline = follows.toUi(noun(follows.value, "follow")),
                 details = listOf(unfollows.toUi(noun(unfollows.value, "unfollow"))),
                 rows = emptyList(),
-                months = byMonth.takeLast(MONTHS_SHOWN).map { it.toRow() },
+                months = byMonth.toRows("follows", "unfollows"),
                 emptyText = "No follows or unfollows in your library yet.".onlyIf(isEmpty),
             )
         }
@@ -118,7 +116,7 @@ internal fun InsightCard.toUi(): InsightCardUi =
                 headline = sent.toUi(noun(sent.value, "message") + " sent"),
                 details = listOf(received.toUi(noun(received.value, "message") + " received")),
                 rows = emptyList(),
-                months = byMonth.takeLast(MONTHS_SHOWN).map { it.toRow() },
+                months = byMonth.toRows("sent", "received"),
                 emptyText = "No messages in your library yet.".onlyIf(isEmpty),
             )
         }
@@ -141,23 +139,11 @@ private fun Figure.toUi(caption: String) = FigureUi(value.toString(), caption, o
 private fun EntityTally.toRow(noun: String) =
     CardRowUi(entity.displayName, counted(count, noun), Opens.Entity(entity.id))
 
-private fun MonthOfFollows.toRow() =
-    MonthRowUi(
-        month.toText(),
-        listOf(
-            FigureUi(follows.toString(), "follows", Opens.Timeline(EventKind.Follow)),
-            FigureUi(unfollows.toString(), "unfollows", Opens.Timeline(EventKind.Unfollow)),
-        ),
-    )
-
-private fun MonthOfMessages.toRow() =
-    MonthRowUi(
-        month.toText(),
-        listOf(
-            FigureUi(sent.toString(), "sent", Opens.Timeline(EventKind.MessageSent)),
-            FigureUi(received.toString(), "received", Opens.Timeline(EventKind.MessageReceived)),
-        ),
-    )
+/** The latest [MONTHS_SHOWN] months of a series as rows, each number captioned in the card's order. */
+private fun List<MonthCounts>.toRows(vararg captions: String): List<MonthRowUi> =
+    takeLast(MONTHS_SHOWN).map { month ->
+        MonthRowUi(month.month.toText(), month.counts.zip(captions) { figure, caption -> figure.toUi(caption) })
+    }
 
 private fun String.onlyIf(condition: Boolean): String? = takeIf { condition }
 
