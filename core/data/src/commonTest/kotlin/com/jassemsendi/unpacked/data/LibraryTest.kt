@@ -194,7 +194,8 @@ abstract class LibraryTest {
                     ClaimKind.ConsentGiven to 1,
                     ClaimKind.ProfileField to 4,
                     ClaimKind.ContactSynced to 3,
-                    ClaimKind.Other to 14,
+                    ClaimKind.OffPlatformSetting to 1,
+                    ClaimKind.Other to 13,
                 ),
                 library.claims.countByKind(import.id).orFail(),
             )

@@ -3,8 +3,10 @@ package com.jassemsendi.unpacked.ui.home
 import com.jassemsendi.unpacked.data.EntityTally
 import com.jassemsendi.unpacked.insights.Figure
 import com.jassemsendi.unpacked.insights.InsightCard
+import com.jassemsendi.unpacked.insights.MonthCounts
 import com.jassemsendi.unpacked.insights.Opens
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.YearMonth
 import kotlin.math.roundToInt
 
 /** How a card reads on Home; the numbers keep what they open, so the screen only has to follow them. */
@@ -17,6 +19,7 @@ internal fun InsightCard.toUi(): InsightCardUi =
                 headline = advertisers.toUi(noun(advertisers.value, "advertiser") + " uploaded a list with you on it"),
                 details = emptyList(),
                 rows = top.map { it.toRow("Claim") },
+                months = emptyList(),
                 emptyText =
                     "No advertiser in your library has uploaded a list with your contact details.".onlyIf(
                         isEmpty,
@@ -31,6 +34,7 @@ internal fun InsightCard.toUi(): InsightCardUi =
                 headline = ads.toUi(noun(ads.value, "ad") + " shown"),
                 details = listOf(advertisers.toUi("from " + noun(advertisers.value, "advertiser"))),
                 rows = top.map { it.toRow("ad") },
+                months = emptyList(),
                 emptyText = "No ads in your library yet.".onlyIf(isEmpty),
             )
         }
@@ -48,6 +52,7 @@ internal fun InsightCard.toUi(): InsightCardUi =
                         busiestWeekday?.let { FigureUi(it.toText(), "busiest weekday", views.opens) },
                     ),
                 rows = emptyList(),
+                months = emptyList(),
                 emptyText = "Nothing viewed in your library yet.".onlyIf(isEmpty),
             )
         }
@@ -63,7 +68,56 @@ internal fun InsightCard.toUi(): InsightCardUi =
                         networks.toUi(noun(networks.value, "network")),
                     ),
                 rows = (topDevices + topNetworks).map { it.toRow("login") },
+                months = emptyList(),
                 emptyText = "No logins in your library yet.".onlyIf(isEmpty),
+            )
+        }
+
+        is InsightCard.SocialGraph -> {
+            InsightCardUi(
+                id = "social",
+                title = "Follows and unfollows",
+                headline = follows.toUi(noun(follows.value, "follow")),
+                details = listOf(unfollows.toUi(noun(unfollows.value, "unfollow"))),
+                rows = emptyList(),
+                months = byMonth.toRows("follows", "unfollows"),
+                emptyText = "No follows or unfollows in your library yet.".onlyIf(isEmpty),
+            )
+        }
+
+        is InsightCard.Inferred -> {
+            InsightCardUi(
+                id = "inferred",
+                title = "What was inferred about you",
+                headline = locations.toUi(noun(locations.value, "location") + " inferred"),
+                details = listOf(interests.toUi(noun(interests.value, "interest") + " inferred")),
+                rows = (topPlaces + topTopics).map { it.toRow("Claim") },
+                months = emptyList(),
+                emptyText = "Nothing inferred about you in your library yet.".onlyIf(isEmpty),
+            )
+        }
+
+        is InsightCard.OffPlatform -> {
+            InsightCardUi(
+                id = "off-platform",
+                title = "Beyond the app",
+                headline = linksVisited.toUi(noun(linksVisited.value, "link") + " visited"),
+                details = listOf(settings.toUi(noun(settings.value, "off-platform setting"))),
+                rows = emptyList(),
+                months = emptyList(),
+                emptyText = "No links visited or off-platform settings in your library yet.".onlyIf(isEmpty),
+            )
+        }
+
+        is InsightCard.Messages -> {
+            InsightCardUi(
+                id = "messages",
+                title = "Your messages",
+                headline = sent.toUi(noun(sent.value, "message") + " sent"),
+                details = listOf(received.toUi(noun(received.value, "message") + " received")),
+                rows = emptyList(),
+                months = byMonth.toRows("sent", "received"),
+                emptyText = "No messages in your library yet.".onlyIf(isEmpty),
             )
         }
     }
@@ -85,6 +139,12 @@ private fun Figure.toUi(caption: String) = FigureUi(value.toString(), caption, o
 private fun EntityTally.toRow(noun: String) =
     CardRowUi(entity.displayName, counted(count, noun), Opens.Entity(entity.id))
 
+/** The latest [MONTHS_SHOWN] months of a series as rows, each number captioned in the card's order. */
+private fun List<MonthCounts>.toRows(vararg captions: String): List<MonthRowUi> =
+    takeLast(MONTHS_SHOWN).map { month ->
+        MonthRowUi(month.month.toText(), month.counts.zip(captions) { figure, caption -> figure.toUi(caption) })
+    }
+
 private fun String.onlyIf(condition: Boolean): String? = takeIf { condition }
 
 /** The noun alone, in the number's grammatical number: the figure in front of it is shown large. */
@@ -104,4 +164,14 @@ private fun Int.toHourText(): String = toString().padStart(2, '0') + ":00"
 
 private fun DayOfWeek.toText(): String = name.lowercase().replaceFirstChar { it.titlecase() }
 
+/** "Oct 2026": the month's short name and its year. */
+private fun YearMonth.toText(): String {
+    val shortName = month.name.take(MONTH_ABBREVIATION)
+    return shortName.lowercase().replaceFirstChar { it.titlecase() } + " $year"
+}
+
 private const val TENTHS = 10
+private const val MONTH_ABBREVIATION = 3
+
+/** How many of a series' latest months a card lists. */
+private const val MONTHS_SHOWN = 6

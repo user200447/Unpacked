@@ -6,7 +6,7 @@ import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.Result
 import kotlinx.datetime.TimeZone
 
-/** The Insight cards Home shows, in the order it shows them: the first four of the eight (spec stories 23 to 26). */
+/** The eight Insight cards Home shows, in the order it shows them (spec stories 23 to 30). */
 public class InsightCards(
     events: EventRepository,
     claims: ClaimRepository,
@@ -18,6 +18,10 @@ public class InsightCards(
             AdsShownReader(events),
             ContentViewedReader(events, timeZone),
             LoginsReader(events),
+            SocialGraphReader(events, timeZone),
+            InferredReader(claims),
+            OffPlatformReader(events, claims),
+            MessagesReader(events, timeZone),
         )
 
     /** Every card, each read on its own, so that one that cannot be read costs that card alone. */

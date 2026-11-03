@@ -5,6 +5,7 @@ import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.YearMonth
 
 /** Where a number on an Insight card leads: the Events or Claims it was counted from, so that every number is checkable. */
 public sealed interface Opens {
@@ -79,4 +80,51 @@ public sealed interface InsightCard {
     ) : InsightCard {
         override val isEmpty: Boolean get() = logins.value == 0
     }
+
+    /** How the user's social graph changed: follows and unfollows in all, and month by month. */
+    public data class SocialGraph(
+        public val follows: Figure,
+        public val unfollows: Figure,
+        /** Every month from the first with a follow or unfollow to the last, quiet months between included. */
+        public val byMonth: List<MonthCounts>,
+    ) : InsightCard {
+        override val isEmpty: Boolean get() = follows.value == 0 && unfollows.value == 0
+    }
+
+    /** What the Source inferred about the user: the locations and interests it holds, and the places and topics named most. */
+    public data class Inferred(
+        public val locations: Figure,
+        public val topPlaces: List<EntityTally>,
+        public val interests: Figure,
+        public val topTopics: List<EntityTally>,
+    ) : InsightCard {
+        override val isEmpty: Boolean get() = locations.value == 0 && interests.value == 0
+    }
+
+    /** How the user is tracked beyond the app: the links visited, and the settings over activity off the platform. */
+    public data class OffPlatform(
+        public val linksVisited: Figure,
+        public val settings: Figure,
+    ) : InsightCard {
+        override val isEmpty: Boolean get() = linksVisited.value == 0 && settings.value == 0
+    }
+
+    /** Messages sent and received, in all and month by month: counts only, since no message text is stored (ADR 0003). */
+    public data class Messages(
+        public val sent: Figure,
+        public val received: Figure,
+        /** Every month from the first with a message to the last, quiet months between included. */
+        public val byMonth: List<MonthCounts>,
+    ) : InsightCard {
+        override val isEmpty: Boolean get() = sent.value == 0 && received.value == 0
+    }
 }
+
+/**
+ * One month of a card that counts over time, in the device's zone: the card's numbers counted within that month
+ * alone, in the card's order (follows then unfollows; sent then received), each opening the Timeline of its Kind.
+ */
+public data class MonthCounts(
+    public val month: YearMonth,
+    public val counts: List<Figure>,
+)

@@ -162,7 +162,7 @@ internal object SyntheticClaimFiles {
                 ),
         )
 
-    // Other, settings and insights: one record per file, 7 files = 7 Claims
+    // One record per file, 7 files = 7 Claims: the off-Meta settings one an OffPlatformSetting, the other 6 Other
     private fun settings(t: Ticker): Map<String, String> =
         mapOf(
             "$ADS_BUSINESSES/ad_preferences.json" to
