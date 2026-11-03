@@ -801,7 +801,7 @@ abstract class LibraryTest {
                 library.events.topEntities(EventKind.AdShown, EntityKind.Device, limit = 2).orFail(),
             )
 
-            // Three logins from two devices, all from one address.
+            // Three logins from two devices, all over one network.
             val devices = library.events.topEntities(EventKind.Login, EntityKind.Device, limit = 10).orFail()
             assertEquals(2, devices.count)
             assertEquals(listOf(2, 1), devices.top.map { it.count })
@@ -815,11 +815,9 @@ abstract class LibraryTest {
                     .entity.displayName
                     .startsWith("Mozilla"),
             )
-            assertEquals(
-                listOf(ValueTally("203.0.113.7", 3)),
-                library.events.valueCounts(EventKind.Login, "IP Address").orFail(),
-            )
-            assertEquals(emptyList(), library.events.valueCounts(EventKind.Login, "No such label").orFail())
+            val networks = library.events.topEntities(EventKind.Login, EntityKind.Network, limit = 10).orFail()
+            assertEquals(1, networks.count)
+            assertEquals(listOf("203.0.113.7" to 3), networks.top.map { it.entity.displayName to it.count })
 
             // Four advertisers uploaded a list, one Claim each, in name order when the counts tie.
             val holders =

@@ -41,16 +41,16 @@ fun UnpackedApp() {
                     HomeRoot(
                         HomeDestinations(
                             onImport = { screen = Screen.Import },
-                            onSearch = { screen = Screen.Search(it) },
+                            onSearch = { screen = Screen.Search },
                             onClaims = { screen = Screen.Claims(it) },
-                            onEntities = { screen = Screen.Entities(filter = it) },
-                            onEntity = { screen = Screen.Entities(opened = it) },
+                            onEntities = { screen = Screen.Entities() },
+                            onEntity = { screen = Screen.Entities(it) },
                         ),
                     )
                 }
 
-                is Screen.Search -> {
-                    SearchRoot(onBack = home, initialText = current.text)
+                Screen.Search -> {
+                    SearchRoot(onBack = home)
                 }
 
                 is Screen.Claims -> {
@@ -58,7 +58,7 @@ fun UnpackedApp() {
                 }
 
                 is Screen.Entities -> {
-                    EntitiesRoot(onBack = home, filter = current.filter, opened = current.opened)
+                    EntitiesRoot(onBack = home, opened = current.opened)
                 }
             }
         }

@@ -19,13 +19,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.jassemsendi.unpacked.insights.Opens
-import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.ui.theme.Spacing
 import com.jassemsendi.unpacked.ui.theme.readable
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-/** The Insight cards side by side, scrolled across; every number on them is a link to what it counted. */
+/** The Insight cards side by side, scrolled across; every number on them opens what it counted. */
 @Composable
 internal fun InsightCardRow(
     cards: List<InsightCardUi>,
@@ -56,7 +55,7 @@ private fun InsightCardView(
     }
 }
 
-/** A number in the link colour with its caption beside it; the whole line opens what the number counted. */
+/** A number in the primary colour with its caption beside it; the whole line opens what the number counted. */
 @Composable
 private fun FigureLine(
     figure: FigureUi,
@@ -107,7 +106,7 @@ private fun InsightCardRowPreview() {
                         id = "ads",
                         title = "Ads shown to you",
                         headline = FigureUi("12", "ads shown", Opens.Timeline(EventKind.AdShown)),
-                        details = listOf(FigureUi("4", "from advertisers", Opens.Entities(EntityKind.Advertiser))),
+                        details = listOf(FigureUi("4", "from advertisers", Opens.Timeline(EventKind.AdShown))),
                         rows =
                             listOf(
                                 CardRowUi(

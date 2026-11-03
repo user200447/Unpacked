@@ -1,7 +1,7 @@
 package com.jassemsendi.unpacked.insights
 
 import com.jassemsendi.unpacked.data.EntityTally
-import com.jassemsendi.unpacked.data.ValueTally
+import com.jassemsendi.unpacked.fixtures.orFail
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.DataError
@@ -31,6 +31,8 @@ class InsightCardsTest {
     private val hotels = advertiser("Example Hotels")
     private val phone = device("Instagram 450.0.0.50.77 Android")
     private val laptop = device("Mozilla/5.0 (Macintosh)")
+    private val homeNetwork = network("203.0.113.7")
+    private val cafeNetwork = network("198.51.100.4")
 
     private val monday = Instant.parse("2026-10-26T23:30:00Z")
     private val tuesday = Instant.parse("2026-10-27T10:00:00Z")
@@ -43,11 +45,11 @@ class InsightCardsTest {
             event(EventKind.ContentViewed, monday, 0, path = "posts_viewed.json"),
             event(EventKind.ContentViewed, monday + 15.minutes, 1, path = "posts_viewed.json"),
             event(EventKind.ContentViewed, tuesday, 0, path = "videos_watched.json"),
-            login(monday, 0, phone, "203.0.113.7"),
-            login(monday + 1.minutes, 1, phone, "203.0.113.7"),
-            login(tuesday, 2, laptop, "198.51.100.4"),
-            // A login whose Record leaves the address blank is a login, not a network.
-            login(tuesday + 1.minutes, 3, phone, ""),
+            login(monday, 0, phone, homeNetwork),
+            login(monday + 1.minutes, 1, phone, homeNetwork),
+            login(tuesday, 2, laptop, cafeNetwork),
+            // A login whose Record left the address blank names no network; it is still a login.
+            login(tuesday + 1.minutes, 3, phone, null),
         )
     private val claims =
         FakeClaimRepository(
@@ -85,7 +87,7 @@ class InsightCardsTest {
             val card = AdsShownReader(events).read().orFail()
 
             assertEquals(Figure(3, Opens.Timeline(EventKind.AdShown)), card.ads)
-            assertEquals(Figure(2, Opens.Entities(EntityKind.Advertiser)), card.advertisers)
+            assertEquals(Figure(2, Opens.Timeline(EventKind.AdShown)), card.advertisers)
             assertEquals(listOf(EntityTally(courier, 2), EntityTally(hotels, 1)), card.top)
         }
 
@@ -109,15 +111,15 @@ class InsightCardsTest {
         }
 
     @Test
-    fun loginsCountDistinctDevicesAndNetworksAndSkipABlankAddress() =
+    fun loginsCountDistinctDevicesAndNetworks() =
         runTest {
             val card = LoginsReader(events).read().orFail()
 
             assertEquals(Figure(4, Opens.Timeline(EventKind.Login)), card.logins)
-            assertEquals(Figure(2, Opens.Entities(EntityKind.Device)), card.devices)
+            assertEquals(Figure(2, Opens.Timeline(EventKind.Login)), card.devices)
             assertEquals(listOf(EntityTally(phone, 3), EntityTally(laptop, 1)), card.topDevices)
             assertEquals(Figure(2, Opens.Timeline(EventKind.Login)), card.networks)
-            assertEquals(listOf(ValueTally("203.0.113.7", 2), ValueTally("198.51.100.4", 1)), card.topNetworks)
+            assertEquals(listOf(EntityTally(homeNetwork, 2), EntityTally(cafeNetwork, 1)), card.topNetworks)
         }
 
     @Test
@@ -162,12 +164,6 @@ class InsightCardsTest {
             reads.drop(1).forEach { assertEquals(Result.Error(DataError.Local.UNKNOWN), it) }
         }
 
-    private fun <T> Result<T, DataError.Local>.orFail(): T =
-        when (this) {
-            is Result.Success -> data
-            is Result.Error -> error("Expected a card, got $error")
-        }
-
     private companion object {
         val export = ExportId("instagram-me-2026-10-20")
 
@@ -175,6 +171,9 @@ class InsightCardsTest {
 
         fun device(userAgent: String) =
             Entity(Source.Instagram, EntityKind.Device, Entity.normalizeKey(userAgent), userAgent)
+
+        fun network(address: String) =
+            Entity(Source.Instagram, EntityKind.Network, Entity.normalizeKey(address), address)
 
         fun event(
             kind: EventKind,
@@ -196,14 +195,14 @@ class InsightCardsTest {
             time: Instant,
             recordIndex: Int,
             device: Entity,
-            address: String,
+            network: Entity?,
         ) = event(
             EventKind.Login,
             time,
             recordIndex,
             path = "security_and_login_information/login_activity.json",
-            attributes = mapOf(LoginsReader.IP_ADDRESS to address, "User Agent" to device.displayName),
-            entities = listOf(device),
+            attributes = mapOf("IP Address" to network?.displayName.orEmpty(), "User Agent" to device.displayName),
+            entities = listOfNotNull(device, network),
         )
 
         fun holdsContact(

@@ -45,7 +45,7 @@ public class AdsShownReader(
             events.topEntities(EventKind.AdShown, EntityKind.Advertiser, topCount).map { named ->
                 InsightCard.AdsShown(
                     ads = Figure(counts[EventKind.AdShown] ?: 0, Opens.Timeline(EventKind.AdShown)),
-                    advertisers = Figure(named.count, Opens.Entities(EntityKind.Advertiser)),
+                    advertisers = Figure(named.count, Opens.Timeline(EventKind.AdShown)),
                     top = named.top,
                 )
             }
@@ -83,25 +83,19 @@ public class ContentViewedReader(
 public class LoginsReader(
     private val events: EventRepository,
     private val topCount: Int = InsightCards.TOP_COUNT,
-    /** The label a Login's Record gives its network address under: Instagram's wording, until a second Source needs its own. */
-    private val networkLabel: String = IP_ADDRESS,
 ) : CardReader<InsightCard.Logins> {
     override suspend fun read(): Result<InsightCard.Logins, DataError.Local> =
         events.countByKind().andThen { counts ->
             events.topEntities(EventKind.Login, EntityKind.Device, topCount).andThen { devices ->
-                events.valueCounts(EventKind.Login, networkLabel).map { networks ->
+                events.topEntities(EventKind.Login, EntityKind.Network, topCount).map { networks ->
                     InsightCard.Logins(
                         logins = Figure(counts[EventKind.Login] ?: 0, Opens.Timeline(EventKind.Login)),
-                        devices = Figure(devices.count, Opens.Entities(EntityKind.Device)),
+                        devices = Figure(devices.count, Opens.Timeline(EventKind.Login)),
                         topDevices = devices.top,
-                        networks = Figure(networks.size, Opens.Timeline(EventKind.Login)),
-                        topNetworks = networks.take(topCount),
+                        networks = Figure(networks.count, Opens.Timeline(EventKind.Login)),
+                        topNetworks = networks.top,
                     )
                 }
             }
         }
-
-    public companion object {
-        public const val IP_ADDRESS: String = "IP Address"
-    }
 }

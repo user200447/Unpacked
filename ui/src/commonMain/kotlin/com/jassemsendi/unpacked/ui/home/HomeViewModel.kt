@@ -35,6 +35,9 @@ class HomeViewModel(
     /** Bumped by every reload so a page that was in flight for an older filter is dropped on arrival. */
     private var generation = 0
 
+    /** One slot per card in Home's order: the last read that succeeded, or null while a card has never been read. */
+    private var cardSlots: List<InsightCardUi?> = emptyList()
+
     /** The Kind counts and the first page, read together so the screen never shows one without the other. */
     private data class FirstPage(
         val kinds: List<KindCountUi<EventKind>>,
@@ -110,14 +113,13 @@ class HomeViewModel(
             }
         }
 
-    /** The cards that could be read, in Home's order; one that could not is left out and the screen says why. */
+    /** A card that could not be read keeps its last successful read on screen beside the message (ADR 0009). */
     private fun HomeState.withCards(reads: List<Result<InsightCard, DataError.Local>>?): HomeState {
         if (reads == null) return this
         val failed = reads.firstNotNullOfOrNull { (it as? Result.Error)?.error }
-        return copy(
-            cards = reads.mapNotNull { (it as? Result.Success)?.data?.toUi() },
-            error = error ?: failed?.toMessage(),
-        )
+        cardSlots =
+            reads.mapIndexed { index, read -> (read as? Result.Success)?.data?.toUi() ?: cardSlots.getOrNull(index) }
+        return copy(cards = cardSlots.filterNotNull(), error = error ?: failed?.toMessage())
     }
 
     private fun nextPage() {

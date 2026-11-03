@@ -176,7 +176,7 @@ internal class RoomEventRepository(
     ): Result<List<Event>, DataError.Local> = localCall { hydrate(db.entityCountDao().events(entityId, limit, offset)) }
 
     override suspend fun timesOf(kind: EventKind): Result<List<Instant>, DataError.Local> =
-        localCall { db.insightDao().eventTimes(kind.name).map(Instant::fromEpochMilliseconds) }
+        localCall { db.insightCardDao().eventTimes(kind.name).map(Instant::fromEpochMilliseconds) }
 
     override suspend fun topEntities(
         kind: EventKind,
@@ -184,18 +184,12 @@ internal class RoomEventRepository(
         limit: Int,
     ): Result<EntityTallies, DataError.Local> =
         localCall {
-            val dao = db.insightDao()
+            val dao = db.insightCardDao()
             entities.tallies(
                 dao.eventEntityCount(kind.name, entityKind.name),
                 dao.eventEntityTallies(kind.name, entityKind.name, limit),
             )
         }
-
-    override suspend fun valueCounts(
-        kind: EventKind,
-        label: String,
-    ): Result<List<ValueTally>, DataError.Local> =
-        localCall { db.insightDao().eventValueTallies(kind.name, label).map { ValueTally(it.value, it.count) } }
 
     /** The Events with these ids, in no particular order; ids that no longer exist are left out. */
     suspend fun byIds(ids: List<Long>): List<Event> = hydrate(ids.inChunks { dao.byIds(it) })
@@ -236,7 +230,7 @@ internal class RoomClaimRepository(
         limit: Int,
     ): Result<EntityTallies, DataError.Local> =
         localCall {
-            val dao = db.insightDao()
+            val dao = db.insightCardDao()
             entities.tallies(
                 dao.claimEntityCount(kind.name, entityKind.name),
                 dao.claimEntityTallies(kind.name, entityKind.name, limit),

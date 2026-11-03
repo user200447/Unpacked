@@ -314,15 +314,9 @@ internal data class EntityCountRow(
     @ColumnInfo(name = "claim_count") val claimCount: Int,
 )
 
-/** An Entity row with how many Events or Claims of one Kind link to it. */
+/** An Entity row with how many Events or Claims of one Kind name it. */
 internal data class EntityTallyRow(
     @Embedded val entity: EntityRow,
-    val count: Int,
-)
-
-/** One attribute value with how many Events of one Kind record it. */
-internal data class ValueTallyRow(
-    val value: String,
     val count: Int,
 )
 

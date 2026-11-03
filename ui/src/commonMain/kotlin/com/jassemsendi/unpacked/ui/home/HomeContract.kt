@@ -2,7 +2,6 @@ package com.jassemsendi.unpacked.ui.home
 
 import com.jassemsendi.unpacked.insights.Opens
 import com.jassemsendi.unpacked.model.ClaimKind
-import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.Provenance
 
@@ -138,12 +137,10 @@ data class CardRowUi(
 /** Where the Home screen leads: the other top-level screens, from a button in its header or a number on a card. */
 data class HomeDestinations(
     val onImport: () -> Unit,
-    /** Search, with text to search for at once, or none. */
-    val onSearch: (String) -> Unit,
+    val onSearch: () -> Unit,
     /** The Claims screen, opened on one Kind's group, or on none. */
     val onClaims: (ClaimKind?) -> Unit,
-    /** The Entities screen, narrowed to one Kind, or to none. */
-    val onEntities: (EntityKind?) -> Unit,
+    val onEntities: () -> Unit,
     /** One Entity's own timeline and Claims. */
     val onEntity: (String) -> Unit,
 )

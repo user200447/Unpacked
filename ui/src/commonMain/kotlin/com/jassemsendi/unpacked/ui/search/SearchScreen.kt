@@ -36,14 +36,9 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun SearchRoot(
     onBack: () -> Unit,
-    initialText: String = "",
     viewModel: SearchViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // Text the screen was sent with, say a network address from an Insight card, is searched for at once.
-    LaunchedEffect(viewModel, initialText) {
-        if (initialText.isNotEmpty()) viewModel.onAction(SearchAction.TextChanged(initialText))
-    }
     SearchScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
 }
 

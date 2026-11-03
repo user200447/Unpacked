@@ -70,15 +70,6 @@ public interface EventRepository {
         entityKind: EntityKind,
         limit: Int,
     ): Result<EntityTallies, DataError.Local>
-
-    /**
-     * The distinct non-blank values Events of [kind] record under [label], with how many Events record each,
-     * most first then by value. The label is the Source's own, as Raw kinds are.
-     */
-    public suspend fun valueCounts(
-        kind: EventKind,
-        label: String,
-    ): Result<List<ValueTally>, DataError.Local>
 }
 
 public interface ClaimRepository {
@@ -122,12 +113,6 @@ public data class EntityTallies(
 /** An Entity and how many Events or Claims of one Kind name it: one line of an Insight card. */
 public data class EntityTally(
     val entity: Entity,
-    val count: Int,
-)
-
-/** One recorded value and how many Events of one Kind record it: one line of an Insight card. */
-public data class ValueTally(
-    val value: String,
     val count: Int,
 )
 

@@ -10,6 +10,7 @@ kotlin {
             api(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
+            implementation(project(":core:fixtures"))
             implementation(libs.kotlinx.coroutinesTest)
         }
     }

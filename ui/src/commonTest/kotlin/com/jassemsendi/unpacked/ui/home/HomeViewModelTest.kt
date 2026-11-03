@@ -6,7 +6,6 @@ import com.jassemsendi.unpacked.insights.Opens
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.DataError
-import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.RawKind
 import com.jassemsendi.unpacked.model.Result
@@ -310,13 +309,13 @@ class HomeViewModelTest {
             val ads = cards[1]
             assertEquals("1", ads.headline.value)
             assertEquals(Opens.Timeline(EventKind.AdShown), ads.headline.opens)
-            assertEquals(Opens.Entities(EntityKind.Advertiser), ads.details.single().opens)
+            assertEquals(Opens.Timeline(EventKind.AdShown), ads.details.single().opens)
             assertEquals("Example Courier", ads.rows.single().label)
             assertEquals(Opens.Entity(courier.id), ads.rows.single().opens)
             val logins = cards[3]
             assertEquals("1", logins.headline.value)
             assertEquals(Opens.Timeline(EventKind.Login), logins.headline.opens)
-            assertEquals(Opens.Entities(EntityKind.Device), logins.details.first().opens)
+            assertEquals(listOf("devices", "networks"), logins.details.map { it.caption }, "none named in this library")
         }
 
     @Test
@@ -330,6 +329,20 @@ class HomeViewModelTest {
             assertNotNull(state.cards[2].emptyText, "nothing was viewed")
             assertNull(state.cards[1].emptyText, "an ad was shown")
             assertNull(state.error)
+        }
+
+    @Test
+    fun aCardThatWillNotReadKeepsItsLastReadOnScreenBesideTheMessage() =
+        runTest {
+            val viewModel = viewModel()
+            val before = viewModel.state.value.cards
+            claims.failure = DataError.Local.UNKNOWN
+
+            viewModel.onAction(HomeAction.Refresh)
+
+            val state = viewModel.state.value
+            assertEquals(before, state.cards, "the contact card is the only one read from Claims")
+            assertEquals("Your library could not be read or written.", state.error)
         }
 
     @Test

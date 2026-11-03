@@ -11,14 +11,13 @@ public class InsightCards(
     events: EventRepository,
     claims: ClaimRepository,
     timeZone: TimeZone,
-    topCount: Int = TOP_COUNT,
 ) {
-    public val readers: List<CardReader<InsightCard>> =
+    private val readers: List<CardReader<InsightCard>> =
         listOf(
-            AdvertisersHoldingContactReader(claims, topCount),
-            AdsShownReader(events, topCount),
+            AdvertisersHoldingContactReader(claims),
+            AdsShownReader(events),
             ContentViewedReader(events, timeZone),
-            LoginsReader(events, topCount),
+            LoginsReader(events),
         )
 
     /** Every card, each read on its own, so that one that cannot be read costs that card alone. */

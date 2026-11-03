@@ -45,7 +45,7 @@ internal fun InsightCard.toUi(): InsightCardUi =
                         FigureUi(activeDays.toString(), noun(activeDays, "day") + " with views", views.opens),
                         FigureUi(perDay.toOneDecimal(), "a day", views.opens),
                         busiestHour?.let { FigureUi(it.toHourText(), "busiest hour", views.opens) },
-                        busiestWeekday?.let { FigureUi(it.toText(), "busiest day", views.opens) },
+                        busiestWeekday?.let { FigureUi(it.toText(), "busiest weekday", views.opens) },
                     ),
                 rows = emptyList(),
                 emptyText = "Nothing viewed in your library yet.".onlyIf(isEmpty),
@@ -62,15 +62,13 @@ internal fun InsightCard.toUi(): InsightCardUi =
                         devices.toUi(noun(devices.value, "device")),
                         networks.toUi(noun(networks.value, "network")),
                     ),
-                rows =
-                    topDevices.map { it.toRow("login") } +
-                        topNetworks.map { CardRowUi(it.value, counted(it.count, "login"), Opens.Search(it.value)) },
+                rows = (topDevices + topNetworks).map { it.toRow("login") },
                 emptyText = "No logins in your library yet.".onlyIf(isEmpty),
             )
         }
     }
 
-/** Leads where a number on a card points: the timeline is this screen, narrowed; the rest are other screens. */
+/** Goes where a number on a card points: the timeline is this screen, narrowed; the rest are other screens. */
 internal fun Opens.follow(
     onAction: (HomeAction) -> Unit,
     destinations: HomeDestinations,
@@ -78,9 +76,7 @@ internal fun Opens.follow(
     when (this) {
         is Opens.Timeline -> onAction(HomeAction.Filter(kind))
         is Opens.Claims -> destinations.onClaims(kind)
-        is Opens.Entities -> destinations.onEntities(kind)
         is Opens.Entity -> destinations.onEntity(id)
-        is Opens.Search -> destinations.onSearch(text)
     }
 }
 
@@ -95,8 +91,7 @@ private fun String.onlyIf(condition: Boolean): String? = takeIf { condition }
 private fun noun(
     count: Int,
     singular: String,
-    plural: String = "${singular}s",
-): String = if (count == 1) singular else plural
+): String = if (count == 1) singular else "${singular}s"
 
 /** "1.5", or "3" when there is nothing after the point. */
 private fun Double.toOneDecimal(): String {

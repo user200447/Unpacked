@@ -4,7 +4,6 @@ import com.jassemsendi.unpacked.insights.Figure
 import com.jassemsendi.unpacked.insights.InsightCard
 import com.jassemsendi.unpacked.insights.Opens
 import com.jassemsendi.unpacked.model.ClaimKind
-import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
 import kotlinx.datetime.DayOfWeek
 import kotlin.test.Test
@@ -12,36 +11,26 @@ import kotlin.test.assertEquals
 
 class InsightCardMappersTest {
     @Test
-    fun everyLinkLeadsWhereItsNumberCameFrom() {
+    fun everyNumberOpensWhereItCameFrom() {
         val actions = mutableListOf<HomeAction>()
         val visited = mutableListOf<String>()
         val destinations =
             HomeDestinations(
                 onImport = { visited += "import" },
-                onSearch = { visited += "search:$it" },
+                onSearch = { visited += "search" },
                 onClaims = { visited += "claims:$it" },
-                onEntities = { visited += "entities:$it" },
+                onEntities = { visited += "entities" },
                 onEntity = { visited += "entity:$it" },
             )
 
         listOf<Opens>(
             Opens.Timeline(EventKind.AdShown),
             Opens.Claims(ClaimKind.AdvertiserHoldsContact),
-            Opens.Entities(EntityKind.Device),
             Opens.Entity("instagram:device:phone"),
-            Opens.Search("203.0.113.7"),
         ).forEach { it.follow({ action -> actions.add(action) }, destinations) }
 
         assertEquals(listOf<HomeAction>(HomeAction.Filter(EventKind.AdShown)), actions)
-        assertEquals(
-            listOf(
-                "claims:AdvertiserHoldsContact",
-                "entities:Device",
-                "entity:instagram:device:phone",
-                "search:203.0.113.7",
-            ),
-            visited,
-        )
+        assertEquals(listOf("claims:AdvertiserHoldsContact", "entity:instagram:device:phone"), visited)
     }
 
     @Test
@@ -58,7 +47,10 @@ class InsightCardMappersTest {
 
         assertEquals("3" to "posts, videos and stories viewed", card.headline.value to card.headline.caption)
         assertEquals(listOf("2", "1.5", "09:00", "Monday"), card.details.map { it.value })
-        assertEquals(listOf("days with views", "a day", "busiest hour", "busiest day"), card.details.map { it.caption })
+        assertEquals(
+            listOf("days with views", "a day", "busiest hour", "busiest weekday"),
+            card.details.map { it.caption },
+        )
         assertEquals(
             setOf(Opens.Timeline(EventKind.ContentViewed)),
             (card.details.map { it.opens } + card.headline.opens).toSet(),
@@ -83,7 +75,7 @@ class InsightCardMappersTest {
             InsightCard
                 .Logins(
                     logins = Figure(1, Opens.Timeline(EventKind.Login)),
-                    devices = Figure(1, Opens.Entities(EntityKind.Device)),
+                    devices = Figure(1, Opens.Timeline(EventKind.Login)),
                     topDevices = emptyList(),
                     networks = Figure(0, Opens.Timeline(EventKind.Login)),
                     topNetworks = emptyList(),

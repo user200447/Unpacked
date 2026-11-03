@@ -1,7 +1,6 @@
 package com.jassemsendi.unpacked.insights
 
 import com.jassemsendi.unpacked.data.EntityTally
-import com.jassemsendi.unpacked.data.ValueTally
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
@@ -19,19 +18,9 @@ public sealed interface Opens {
         public val kind: ClaimKind,
     ) : Opens
 
-    /** The Entities screen narrowed to one Kind. */
-    public data class Entities(
-        public val kind: EntityKind,
-    ) : Opens
-
     /** One Entity's own timeline and Claims. */
     public data class Entity(
         public val id: String,
-    ) : Opens
-
-    /** A Search for one recorded value. */
-    public data class Search(
-        public val text: String,
     ) : Opens
 }
 
@@ -86,7 +75,7 @@ public sealed interface InsightCard {
         public val devices: Figure,
         public val topDevices: List<EntityTally>,
         public val networks: Figure,
-        public val topNetworks: List<ValueTally>,
+        public val topNetworks: List<EntityTally>,
     ) : InsightCard {
         override val isEmpty: Boolean get() = logins.value == 0
     }

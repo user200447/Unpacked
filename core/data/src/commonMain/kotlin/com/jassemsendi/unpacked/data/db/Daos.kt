@@ -229,7 +229,7 @@ internal interface EntityCountDao {
  * Event, Claim, Entity and attribute tables, so in their own DAO.
  */
 @Dao
-internal interface InsightDao {
+internal interface InsightCardDao {
     @Query("SELECT time FROM events WHERE kind = :kind")
     suspend fun eventTimes(kind: String): List<Long>
 
@@ -292,20 +292,6 @@ internal interface InsightDao {
         entityKind: String,
         limit: Int,
     ): List<EntityTallyRow>
-
-    @Query(
-        """
-        SELECT value, COUNT(*) AS count FROM event_attributes
-        JOIN events ON events.id = event_attributes.event_id
-        WHERE events.kind = :kind AND label = :label AND value <> ''
-        GROUP BY value
-        ORDER BY count DESC, value
-        """,
-    )
-    suspend fun eventValueTallies(
-        kind: String,
-        label: String,
-    ): List<ValueTallyRow>
 }
 
 /**

@@ -4,7 +4,6 @@ import com.jassemsendi.unpacked.data.ClaimRepository
 import com.jassemsendi.unpacked.data.EntityTallies
 import com.jassemsendi.unpacked.data.EntityTally
 import com.jassemsendi.unpacked.data.EventRepository
-import com.jassemsendi.unpacked.data.ValueTally
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.DataError
@@ -84,20 +83,6 @@ class FakeEventRepository(
         limit: Int,
     ): Result<EntityTallies, DataError.Local> =
         answer { events.filter { it.kind == kind }.flatMap { it.entities }.tallied(entityKind, limit) }
-
-    override suspend fun valueCounts(
-        kind: EventKind,
-        label: String,
-    ): Result<List<ValueTally>, DataError.Local> =
-        answer {
-            events
-                .filter { it.kind == kind }
-                .mapNotNull { event -> event.attributes[label]?.takeIf { it.isNotBlank() } }
-                .groupingBy { it }
-                .eachCount()
-                .map { (value, count) -> ValueTally(value, count) }
-                .sortedWith(compareByDescending<ValueTally> { it.count }.thenBy { it.value })
-        }
 
     private fun <T> answer(read: () -> T): Result<T, DataError.Local> =
         failure?.let { Result.Error(it) } ?: Result.Success(read())

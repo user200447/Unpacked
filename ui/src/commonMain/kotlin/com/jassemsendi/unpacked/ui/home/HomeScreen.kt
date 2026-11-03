@@ -110,9 +110,9 @@ private fun Header(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(Spacing.small),
         ) {
-            OutlinedButton(onClick = { destinations.onSearch("") }) { Text("Search") }
+            OutlinedButton(onClick = destinations.onSearch) { Text("Search") }
             OutlinedButton(onClick = { destinations.onClaims(null) }) { Text("Claims") }
-            OutlinedButton(onClick = { destinations.onEntities(null) }) { Text("Entities") }
+            OutlinedButton(onClick = destinations.onEntities) { Text("Entities") }
             OutlinedButton(onClick = destinations.onImport) { Text("Imports") }
         }
     }
