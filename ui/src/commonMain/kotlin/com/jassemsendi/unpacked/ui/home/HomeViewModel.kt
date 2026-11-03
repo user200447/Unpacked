@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jassemsendi.unpacked.data.ClaimRepository
 import com.jassemsendi.unpacked.data.EventRepository
+import com.jassemsendi.unpacked.insights.InsightCard
+import com.jassemsendi.unpacked.insights.InsightCards
 import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.Result
@@ -16,13 +18,15 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 
 /**
- * The Home timeline: the library's Events newest first in pages, narrowed to one Kind on request,
- * and the record the user opened. Nothing is read until the screen asks for a [HomeAction.Refresh].
+ * The Home screen: the Insight cards, and the timeline of the library's Events newest first in pages,
+ * narrowed to one Kind on request, with the record the user opened. Nothing is read until the screen
+ * asks for a [HomeAction.Refresh].
  */
 class HomeViewModel(
     private val events: EventRepository,
     private val claims: ClaimRepository,
     private val timeZone: TimeZone,
+    private val cards: InsightCards,
     private val pageSize: Int = PAGE_SIZE,
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeState())
@@ -30,6 +34,9 @@ class HomeViewModel(
 
     /** Bumped by every reload so a page that was in flight for an older filter is dropped on arrival. */
     private var generation = 0
+
+    /** One slot per card in Home's order: the last read that succeeded, or null while a card has never been read. */
+    private var cardSlots: List<InsightCardUi?> = emptyList()
 
     /** The Kind counts and the first page, read together so the screen never shows one without the other. */
     private data class FirstPage(
@@ -40,15 +47,18 @@ class HomeViewModel(
 
     fun onAction(action: HomeAction) {
         when (action) {
-            HomeAction.Refresh -> reload(_state.value.filter)
-            is HomeAction.Filter -> reload(action.kind)
+            HomeAction.Refresh -> reload(_state.value.filter, withCards = true)
+            is HomeAction.Filter -> reload(action.kind, withCards = false)
             HomeAction.NextPage -> nextPage()
             is HomeAction.Open -> open(action.ref)
             HomeAction.CloseDetail -> _state.update { it.copy(detail = null) }
         }
     }
 
-    private fun reload(requested: EventKind?) {
+    private fun reload(
+        requested: EventKind?,
+        withCards: Boolean,
+    ) {
         val current = ++generation
         // A new Kind empties the list at once; a plain refresh keeps the last read on screen until the new one lands.
         _state.update {
@@ -59,28 +69,11 @@ class HomeViewModel(
             }
         }
         viewModelScope.launch {
-            val read = readFirstPage(requested)
+            val page = readFirstPage(requested)
+            // The cards count the whole library, so a change of filter leaves them as they are.
+            val cardReads = if (withCards) cards.readAll() else null
             if (current != generation) return@launch
-            _state.update { state ->
-                when (read) {
-                    is Result.Success -> {
-                        val page = read.data
-                        state
-                            .copy(
-                                isLoading = false,
-                                error = null,
-                                filter = page.filter,
-                                totalCount = page.kinds.sumOf { it.count },
-                                kinds = page.kinds,
-                                entries = page.entries,
-                            ).withHasMore()
-                    }
-
-                    is Result.Error -> {
-                        state.copy(isLoading = false, error = read.error.toMessage())
-                    }
-                }
-            }
+            _state.update { it.withFirstPage(page).withCards(cardReads) }
         }
     }
 
@@ -100,6 +93,34 @@ class HomeViewModel(
                 }
             }
         }
+
+    private fun HomeState.withFirstPage(read: Result<FirstPage, DataError.Local>): HomeState =
+        when (read) {
+            is Result.Success -> {
+                val page = read.data
+                copy(
+                    isLoading = false,
+                    error = null,
+                    filter = page.filter,
+                    totalCount = page.kinds.sumOf { it.count },
+                    kinds = page.kinds,
+                    entries = page.entries,
+                ).withHasMore()
+            }
+
+            is Result.Error -> {
+                copy(isLoading = false, error = read.error.toMessage())
+            }
+        }
+
+    /** A card that could not be read keeps its last successful read on screen beside the message (ADR 0009). */
+    private fun HomeState.withCards(reads: List<Result<InsightCard, DataError.Local>>?): HomeState {
+        if (reads == null) return this
+        val failed = reads.firstNotNullOfOrNull { (it as? Result.Error)?.error }
+        cardSlots =
+            reads.mapIndexed { index, read -> (read as? Result.Success)?.data?.toUi() ?: cardSlots.getOrNull(index) }
+        return copy(cards = cardSlots.filterNotNull(), error = error ?: failed?.toMessage())
+    }
 
     private fun nextPage() {
         val before = _state.value

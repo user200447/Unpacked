@@ -104,7 +104,7 @@ class InstagramEventMappersTest {
         }
 
     @Test
-    fun loginActivityMapFileBecomesLoginEventsNamingTheDeviceByItsUserAgent() =
+    fun loginActivityMapFileBecomesLoginEventsNamingTheDeviceByItsUserAgentAndTheNetworkByItsAddress() =
         runTest {
             val (result, events) =
                 importFile(
@@ -116,11 +116,21 @@ class InstagramEventMappersTest {
             assertEquals(0, result.droppedCount)
             assertEquals(List(3) { EventKind.Login }, events.map { it.kind })
             assertEquals(Instant.fromEpochSeconds(InstagramStringDataFixtures.FIRST_LOGIN_TIME_SECONDS), events[0].time)
-            val phone = events[0].entities.single()
-            assertEquals(EntityKind.Device, phone.kind)
+            val phone = events[0].entities.single { it.kind == EntityKind.Device }
             assertEquals(InstagramStringDataFixtures.PHONE_USER_AGENT, phone.displayName)
-            assertEquals(phone, events[2].entities.single(), "the same user agent is the same device")
-            assertEquals(InstagramStringDataFixtures.LAPTOP_USER_AGENT, events[1].entities.single().displayName)
+            assertEquals(
+                phone,
+                events[2].entities.single {
+                    it.kind == EntityKind.Device
+                },
+                "the same user agent is the same device",
+            )
+            assertEquals(
+                InstagramStringDataFixtures.LAPTOP_USER_AGENT,
+                events[1].entities.single { it.kind == EntityKind.Device }.displayName,
+            )
+            val network = events[0].entities.single { it.kind == EntityKind.Network }
+            assertEquals("203.0.113.7", network.displayName, "a login names the network it came from by its address")
             assertEquals("2026-10-08T12:43:40Z", events[0].attributes["Time"], "a dated entry reads as an instant")
             assertEquals("203.0.113.7", events[0].attributes["IP Address"])
             assertEquals(null, events[0].attributes["Title"], "an empty title is dropped")
@@ -147,7 +157,10 @@ class InstagramEventMappersTest {
                 firstLogin.time,
             )
             assertEquals(firstLogin.time, logout.time, "epoch milliseconds in one file, seconds in the other")
-            assertEquals(InstagramStringDataFixtures.LAPTOP_USER_AGENT, logout.entities.single().displayName)
+            assertEquals(
+                InstagramStringDataFixtures.LAPTOP_USER_AGENT,
+                logout.entities.single { it.kind == EntityKind.Device }.displayName,
+            )
         }
 
     @Test

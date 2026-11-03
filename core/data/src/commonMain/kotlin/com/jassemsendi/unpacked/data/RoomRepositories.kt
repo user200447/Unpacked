@@ -5,6 +5,7 @@ import androidx.room.useWriterConnection
 import com.jassemsendi.unpacked.data.db.ClaimRow
 import com.jassemsendi.unpacked.data.db.EntityCountRow
 import com.jassemsendi.unpacked.data.db.EntityLink
+import com.jassemsendi.unpacked.data.db.EntityTallyRow
 import com.jassemsendi.unpacked.data.db.EventRow
 import com.jassemsendi.unpacked.data.db.HitType
 import com.jassemsendi.unpacked.data.db.LibraryDatabase
@@ -23,6 +24,7 @@ import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.Result
+import kotlin.time.Instant
 
 /** A row that is not there is [DataError.Local.NOT_FOUND]; every repository answers absence the same way. */
 private fun <T : Any> Result<T?, DataError.Local>.orNotFound(): Result<T, DataError.Local> =
@@ -124,6 +126,20 @@ internal class RoomEntityRepository(
         }
     }
 
+    /** The Entities behind tallied rows, in row order, with their attributes read in bulk. */
+    suspend fun tallies(
+        count: Int,
+        rows: List<EntityTallyRow>,
+    ): EntityTallies {
+        val entityById = hydrate(rows.map { it.entity.id }).associateBy { it.id }
+        return EntityTallies(
+            count,
+            rows.mapNotNull { row ->
+                entityById[row.entity.id]?.let { EntityTally(it, row.count) }
+            },
+        )
+    }
+
     private suspend fun hydrate(ids: List<String>): List<Entity> {
         if (ids.isEmpty()) return emptyList()
         val rows = ids.inChunks { dao.byIds(it) }.associateBy { it.id }
@@ -159,6 +175,22 @@ internal class RoomEventRepository(
         offset: Int,
     ): Result<List<Event>, DataError.Local> = localCall { hydrate(db.entityCountDao().events(entityId, limit, offset)) }
 
+    override suspend fun timesOf(kind: EventKind): Result<List<Instant>, DataError.Local> =
+        localCall { db.insightCardDao().eventTimes(kind.name).map(Instant::fromEpochMilliseconds) }
+
+    override suspend fun topEntities(
+        kind: EventKind,
+        entityKind: EntityKind,
+        limit: Int,
+    ): Result<EntityTallies, DataError.Local> =
+        localCall {
+            val dao = db.insightCardDao()
+            entities.tallies(
+                dao.eventEntityCount(kind.name, entityKind.name),
+                dao.eventEntityTallies(kind.name, entityKind.name, limit),
+            )
+        }
+
     /** The Events with these ids, in no particular order; ids that no longer exist are left out. */
     suspend fun byIds(ids: List<Long>): List<Event> = hydrate(ids.inChunks { dao.byIds(it) })
 
@@ -191,6 +223,19 @@ internal class RoomClaimRepository(
 
     override suspend fun forEntity(entityId: String): Result<List<Claim>, DataError.Local> =
         localCall { hydrate(db.entityCountDao().claims(entityId)) }
+
+    override suspend fun topEntities(
+        kind: ClaimKind,
+        entityKind: EntityKind,
+        limit: Int,
+    ): Result<EntityTallies, DataError.Local> =
+        localCall {
+            val dao = db.insightCardDao()
+            entities.tallies(
+                dao.claimEntityCount(kind.name, entityKind.name),
+                dao.claimEntityTallies(kind.name, entityKind.name, limit),
+            )
+        }
 
     /** The Claims with these ids, in no particular order; ids that no longer exist are left out. */
     suspend fun byIds(ids: List<Long>): List<Claim> = hydrate(ids.inChunks { dao.byIds(it) })

@@ -38,11 +38,16 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun EntitiesRoot(
     onBack: () -> Unit,
+    opened: String? = null,
     viewModel: EntitiesViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // Imports may have come or gone while another screen was up, so every appearance re-reads the library.
-    LaunchedEffect(viewModel) { viewModel.onAction(EntitiesAction.Refresh) }
+    // Imports may have come or gone while another screen was up, so every appearance re-reads the library;
+    // an Entity the screen was sent to, say from an Insight card, opens over the list.
+    LaunchedEffect(viewModel, opened) {
+        viewModel.onAction(EntitiesAction.Refresh)
+        opened?.let { viewModel.onAction(EntitiesAction.OpenEntity(it)) }
+    }
     EntitiesScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
 }
 

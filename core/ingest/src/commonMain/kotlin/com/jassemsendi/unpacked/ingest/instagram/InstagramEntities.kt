@@ -55,20 +55,15 @@ internal fun hashtags(): EntityRule =
         }
     }
 
-/** The device a login or logout came from, as Instagram names it: by the user agent string, kept as given. */
-internal fun device(): EntityRule =
-    { fields ->
-        listOfNotNull(
-            fields["User Agent"].orBlank()?.let { userAgent ->
-                Entity(Source.Instagram, EntityKind.Device, Entity.normalizeKey(userAgent), userAgent)
-            },
-        )
-    }
-
 /**
- * Instagram usernames are case-insensitive, so the key is the lowercased username; a name that is
- * the only identifier is normalised like a display name (ADR 0002). The display name is kept as given.
+ * An Entity of [kind] named by the value under [field], kept as given: the device a login or logout came
+ * from by its user agent string, or the network by its address.
  */
+internal fun namedBy(
+    kind: EntityKind,
+    field: String,
+): EntityRule = { fields -> listOfNotNull(fields[field]?.let(named(kind))) }
+
 private fun profile(
     kind: EntityKind,
     name: String?,
@@ -111,4 +106,4 @@ internal fun basedIn(): EntityRule =
     }
 
 /** A topic named in [field], as the your-topics file names each one. */
-internal fun topic(field: String): EntityRule = { fields -> listOfNotNull(fields[field]?.let(named(EntityKind.Topic))) }
+internal fun topic(field: String): EntityRule = namedBy(EntityKind.Topic, field)

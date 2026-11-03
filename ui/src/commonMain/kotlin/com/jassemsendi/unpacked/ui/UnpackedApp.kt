@@ -18,22 +18,23 @@ import com.jassemsendi.unpacked.ui.search.SearchRoot
 import com.jassemsendi.unpacked.ui.welcome.WelcomeScreen
 
 /**
- * Root of the shared UI: the Welcome screen first, then the Import screen, then Home with the timeline;
- * Home and Import lead to each other, and Home to Search, Claims and Entities and back. Koin must be started
- * before this runs.
+ * Root of the shared UI: the Welcome screen first, then the Import screen, then Home with the Insight cards
+ * and the timeline; Home and Import lead to each other, and Home to Search, Claims and Entities and back,
+ * a number on a card opening them on what it counted. Koin must be started before this runs.
  */
 @Composable
 fun UnpackedApp() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            var screen by rememberSaveable(stateSaver = Screen.saver) { mutableStateOf(Screen.Welcome) }
-            when (screen) {
+            var screen: Screen by rememberSaveable(stateSaver = Screen.saver) { mutableStateOf(Screen.Welcome) }
+            val home = { screen = Screen.Home }
+            when (val current = screen) {
                 Screen.Welcome -> {
                     WelcomeScreen(onContinue = { screen = Screen.Import })
                 }
 
                 Screen.Import -> {
-                    ImportRoot(onShowTimeline = { screen = Screen.Home })
+                    ImportRoot(onShowTimeline = home)
                 }
 
                 Screen.Home -> {
@@ -41,22 +42,23 @@ fun UnpackedApp() {
                         HomeDestinations(
                             onImport = { screen = Screen.Import },
                             onSearch = { screen = Screen.Search },
-                            onClaims = { screen = Screen.Claims },
-                            onEntities = { screen = Screen.Entities },
+                            onClaims = { screen = Screen.Claims(it) },
+                            onEntities = { screen = Screen.Entities() },
+                            onEntity = { screen = Screen.Entities(it) },
                         ),
                     )
                 }
 
                 Screen.Search -> {
-                    SearchRoot(onBack = { screen = Screen.Home })
+                    SearchRoot(onBack = home)
                 }
 
-                Screen.Claims -> {
-                    ClaimsRoot(onBack = { screen = Screen.Home })
+                is Screen.Claims -> {
+                    ClaimsRoot(onBack = home, expanded = current.expanded)
                 }
 
-                Screen.Entities -> {
-                    EntitiesRoot(onBack = { screen = Screen.Home })
+                is Screen.Entities -> {
+                    EntitiesRoot(onBack = home, opened = current.opened)
                 }
             }
         }

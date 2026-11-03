@@ -1,6 +1,8 @@
 package com.jassemsendi.unpacked.ui.home
 
 import com.jassemsendi.unpacked.data.ClaimRepository
+import com.jassemsendi.unpacked.data.EntityTallies
+import com.jassemsendi.unpacked.data.EntityTally
 import com.jassemsendi.unpacked.data.EventRepository
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
@@ -72,8 +74,35 @@ class FakeEventRepository(
         }
     }
 
+    override suspend fun timesOf(kind: EventKind): Result<List<Instant>, DataError.Local> =
+        answer { events.filter { it.kind == kind }.map { it.time } }
+
+    override suspend fun topEntities(
+        kind: EventKind,
+        entityKind: EntityKind,
+        limit: Int,
+    ): Result<EntityTallies, DataError.Local> =
+        answer { events.filter { it.kind == kind }.flatMap { it.entities }.tallied(entityKind, limit) }
+
     private fun <T> answer(read: () -> T): Result<T, DataError.Local> =
         failure?.let { Result.Error(it) } ?: Result.Success(read())
+}
+
+/** How the Room repositories tally the Entities a set of Events or Claims name: most named first, ties by name then id. */
+fun List<Entity>.tallied(
+    entityKind: EntityKind,
+    limit: Int,
+): EntityTallies {
+    val all =
+        filter { it.kind == entityKind }
+            .groupBy { it.id }
+            .map { (_, same) -> EntityTally(same.first(), same.size) }
+            .sortedWith(
+                compareByDescending<EntityTally> { it.count }
+                    .thenBy { it.entity.displayName.lowercase() }
+                    .thenBy { it.entity.id },
+            )
+    return EntityTallies(all.size, all.take(limit))
 }
 
 /** How the Room repository orders Claims for a Kind or an Entity: dated ones newest first, then undated ones in file order. */
@@ -118,6 +147,13 @@ class FakeClaimRepository(
 
     override suspend fun forEntity(entityId: String): Result<List<Claim>, DataError.Local> =
         answer { claims.filter { claim -> claim.entities.any { it.id == entityId } }.sortedWith(claimsNewestFirst) }
+
+    override suspend fun topEntities(
+        kind: ClaimKind,
+        entityKind: EntityKind,
+        limit: Int,
+    ): Result<EntityTallies, DataError.Local> =
+        answer { claims.filter { it.kind == kind }.flatMap { it.entities }.tallied(entityKind, limit) }
 
     private fun <T> answer(read: () -> T): Result<T, DataError.Local> =
         failure?.let { Result.Error(it) } ?: Result.Success(read())

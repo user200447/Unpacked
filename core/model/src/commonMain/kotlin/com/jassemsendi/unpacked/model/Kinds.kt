@@ -33,6 +33,9 @@ public enum class EntityKind {
     Advertiser,
     Account,
     Device,
+
+    /** The network a login or logout came from, named by the address the Source recorded. */
+    Network,
     Topic,
     Place,
 
