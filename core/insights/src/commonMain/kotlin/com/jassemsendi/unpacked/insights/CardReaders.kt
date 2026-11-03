@@ -11,7 +11,10 @@ import com.jassemsendi.unpacked.model.andThen
 import com.jassemsendi.unpacked.model.map
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.YearMonth
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.yearMonth
+import kotlin.time.Instant
 
 /**
  * What computes one Insight card: a deterministic read of the Library through its repository interfaces,
@@ -99,3 +102,100 @@ public class LoginsReader(
             }
         }
 }
+
+/** Spec story 27: how the user's social graph changed, month by month in the device's zone. */
+public class SocialGraphReader(
+    private val events: EventRepository,
+    private val timeZone: TimeZone,
+) : CardReader<InsightCard.SocialGraph> {
+    override suspend fun read(): Result<InsightCard.SocialGraph, DataError.Local> =
+        events.timesOf(EventKind.Follow).andThen { follows ->
+            events.timesOf(EventKind.Unfollow).map { unfollows ->
+                InsightCard.SocialGraph(
+                    follows = Figure(follows.size, Opens.Timeline(EventKind.Follow)),
+                    unfollows = Figure(unfollows.size, Opens.Timeline(EventKind.Unfollow)),
+                    byMonth = byMonth(follows, unfollows, timeZone, ::MonthOfFollows),
+                )
+            }
+        }
+}
+
+/** Spec story 28: the profiling, as the Source's own location and interest Claims show it. */
+public class InferredReader(
+    private val claims: ClaimRepository,
+    private val topCount: Int = InsightCards.TOP_COUNT,
+) : CardReader<InsightCard.Inferred> {
+    override suspend fun read(): Result<InsightCard.Inferred, DataError.Local> =
+        claims.countByKind().andThen { counts ->
+            claims.topEntities(ClaimKind.InferredLocation, EntityKind.Place, topCount).andThen { places ->
+                claims.topEntities(ClaimKind.InferredInterest, EntityKind.Topic, topCount).map { topics ->
+                    InsightCard.Inferred(
+                        locations =
+                            Figure(counts[ClaimKind.InferredLocation] ?: 0, Opens.Claims(ClaimKind.InferredLocation)),
+                        topPlaces = places.top,
+                        interests =
+                            Figure(counts[ClaimKind.InferredInterest] ?: 0, Opens.Claims(ClaimKind.InferredInterest)),
+                        topTopics = topics.top,
+                    )
+                }
+            }
+        }
+}
+
+/** Spec story 29: how the user is tracked beyond the app. */
+public class OffPlatformReader(
+    private val events: EventRepository,
+    private val claims: ClaimRepository,
+) : CardReader<InsightCard.OffPlatform> {
+    override suspend fun read(): Result<InsightCard.OffPlatform, DataError.Local> =
+        events.countByKind().andThen { eventCounts ->
+            claims.countByKind().map { claimCounts ->
+                InsightCard.OffPlatform(
+                    linksVisited =
+                        Figure(eventCounts[EventKind.LinkVisited] ?: 0, Opens.Timeline(EventKind.LinkVisited)),
+                    settings =
+                        Figure(
+                            claimCounts[ClaimKind.OffPlatformSetting] ?: 0,
+                            Opens.Claims(ClaimKind.OffPlatformSetting),
+                        ),
+                )
+            }
+        }
+}
+
+/** Spec story 30: messaging volume, month by month in the device's zone; counts are all the Library holds (ADR 0003). */
+public class MessagesReader(
+    private val events: EventRepository,
+    private val timeZone: TimeZone,
+) : CardReader<InsightCard.Messages> {
+    override suspend fun read(): Result<InsightCard.Messages, DataError.Local> =
+        events.timesOf(EventKind.MessageSent).andThen { sent ->
+            events.timesOf(EventKind.MessageReceived).map { received ->
+                InsightCard.Messages(
+                    sent = Figure(sent.size, Opens.Timeline(EventKind.MessageSent)),
+                    received = Figure(received.size, Opens.Timeline(EventKind.MessageReceived)),
+                    byMonth = byMonth(sent, received, timeZone, ::MonthOfMessages),
+                )
+            }
+        }
+}
+
+/**
+ * Two series of moments as one row per calendar month of [timeZone], from the first month either has a moment
+ * in to the last, so that a quiet month between shows as zero rather than vanishing. Empty when both are empty.
+ */
+private fun <M> byMonth(
+    first: List<Instant>,
+    second: List<Instant>,
+    timeZone: TimeZone,
+    row: (month: YearMonth, first: Int, second: Int) -> M,
+): List<M> {
+    val firstByMonth = first.countByMonth(timeZone)
+    val secondByMonth = second.countByMonth(timeZone)
+    val months = firstByMonth.keys + secondByMonth.keys
+    if (months.isEmpty()) return emptyList()
+    return (months.min()..months.max()).map { month -> row(month, firstByMonth[month] ?: 0, secondByMonth[month] ?: 0) }
+}
+
+private fun List<Instant>.countByMonth(timeZone: TimeZone): Map<YearMonth, Int> =
+    groupingBy { it.toLocalDateTime(timeZone).date.yearMonth }.eachCount()

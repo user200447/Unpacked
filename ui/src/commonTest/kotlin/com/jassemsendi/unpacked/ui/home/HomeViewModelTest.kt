@@ -298,12 +298,21 @@ class HomeViewModelTest {
         }
 
     @Test
-    fun theFourCardsAreReadWithTheTimelineAndEveryNumberOpensWhatItCounted() =
+    fun theEightCardsAreReadWithTheTimelineAndEveryNumberOpensWhatItCounted() =
         runTest {
             val cards = viewModel().state.value.cards
 
             assertEquals(
-                listOf("Who has your contact details", "Ads shown to you", "What you viewed", "Your logins"),
+                listOf(
+                    "Who has your contact details",
+                    "Ads shown to you",
+                    "What you viewed",
+                    "Your logins",
+                    "Follows and unfollows",
+                    "What was inferred about you",
+                    "Beyond the app",
+                    "Your messages",
+                ),
                 cards.map { it.title },
             )
             val ads = cards[1]
@@ -316,6 +325,15 @@ class HomeViewModelTest {
             assertEquals("1", logins.headline.value)
             assertEquals(Opens.Timeline(EventKind.Login), logins.headline.opens)
             assertEquals(listOf("devices", "networks"), logins.details.map { it.caption }, "none named in this library")
+            val inferred = cards[5]
+            assertEquals("1", inferred.details.single().value, "the one interest Claim")
+            assertEquals(Opens.Claims(ClaimKind.InferredInterest), inferred.details.single().opens)
+            val empty = cards.withIndex().filter { it.value.emptyText != null }.map { it.index }
+            assertEquals(
+                listOf(0, 2, 4, 6, 7),
+                empty,
+                "contact, viewed, social, off-platform and messages have nothing to count",
+            )
         }
 
     @Test
@@ -341,7 +359,7 @@ class HomeViewModelTest {
             viewModel.onAction(HomeAction.Refresh)
 
             val state = viewModel.state.value
-            assertEquals(before, state.cards, "the contact card is the only one read from Claims")
+            assertEquals(before, state.cards, "the cards read from Claims keep their last read")
             assertEquals("Your library could not be read or written.", state.error)
         }
 
@@ -495,14 +513,15 @@ class HomeViewModelTest {
     fun anEmptyLibraryListsNothingAndOffersNoKinds() =
         runTest {
             val empty = FakeEventRepository()
-            val viewModel = HomeViewModel(empty, claims, TimeZone.UTC, cards(empty))
+            val noClaims = FakeClaimRepository()
+            val viewModel = HomeViewModel(empty, noClaims, TimeZone.UTC, InsightCards(empty, noClaims, TimeZone.UTC))
 
             viewModel.onAction(HomeAction.Refresh)
 
             val state = viewModel.state.value
             assertEquals(HomeState(isLoading = false), state.copy(cards = emptyList()))
             // The cards still stand, each saying honestly that it has nothing to count.
-            assertEquals(4, state.cards.size)
+            assertEquals(8, state.cards.size)
             assertTrue(state.cards.all { it.emptyText != null })
         }
 }
