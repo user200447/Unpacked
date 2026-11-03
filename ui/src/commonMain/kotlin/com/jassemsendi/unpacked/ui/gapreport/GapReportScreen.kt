@@ -88,9 +88,9 @@ private fun Report(
         }
         state.error?.let { error -> item { ErrorNotice(error) } }
         val report = state.report
-        val draft = state.selected?.let { id -> { onAccessRequest(id) } }
+        val onDraft = state.selected?.let { id -> { onAccessRequest(id) } }
         when {
-            report != null -> item { Summary(report, onAccessRequest = draft) }
+            report != null -> item { Summary(report, onAccessRequest = onDraft) }
             state.isLoading -> item { CircularProgressIndicator() }
             else -> item { EmptyNotice() }
         }

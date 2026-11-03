@@ -60,12 +60,12 @@ fun AccessRequestScreen(
     ) {
         item { Header(onBack) }
         state.error?.let { error -> item { ErrorNotice(error) } }
-        val letter = state.letter
+        val request = state.request
         when {
-            letter != null -> {
-                item { Summary(letter) }
-                item { Actions(letter, state.canExport, state.exportedTo) { onAction(AccessRequestAction.Export) } }
-                item { Letter(letter.text) }
+            request != null -> {
+                item { Summary(request) }
+                item { Actions(request, state.canSave, state.savedTo) { onAction(AccessRequestAction.Save) } }
+                item { RequestText(request.text) }
             }
 
             state.isLoading -> {
@@ -95,47 +95,47 @@ private fun Header(onBack: () -> Unit) {
 }
 
 @Composable
-private fun Summary(letter: AccessRequestUi) {
+private fun Summary(request: AccessRequestUi) {
     Column(modifier = Modifier.readable(), verticalArrangement = Arrangement.spacedBy(Spacing.small / 2)) {
-        Text("To ${letter.sourceName}, about ${letter.exportName}", style = MaterialTheme.typography.titleMedium)
-        Text(letter.summary, style = MaterialTheme.typography.bodyMedium)
+        Text("To ${request.sourceName}, about ${request.exportName}", style = MaterialTheme.typography.titleMedium)
+        Text(request.summary, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
-/** Copy goes through the platform clipboard Compose provides; export through the exporter the app bound. */
+/** Copy goes through the platform clipboard Compose provides; saving through the saver the app bound. */
 @Composable
 private fun Actions(
-    letter: AccessRequestUi,
-    canExport: Boolean,
-    exportedTo: String?,
-    onExport: () -> Unit,
+    request: AccessRequestUi,
+    canSave: Boolean,
+    savedTo: String?,
+    onSave: () -> Unit,
 ) {
     // The replacement, Clipboard, has no common way to build a text ClipEntry in Compose Multiplatform 1.12.
     @Suppress("DEPRECATION")
     val clipboard = LocalClipboardManager.current
-    var copied by remember(letter.text) { mutableStateOf(false) }
+    var copied by remember(request.text) { mutableStateOf(false) }
     Column(modifier = Modifier.readable(), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
             Button(
                 onClick = {
-                    clipboard.setText(AnnotatedString(letter.text))
+                    clipboard.setText(AnnotatedString(request.text))
                     copied = true
                 },
             ) { Text("Copy") }
-            if (canExport) {
-                OutlinedButton(onClick = onExport) { Text("Save as text") }
+            if (canSave) {
+                OutlinedButton(onClick = onSave) { Text("Save as text") }
             }
         }
         when {
-            exportedTo != null -> {
-                Text("Saved to $exportedTo", style = MaterialTheme.typography.bodySmall)
+            savedTo != null -> {
+                Text("Saved to $savedTo", style = MaterialTheme.typography.bodySmall)
             }
 
             copied -> {
                 Text("Copied to the clipboard.", style = MaterialTheme.typography.bodySmall)
             }
 
-            !canExport -> {
+            !canSave -> {
                 Text(
                     "Saving as a file is not available on this platform yet; copy the letter instead.",
                     style = MaterialTheme.typography.bodySmall,
@@ -147,7 +147,7 @@ private fun Actions(
 }
 
 @Composable
-private fun Letter(text: String) {
+private fun RequestText(text: String) {
     Card(modifier = Modifier.readable()) {
         SelectionContainer {
             Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(Spacing.medium))
@@ -163,8 +163,8 @@ private fun AccessRequestScreenPreview() {
             state =
                 AccessRequestState(
                     isLoading = false,
-                    canExport = true,
-                    letter =
+                    canSave = true,
+                    request =
                         AccessRequestUi(
                             exportName = "instagram-me",
                             sourceName = "Instagram",

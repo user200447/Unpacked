@@ -49,7 +49,7 @@ class AccessRequestViewModelTest {
     private val events = FakeEventRepository(adShown)
     private val claims = FakeClaimRepository(holdsContact)
     private val imports = FakeImportRepository(storedImport(1, "instagram-me-2026-09-01", files = listOf(adsViewed)))
-    private val exporter = FakeLetterExporter()
+    private val saver = FakeAccessRequestSaver()
 
     /** Categories is Covered by the JSON files, Recipients only Partial through the advertiser, the rest Missing. */
     private val someRules =
@@ -62,8 +62,8 @@ class AccessRequestViewModelTest {
 
     private fun viewModel(
         rules: EvidenceRules = someRules,
-        exporter: LetterExporter = this.exporter,
-    ): AccessRequestViewModel = AccessRequestViewModel(GapReportReader(imports, events, claims, rules), exporter)
+        saver: AccessRequestSaver = this.saver,
+    ): AccessRequestViewModel = AccessRequestViewModel(GapReportReader(imports, events, claims, rules), saver)
 
     @BeforeTest
     fun useTestMain() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -72,10 +72,10 @@ class AccessRequestViewModelTest {
     fun resetMainDispatcher() = Dispatchers.resetMain()
 
     @Test
-    fun nothingIsReadUntilTheScreenNamesAnImportAndThePlatformSaysWhetherItCanExport() =
+    fun nothingIsReadUntilTheScreenNamesAnImportAndThePlatformSaysWhetherItCanSave() =
         runTest {
-            assertEquals(AccessRequestState(canExport = true), viewModel().state.value)
-            assertEquals(AccessRequestState(canExport = false), viewModel(exporter = NoLetterExporter).state.value)
+            assertEquals(AccessRequestState(canSave = true), viewModel().state.value)
+            assertEquals(AccessRequestState(canSave = false), viewModel(saver = NoAccessRequestSaver).state.value)
         }
 
     @Test
@@ -88,7 +88,7 @@ class AccessRequestViewModelTest {
             val state = viewModel.state.value
             assertFalse(state.isLoading)
             assertNull(state.error)
-            val letter = assertNotNull(state.letter)
+            val letter = assertNotNull(state.request)
             assertEquals("instagram-me-2026-09-01", letter.exportName)
             assertEquals("Instagram", letter.sourceName)
             assertEquals(
@@ -109,53 +109,53 @@ class AccessRequestViewModelTest {
 
             viewModel.onAction(AccessRequestAction.Load(ImportId(1)))
 
-            val letter = assertNotNull(viewModel.state.value.letter)
+            val letter = assertNotNull(viewModel.state.value.request)
             assertEquals("Nothing outstanding: the Export addresses all nine items.", letter.summary)
             ArticleItem.entries.forEach { assertFalse(letter.text.contains(it.article)) }
         }
 
     @Test
-    fun exportingHandsTheLetterToThePlatformUnderItsFileNameAndSaysWhereItWent() =
+    fun savingHandsTheLetterToThePlatformUnderItsFileNameAndSaysWhereItWent() =
         runTest {
             val viewModel = viewModel()
             viewModel.onAction(AccessRequestAction.Load(ImportId(1)))
-            val letter = assertNotNull(viewModel.state.value.letter)
+            val letter = assertNotNull(viewModel.state.value.request)
 
-            viewModel.onAction(AccessRequestAction.Export)
+            viewModel.onAction(AccessRequestAction.Save)
 
-            assertEquals(listOf(letter.fileName to letter.text), exporter.exported)
-            assertEquals("/Users/me/Documents/access-request.txt", viewModel.state.value.exportedTo)
+            assertEquals(listOf(letter.fileName to letter.text), saver.saved)
+            assertEquals("/Users/me/Documents/access-request.txt", viewModel.state.value.savedTo)
             assertNull(viewModel.state.value.error)
         }
 
     @Test
-    fun aCancelledExportLeavesNothingToSayAndAFailedOneIsReported() =
+    fun aCancelledSaveLeavesNothingToSayAndAFailedOneIsReported() =
         runTest {
             val viewModel = viewModel()
             viewModel.onAction(AccessRequestAction.Load(ImportId(1)))
 
-            exporter.destination = null
-            viewModel.onAction(AccessRequestAction.Export)
+            saver.destination = null
+            viewModel.onAction(AccessRequestAction.Save)
 
-            assertNull(viewModel.state.value.exportedTo)
+            assertNull(viewModel.state.value.savedTo)
             assertNull(viewModel.state.value.error)
 
-            exporter.failure = LetterExportError.NOT_WRITABLE
-            viewModel.onAction(AccessRequestAction.Export)
+            saver.failure = AccessRequestSaveError.NOT_WRITABLE
+            viewModel.onAction(AccessRequestAction.Save)
 
             assertEquals("The letter could not be written there.", viewModel.state.value.error)
-            assertNotNull(viewModel.state.value.letter, "the letter stays on screen")
+            assertNotNull(viewModel.state.value.request, "the letter stays on screen")
         }
 
     @Test
-    fun aPlatformWithoutAnExporterIsNeverAskedToExport() =
+    fun aPlatformWithoutASaverIsNeverAskedToSave() =
         runTest {
-            val viewModel = viewModel(exporter = NoLetterExporter)
+            val viewModel = viewModel(saver = NoAccessRequestSaver)
             viewModel.onAction(AccessRequestAction.Load(ImportId(1)))
 
-            viewModel.onAction(AccessRequestAction.Export)
+            viewModel.onAction(AccessRequestAction.Save)
 
-            assertNull(viewModel.state.value.exportedTo)
+            assertNull(viewModel.state.value.savedTo)
             assertNull(viewModel.state.value.error)
         }
 
@@ -168,7 +168,7 @@ class AccessRequestViewModelTest {
 
             val state = viewModel.state.value
             assertFalse(state.isLoading)
-            assertNull(state.letter)
+            assertNull(state.request)
             assertEquals("That is no longer in your library.", state.error)
         }
 }

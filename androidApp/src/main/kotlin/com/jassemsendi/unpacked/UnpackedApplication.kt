@@ -4,8 +4,8 @@ import android.app.Application
 import com.jassemsendi.unpacked.data.Library
 import com.jassemsendi.unpacked.data.libraryModule
 import com.jassemsendi.unpacked.data.open
-import com.jassemsendi.unpacked.ui.accessrequest.LetterExporter
-import com.jassemsendi.unpacked.ui.accessrequest.NoLetterExporter
+import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestSaver
+import com.jassemsendi.unpacked.ui.accessrequest.NoAccessRequestSaver
 import com.jassemsendi.unpacked.ui.di.uiModule
 import com.jassemsendi.unpacked.ui.imports.ExportPicker
 import com.jassemsendi.unpacked.ui.imports.NoExportPicker
@@ -20,10 +20,10 @@ class UnpackedApplication : Application() {
         startKoin {
             modules(
                 libraryModule(library, FileSystem.SYSTEM),
-                // The Storage Access Framework picker and the share sheet arrive with ticket #17.
+                // The Storage Access Framework picker arrives with ticket #17; nothing shares the Access request yet.
                 module {
                     single<ExportPicker> { NoExportPicker }
-                    single<LetterExporter> { NoLetterExporter }
+                    single<AccessRequestSaver> { NoAccessRequestSaver }
                 },
                 uiModule,
             )

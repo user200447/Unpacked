@@ -7,7 +7,7 @@ internal fun AccessRequest.toUi(): AccessRequestUi =
         exportName = exportId.value,
         sourceName = source.name,
         summary =
-            if (isOutstanding) {
+            if (items.isNotEmpty()) {
                 "Asks for ${items.size} of the nine items: ${items.joinToString { it.item.article }}."
             } else {
                 "Nothing outstanding: the Export addresses all nine items."

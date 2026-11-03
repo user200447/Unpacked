@@ -22,6 +22,20 @@ class AccessRequestTest {
     private val export = ExportId("instagram-me-2026-10-20")
     private val anyJson = EvidenceRule.FileNamed(ArticleItem.Categories, "*.json")
 
+    /** The word the article uses for each item, which any wording of the letter must keep after the item's letter. */
+    private val itemNames =
+        mapOf(
+            ArticleItem.Purposes to "purposes",
+            ArticleItem.Categories to "categories",
+            ArticleItem.Recipients to "recipients",
+            ArticleItem.RetentionPeriod to "stored",
+            ArticleItem.RightsToRectifyAndErase to "rectification",
+            ArticleItem.RightToComplain to "complaint",
+            ArticleItem.SourceOfData to "not collected from me",
+            ArticleItem.AutomatedDecisions to "profiling",
+            ArticleItem.CopyOfData to "copy",
+        )
+
     private fun report(vararg coverages: Pair<ArticleItem, Coverage>): GapReport {
         val byItem = coverages.toMap()
         val verdicts =
@@ -71,17 +85,17 @@ class AccessRequestTest {
             ),
             letter.items.map { it.item to it.coverage },
         )
-        assertTrue(letter.isOutstanding)
 
-        // Each requested item appears once, by its letter and its wording, in the article's order.
+        // Each requested item appears once, by its letter and then the article's name for it, in the article's order.
         var position = 0
         letter.items.forEach { requested ->
             val article = letter.text.indexOf(requested.item.article, position)
             assertTrue(article >= position, "${requested.item.article} comes after the item before it")
-            val wording = letter.text.indexOf(requested.wording, article)
-            assertTrue(wording > article, "${requested.item.article} is followed by ${requested.wording}")
+            val name = itemNames.getValue(requested.item)
+            val named = letter.text.indexOf(name, article, ignoreCase = true)
+            assertTrue(named > article, "${requested.item.article} is followed by '$name'")
             assertEquals(-1, letter.text.indexOf(requested.item.article, article + 1), "named once")
-            position = wording
+            position = named
         }
         listOf(ArticleItem.Categories, ArticleItem.RightsToRectifyAndErase, ArticleItem.CopyOfData).forEach {
             assertFalse(letter.text.contains(it.article), "${it.article} is Covered and not asked for")
@@ -97,7 +111,6 @@ class AccessRequestTest {
         val letter = allCovered.accessRequest()
 
         assertEquals(emptyList(), letter.items)
-        assertFalse(letter.isOutstanding)
         ArticleItem.entries.forEach { assertFalse(letter.text.contains(it.article), "${it.article} is not asked for") }
         assertTrue(letter.text.contains(Source.Instagram.name))
         assertTrue(letter.text.contains(export.value))

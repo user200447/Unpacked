@@ -6,7 +6,7 @@ import com.jassemsendi.unpacked.data.Library
 import com.jassemsendi.unpacked.data.libraryModule
 import com.jassemsendi.unpacked.data.open
 import com.jassemsendi.unpacked.ui.UnpackedApp
-import com.jassemsendi.unpacked.ui.accessrequest.LetterExporter
+import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestSaver
 import com.jassemsendi.unpacked.ui.di.uiModule
 import com.jassemsendi.unpacked.ui.imports.ExportPicker
 import okio.FileSystem
@@ -21,7 +21,7 @@ fun main() {
             libraryModule(library, FileSystem.SYSTEM),
             module {
                 single<ExportPicker> { DesktopExportPicker() }
-                single<LetterExporter> { DesktopLetterExporter() }
+                single<AccessRequestSaver> { DesktopAccessRequestSaver() }
             },
             uiModule,
         )

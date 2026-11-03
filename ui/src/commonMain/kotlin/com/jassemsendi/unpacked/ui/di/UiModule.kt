@@ -16,8 +16,8 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 /**
- * The screens' ViewModels. Expects the library module, an [com.jassemsendi.unpacked.ui.imports.ExportPicker] and a
- * [com.jassemsendi.unpacked.ui.accessrequest.LetterExporter] from the app.
+ * The screens' ViewModels. Expects the library module, an [com.jassemsendi.unpacked.ui.imports.ExportPicker] and an
+ * [com.jassemsendi.unpacked.ui.accessrequest.AccessRequestSaver] from the app.
  */
 val uiModule: Module =
     module {

@@ -17,16 +17,12 @@ public data class AccessRequest(
     public val items: List<RequestedItem>,
     /** The letter, ready to copy or save. */
     public val text: String,
-) {
-    /** False when every Article item is Covered and the letter only says so. */
-    public val isOutstanding: Boolean get() = items.isNotEmpty()
-}
+)
 
-/** One Article item the letter asks for: what its Verdict was and how the letter words the item. */
+/** One Article item the letter asks for, and what its Verdict was: not provided, or provided only in part. */
 public data class RequestedItem(
     public val item: ArticleItem,
     public val coverage: Coverage,
-    public val wording: String,
 )
 
 /** The Access request for this report. */
@@ -34,7 +30,7 @@ public fun GapReport.accessRequest(): AccessRequest {
     val items =
         verdicts
             .filter { it.coverage != Coverage.Covered }
-            .map { RequestedItem(it.item, it.coverage, it.item.wording()) }
+            .map { RequestedItem(it.item, it.coverage) }
     return AccessRequest(source, exportId, items, letter(source, exportId, items))
 }
 
@@ -67,8 +63,7 @@ private fun letter(
             |
             |${items.joinToString("\n") { it.line() }}
             |
-            |Please provide each of these in writing within one month of this request, as Article 12(3)
-            |requires. If any of them cannot be provided, please say which and why.
+            |Please provide each of these in writing. If any of them cannot be provided, please say which and why.
             """.trimMargin()
         }
     return body + "\n\n" + SIGN_OFF
@@ -81,7 +76,7 @@ private fun RequestedItem.line(): String {
             Coverage.Missing -> "not provided"
             Coverage.Covered -> error("a Covered item is never asked for")
         }
-    return "- Article ${item.article}: $wording ($state)."
+    return "- Article ${item.article}: ${item.wording()} ($state)."
 }
 
 /** How the letter names each item: the article's own words, after the article letter. */

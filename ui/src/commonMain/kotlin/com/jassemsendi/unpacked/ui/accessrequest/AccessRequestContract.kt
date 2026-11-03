@@ -5,13 +5,13 @@ import com.jassemsendi.unpacked.model.ImportId
 data class AccessRequestState(
     /** True from the start until the report has been read and the letter drafted. */
     val isLoading: Boolean = true,
-    /** The letter over the Import named by the last [AccessRequestAction.Load]. */
-    val letter: AccessRequestUi? = null,
+    /** The Access request over the Import named by the last [AccessRequestAction.Load]. */
+    val request: AccessRequestUi? = null,
     /** Whether this platform can hand the letter out as a text file; copying is always possible. */
-    val canExport: Boolean = false,
-    /** Where the last export went, until the next one; null after a cancelled one. */
-    val exportedTo: String? = null,
-    /** Why the last read or export failed, until the next one succeeds. */
+    val canSave: Boolean = false,
+    /** Where the last save went, until the next one; null after a cancelled one. */
+    val savedTo: String? = null,
+    /** Why the last read or save failed, until the next one succeeds. */
     val error: String? = null,
 )
 
@@ -23,7 +23,7 @@ data class AccessRequestUi(
     val summary: String,
     /** The whole letter, as copied or saved. */
     val text: String,
-    /** The name the exported text file is offered under. */
+    /** The name the saved text file is offered under. */
     val fileName: String,
 )
 
@@ -34,5 +34,5 @@ sealed interface AccessRequestAction {
     ) : AccessRequestAction
 
     /** Hand the letter to the platform as a text file. */
-    data object Export : AccessRequestAction
+    data object Save : AccessRequestAction
 }

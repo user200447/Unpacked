@@ -6,9 +6,9 @@ import com.jassemsendi.unpacked.data.EventRepository
 import com.jassemsendi.unpacked.data.ImportRepository
 import com.jassemsendi.unpacked.data.ImportUseCase
 import com.jassemsendi.unpacked.data.SearchRepository
+import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestSaver
 import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestViewModel
-import com.jassemsendi.unpacked.ui.accessrequest.FakeLetterExporter
-import com.jassemsendi.unpacked.ui.accessrequest.LetterExporter
+import com.jassemsendi.unpacked.ui.accessrequest.FakeAccessRequestSaver
 import com.jassemsendi.unpacked.ui.claims.ClaimsViewModel
 import com.jassemsendi.unpacked.ui.entities.EntitiesViewModel
 import com.jassemsendi.unpacked.ui.entities.FakeEntityRepository
@@ -34,7 +34,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 
-/** The wiring every app repeats: the UI module resolves once the app binds the library interfaces, a picker and an exporter. */
+/** The wiring every app repeats: the UI module resolves once the app binds the library interfaces, a picker and a saver. */
 class UiModuleTest {
     @BeforeTest
     fun useTestMain() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -43,7 +43,7 @@ class UiModuleTest {
     fun resetMainDispatcher() = Dispatchers.resetMain()
 
     @Test
-    fun everyViewModelResolvesFromTheLibraryInterfacesAPickerAndAnExporter() {
+    fun everyViewModelResolvesFromTheLibraryInterfacesAPickerAndASaver() {
         val repository = FakeImportRepository()
         val events = FakeEventRepository()
         val claims = FakeClaimRepository()
@@ -56,7 +56,7 @@ class UiModuleTest {
                 single<SearchRepository> { FakeSearchRepository(events, claims) }
                 single<EntityRepository> { FakeEntityRepository(events, claims) }
                 single<ExportPicker> { FakeExportPicker() }
-                single<LetterExporter> { FakeLetterExporter() }
+                single<AccessRequestSaver> { FakeAccessRequestSaver() }
             }
 
         val koin = koinApplication { modules(appModule, uiModule) }.koin

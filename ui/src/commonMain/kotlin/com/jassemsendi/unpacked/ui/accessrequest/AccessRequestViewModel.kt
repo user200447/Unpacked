@@ -18,45 +18,45 @@ import kotlinx.coroutines.launch
  */
 class AccessRequestViewModel(
     private val reader: GapReportReader,
-    private val exporter: LetterExporter,
+    private val saver: AccessRequestSaver,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(AccessRequestState(canExport = exporter.isAvailable))
+    private val _state = MutableStateFlow(AccessRequestState(canSave = saver.isAvailable))
     val state = _state.asStateFlow()
 
     fun onAction(action: AccessRequestAction) {
         when (action) {
             is AccessRequestAction.Load -> load(action.importId)
-            AccessRequestAction.Export -> export()
+            AccessRequestAction.Save -> save()
         }
     }
 
     private fun load(importId: ImportId) {
-        _state.update { it.copy(isLoading = true, exportedTo = null) }
+        _state.update { it.copy(isLoading = true, savedTo = null) }
         viewModelScope.launch {
             val read = reader.read(importId)
             _state.update {
                 when (read) {
                     is Result.Success -> {
-                        it.copy(isLoading = false, letter = read.data.accessRequest().toUi(), error = null)
+                        it.copy(isLoading = false, request = read.data.accessRequest().toUi(), error = null)
                     }
 
                     is Result.Error -> {
-                        it.copy(isLoading = false, letter = null, error = read.error.toMessage())
+                        it.copy(isLoading = false, request = null, error = read.error.toMessage())
                     }
                 }
             }
         }
     }
 
-    private fun export() {
-        val letter = _state.value.letter ?: return
-        if (!exporter.isAvailable) return
+    private fun save() {
+        val request = _state.value.request ?: return
+        if (!saver.isAvailable) return
         viewModelScope.launch {
-            val exported = exporter.export(letter.fileName, letter.text)
+            val saved = saver.save(request.fileName, request.text)
             _state.update {
-                when (exported) {
-                    is Result.Success -> it.copy(exportedTo = exported.data, error = null)
-                    is Result.Error -> it.copy(exportedTo = null, error = exported.error.toMessage())
+                when (saved) {
+                    is Result.Success -> it.copy(savedTo = saved.data, error = null)
+                    is Result.Error -> it.copy(savedTo = null, error = saved.error.toMessage())
                 }
             }
         }
