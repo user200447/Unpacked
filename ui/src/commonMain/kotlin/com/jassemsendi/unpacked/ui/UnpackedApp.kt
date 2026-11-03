@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestRoot
 import com.jassemsendi.unpacked.ui.claims.ClaimsRoot
 import com.jassemsendi.unpacked.ui.entities.EntitiesRoot
 import com.jassemsendi.unpacked.ui.gapreport.GapReportRoot
@@ -21,7 +22,8 @@ import com.jassemsendi.unpacked.ui.welcome.WelcomeScreen
 /**
  * Root of the shared UI: the Welcome screen first, then the Import screen, then Home with the Insight cards
  * and the timeline; Home and Import lead to each other, and Home to Search, Claims, Entities and the Gap
- * report and back, a number on a card opening them on what it counted. Koin must be started before this runs.
+ * report and back, a number on a card opening them on what it counted; the Gap report leads to the Access
+ * request and back. Koin must be started before this runs.
  */
 @Composable
 fun UnpackedApp() {
@@ -64,7 +66,18 @@ fun UnpackedApp() {
                 }
 
                 is Screen.GapReport -> {
-                    GapReportRoot(onBack = home, importId = current.importId)
+                    GapReportRoot(
+                        onBack = home,
+                        onAccessRequest = { screen = Screen.AccessRequest(it) },
+                        importId = current.importId,
+                    )
+                }
+
+                is Screen.AccessRequest -> {
+                    AccessRequestRoot(
+                        importId = current.importId,
+                        onBack = { screen = Screen.GapReport(current.importId) },
+                    )
                 }
             }
         }
