@@ -167,7 +167,9 @@ internal class RoomEventRepository(
         kind: EventKind?,
         limit: Int,
         offset: Int,
-    ): Result<List<Event>, DataError.Local> = localCall { hydrate(dao.newestFirst(kind?.name, limit, offset)) }
+        importId: ImportId?,
+    ): Result<List<Event>, DataError.Local> =
+        localCall { hydrate(dao.newestFirst(kind?.name, importId?.value, limit, offset)) }
 
     override suspend fun forEntity(
         entityId: String,
@@ -219,7 +221,9 @@ internal class RoomClaimRepository(
         kind: ClaimKind,
         limit: Int,
         offset: Int,
-    ): Result<List<Claim>, DataError.Local> = localCall { hydrate(dao.byKind(kind.name, limit, offset)) }
+        importId: ImportId?,
+    ): Result<List<Claim>, DataError.Local> =
+        localCall { hydrate(dao.byKind(kind.name, importId?.value, limit, offset)) }
 
     override suspend fun forEntity(entityId: String): Result<List<Claim>, DataError.Local> =
         localCall { hydrate(db.entityCountDao().claims(entityId)) }

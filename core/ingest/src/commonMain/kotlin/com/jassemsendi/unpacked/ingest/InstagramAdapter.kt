@@ -4,10 +4,12 @@ import com.jassemsendi.unpacked.ingest.instagram.ExportOwner
 import com.jassemsendi.unpacked.ingest.instagram.ExportOwners
 import com.jassemsendi.unpacked.ingest.instagram.FlatRecord
 import com.jassemsendi.unpacked.ingest.instagram.InstagramDecoder
+import com.jassemsendi.unpacked.ingest.instagram.InstagramEvidenceRules
 import com.jassemsendi.unpacked.ingest.instagram.InstagramMapper
 import com.jassemsendi.unpacked.ingest.instagram.InstagramMappers
 import com.jassemsendi.unpacked.ingest.instagram.InstagramRecord
 import com.jassemsendi.unpacked.ingest.instagram.MessageThreads
+import com.jassemsendi.unpacked.model.EvidenceRule
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.Source
 
@@ -18,6 +20,7 @@ import com.jassemsendi.unpacked.model.Source
  */
 public object InstagramAdapter : SourceAdapter {
     override val source: Source = Source.Instagram
+    override val evidenceRules: List<EvidenceRule> = InstagramEvidenceRules.all
 
     /** Why every message of a thread is dropped when the Export's profile names nobody. */
     public const val OWNER_UNKNOWN: String = MessageThreads.OWNER_UNKNOWN

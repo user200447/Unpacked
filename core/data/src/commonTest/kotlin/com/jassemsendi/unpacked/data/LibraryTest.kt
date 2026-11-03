@@ -573,6 +573,49 @@ abstract class LibraryTest {
         }
 
     @Test
+    fun aPagedReadNarrowedToOneImportListsOnlyWhatThatImportProduced() =
+        runTest {
+            val rootA = "/exports/instagram-a".toPath()
+            val rootB = "/exports/instagram-b".toPath()
+            SyntheticInstagramExport(adsViewed = 6, seed = 1).writeTo(fs, rootA)
+            SyntheticInstagramExport(adsViewed = 3, seed = 2, includeClaimFiles = true).writeTo(fs, rootB)
+            val importA = import(Export.directory(fs, rootA))
+            val importB = import(Export.directory(fs, rootB))
+
+            val adsOfB = library.events.newestFirst(EventKind.AdShown, limit = 50, offset = 0, importId = importB.id)
+            assertEquals(3, adsOfB.orFail().size)
+            assertTrue(adsOfB.orFail().all { it.provenance.exportId == importB.summary.exportId })
+            assertEquals(
+                6,
+                library.events
+                    .newestFirst(limit = 50, offset = 0, importId = importA.id)
+                    .orFail()
+                    .size,
+            )
+            assertEquals(
+                9,
+                library.events
+                    .newestFirst(limit = 50, offset = 0)
+                    .orFail()
+                    .size,
+                "the whole library",
+            )
+
+            assertEquals(
+                emptyList(),
+                library.claims.byKind(ClaimKind.ConsentGiven, limit = 10, offset = 0, importId = importA.id).orFail(),
+            )
+            val consentsOfB =
+                library.claims.byKind(
+                    ClaimKind.ConsentGiven,
+                    limit = 10,
+                    offset = 0,
+                    importId = importB.id,
+                )
+            assertEquals(1, consentsOfB.orFail().size)
+        }
+
+    @Test
     fun deletingAnImportRemovesItsHitsAndReimportingAddsNone() =
         runTest {
             val rootA = "/exports/instagram-a".toPath()

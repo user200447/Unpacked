@@ -105,15 +105,15 @@ One of the nine things GDPR Article 15 says a controller must provide on request
 _Avoid_: Requirement, criterion, check, rule
 
 **Evidence rule**:
-A deterministic statement, declared by a Source, of what in an Export counts toward one Article item: the presence of a named file, or the presence of Claims or Events of a given Kind.
+A deterministic statement, declared by a Source's adapter, of what in an Export counts toward one Article item and how far: the presence of files matching a name pattern, or the presence of Claims or Events of a given Kind, each establishing Covered or only Partial when found.
 _Avoid_: Heuristic, matcher, check
 
 **Verdict**:
-The outcome of applying the Evidence rules for one Article item to one Import: Covered, Partial or Missing, together with the Provenance of whatever evidence was found.
+The outcome of applying the Evidence rules for one Article item to one Import: the strongest Coverage its satisfied rules establish, Covered, Partial or Missing when none is, together with what each satisfied rule found: the matching files as the inventory lists them, or the count of records of the Kind and the Provenance of the first few, which open to Record detail.
 _Avoid_: Status, score, result, grade
 
 **Gap report**:
-The nine Verdicts for one Import, computed with no model involved. It states what the Source did and did not provide; it is not legal advice.
+The nine Verdicts for one Import, computed with no model involved by one pure function in `core:insights` over the Import's file inventory and Kind counts, so the same Import always yields the same report and a Source that declares no rules yields nine Missing Verdicts. The screen lists the nine Article items in the article's order for the chosen Import, newest complete one by default, each with its Verdict, a sentence on what it asks for and its evidence, under the one line saying the report is a tool and not legal advice. It states what the Source did and did not provide.
 _Avoid_: Compliance report, audit, scorecard, GDPR check
 
 **Access request**:
