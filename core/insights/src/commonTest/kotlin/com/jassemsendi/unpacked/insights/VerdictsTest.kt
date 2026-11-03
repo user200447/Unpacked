@@ -6,6 +6,7 @@ import com.jassemsendi.unpacked.model.Coverage
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.EvidenceRule
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.Extent
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.RawKind
@@ -41,7 +42,7 @@ class VerdictsTest {
     fun everyArticleItemGetsOneVerdictInArticleOrderFromTheFilesAndKindsThatMatchItsRules() {
         val anyJson = EvidenceRule.FileNamed(ArticleItem.Categories, "*.json")
         val advertisers = EvidenceRule.ClaimsOf(ArticleItem.Recipients, ClaimKind.AdvertiserHoldsContact)
-        val ads = EvidenceRule.EventsOf(ArticleItem.CopyOfData, EventKind.AdShown, Coverage.Covered)
+        val ads = EvidenceRule.EventsOf(ArticleItem.CopyOfData, EventKind.AdShown, Extent.Covered)
         val interests = EvidenceRule.ClaimsOf(ArticleItem.AutomatedDecisions, ClaimKind.InferredInterest)
         val logic = EvidenceRule.FileNamed(ArticleItem.AutomatedDecisions, "*/profiling_logic.json")
 
@@ -91,9 +92,9 @@ class VerdictsTest {
 
     @Test
     fun aVerdictIsTheStrongestItsSatisfiedRulesEstablishInRuleOrder() {
-        val partial = EvidenceRule.ClaimsOf(ArticleItem.Purposes, ClaimKind.ConsentGiven, Coverage.Partial)
-        val covered = EvidenceRule.FileNamed(ArticleItem.Purposes, "*/CONSENTS.json", Coverage.Covered)
-        val absent = EvidenceRule.FileNamed(ArticleItem.Purposes, "*/purposes.json", Coverage.Covered)
+        val partial = EvidenceRule.ClaimsOf(ArticleItem.Purposes, ClaimKind.ConsentGiven, Extent.Partial)
+        val covered = EvidenceRule.FileNamed(ArticleItem.Purposes, "*/CONSENTS.json", Extent.Covered)
+        val absent = EvidenceRule.FileNamed(ArticleItem.Purposes, "*/purposes.json", Extent.Covered)
 
         val both = verdictsOf(listOf(partial, covered), contents).first { it.item == ArticleItem.Purposes }
         assertEquals(Coverage.Covered, both.coverage)

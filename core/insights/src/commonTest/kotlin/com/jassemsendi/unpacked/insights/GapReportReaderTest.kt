@@ -7,7 +7,6 @@ import com.jassemsendi.unpacked.ingest.Export
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.Importer
 import com.jassemsendi.unpacked.ingest.InstagramAdapter
-import com.jassemsendi.unpacked.ingest.SourceAdapter
 import com.jassemsendi.unpacked.model.ArticleItem
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.Coverage
@@ -37,7 +36,6 @@ class GapReportReaderTest {
     private val events = FakeEventRepository()
     private val claims = FakeClaimRepository()
     private val imports = FakeImportRepository()
-    private val instagramRules = EvidenceRules { SourceAdapter.of(it).evidenceRules }
 
     /** The fixture with its untimed files, read by the adapter into the fakes; the stored Import it would make. */
     private suspend fun seeded(): Import {
@@ -54,7 +52,7 @@ class GapReportReaderTest {
         return Import(ImportId(1), startedAt, startedAt + 1.minutes, summary).also { imports.imports += it }
     }
 
-    private fun reader(rules: EvidenceRules = instagramRules) = GapReportReader(imports, events, claims, rules)
+    private fun reader(rules: EvidenceRules = DeclaredEvidenceRules) = GapReportReader(imports, events, claims, rules)
 
     @Test
     fun theInstagramRulesAgainstTheFixtureYieldTheHandWorkedVerdicts() =
@@ -75,7 +73,7 @@ class GapReportReaderTest {
                     ArticleItem.RetentionPeriod to Coverage.Missing,
                     ArticleItem.RightsToRectifyAndErase to Coverage.Missing,
                     ArticleItem.RightToComplain to Coverage.Missing,
-                    ArticleItem.SourceOfData to Coverage.Partial,
+                    ArticleItem.SourceOfData to Coverage.Missing,
                     ArticleItem.AutomatedDecisions to Coverage.Partial,
                     ArticleItem.CopyOfData to Coverage.Covered,
                 ),
@@ -87,7 +85,6 @@ class GapReportReaderTest {
                 mapOf(
                     ArticleItem.Purposes to listOf(ClaimKind.ConsentGiven to 1, ClaimKind.OffPlatformSetting to 1),
                     ArticleItem.Recipients to listOf(ClaimKind.AdvertiserHoldsContact to 4),
-                    ArticleItem.SourceOfData to listOf(ClaimKind.ContactSynced to 3),
                     ArticleItem.AutomatedDecisions to
                         listOf(
                             ClaimKind.InferredInterest to 8,

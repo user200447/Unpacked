@@ -13,15 +13,15 @@ import com.jassemsendi.unpacked.model.Provenance
  * Events or Claims in it, how many and where the first few came from. Nothing more is read for a Gap report.
  */
 public data class ImportContents(
-    val files: List<FileResult>,
-    val events: Map<EventKind, KindRecords>,
-    val claims: Map<ClaimKind, KindRecords>,
+    public val files: List<FileResult>,
+    public val events: Map<EventKind, KindRecords>,
+    public val claims: Map<ClaimKind, KindRecords>,
 )
 
 /** How many Events or Claims of one Kind an Import holds, and the Provenance of the ones a Verdict cites. */
 public data class KindRecords(
-    val count: Int,
-    val cited: List<Provenance>,
+    public val count: Int,
+    public val cited: List<Provenance>,
 )
 
 /** What one satisfied Evidence rule found in the Import: the files, or the records, that count toward its item. */
@@ -31,14 +31,14 @@ public sealed interface Evidence {
     /** The files of the inventory whose path matched the rule's pattern, in inventory order. */
     public data class Files(
         override val rule: EvidenceRule.FileNamed,
-        val files: List<FileResult>,
+        public val files: List<FileResult>,
     ) : Evidence
 
     /** How many Events or Claims of the rule's Kind the Import holds, and the Provenance of the cited ones. */
     public data class Records(
-        override val rule: EvidenceRule,
-        val count: Int,
-        val cited: List<Provenance>,
+        override val rule: EvidenceRule.KindRule,
+        public val count: Int,
+        public val cited: List<Provenance>,
     ) : Evidence
 }
 
@@ -47,9 +47,9 @@ public sealed interface Evidence {
  * the Import goes toward the item, with what was found, in rule order. Missing carries no evidence.
  */
 public data class Verdict(
-    val item: ArticleItem,
-    val coverage: Coverage,
-    val evidence: List<Evidence>,
+    public val item: ArticleItem,
+    public val coverage: Coverage,
+    public val evidence: List<Evidence>,
 )
 
 /**
@@ -63,7 +63,7 @@ public fun verdictsOf(
 ): List<Verdict> =
     ArticleItem.entries.map { item ->
         val evidence = rules.filter { it.item == item }.mapNotNull { it.findIn(contents) }
-        Verdict(item, evidence.minOfOrNull { it.rule.establishes } ?: Coverage.Missing, evidence)
+        Verdict(item, evidence.minOfOrNull { it.rule.establishes.coverage } ?: Coverage.Missing, evidence)
     }
 
 private fun EvidenceRule.findIn(contents: ImportContents): Evidence? =

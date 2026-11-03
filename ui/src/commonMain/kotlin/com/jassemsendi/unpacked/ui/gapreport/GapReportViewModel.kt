@@ -39,7 +39,7 @@ class GapReportViewModel(
     private var generation = 0
 
     /** The Imports and the report over the chosen one, read together so the chooser never disagrees with the report. */
-    private data class Read(
+    private data class ReportChoice(
         val imports: List<Import>,
         val selected: Import?,
         val report: GapReportUi?,
@@ -65,7 +65,7 @@ class GapReportViewModel(
             }
         }
         viewModelScope.launch {
-            val read = read(requested)
+            val read = choose(requested)
             if (current != generation) return@launch
             _state.update { state ->
                 when (read) {
@@ -91,7 +91,7 @@ class GapReportViewModel(
      * Newest Import first. The one asked for when it is still there; otherwise the latest that finished, or
      * failing that the latest at all, since an Import that stopped early still has Verdicts over what landed.
      */
-    private suspend fun read(requested: ImportId?): Result<Read, DataError.Local> =
+    private suspend fun choose(requested: ImportId?): Result<ReportChoice, DataError.Local> =
         imports.all().andThen { stored ->
             val newestFirst = stored.asReversed()
             val selected =
@@ -99,9 +99,9 @@ class GapReportViewModel(
                     ?: newestFirst.firstOrNull { it.completedAt != null }
                     ?: newestFirst.firstOrNull()
             if (selected == null) {
-                Result.Success(Read(newestFirst, null, null))
+                Result.Success(ReportChoice(newestFirst, null, null))
             } else {
-                reader.read(selected.id).map { Read(newestFirst, selected, it.toUi()) }
+                reader.read(selected.id).map { ReportChoice(newestFirst, selected, it.toUi()) }
             }
         }
 

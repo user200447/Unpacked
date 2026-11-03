@@ -1,7 +1,5 @@
 package com.jassemsendi.unpacked.ui.di
 
-import com.jassemsendi.unpacked.ingest.SourceAdapter
-import com.jassemsendi.unpacked.insights.EvidenceRules
 import com.jassemsendi.unpacked.insights.GapReportReader
 import com.jassemsendi.unpacked.insights.InsightCards
 import com.jassemsendi.unpacked.ui.claims.ClaimsViewModel
@@ -21,8 +19,8 @@ val uiModule: Module =
     module {
         single { TimeZone.currentSystemDefault() }
         single { InsightCards(get(), get(), get()) }
-        // Each Source's adapter declares its own Evidence rules; the Gap report reads them through this lookup alone.
-        single { GapReportReader(get(), get(), get(), EvidenceRules { SourceAdapter.of(it).evidenceRules }) }
+        // Reads the Evidence rules each Source's adapter declares.
+        single { GapReportReader(get(), get(), get()) }
         viewModelOf(::ImportViewModel)
         viewModelOf(::GapReportViewModel)
         // Spelled out because the page sizes have defaults Koin cannot resolve.

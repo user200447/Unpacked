@@ -1,7 +1,7 @@
 package com.jassemsendi.unpacked.ui.gapreport
 
 import app.cash.turbine.test
-import com.jassemsendi.unpacked.ingest.SourceAdapter
+import com.jassemsendi.unpacked.insights.DeclaredEvidenceRules
 import com.jassemsendi.unpacked.insights.EvidenceRules
 import com.jassemsendi.unpacked.insights.GapReportReader
 import com.jassemsendi.unpacked.model.ArticleItem
@@ -10,6 +10,8 @@ import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.Coverage
 import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.EventKind
+import com.jassemsendi.unpacked.model.EvidenceRule
+import com.jassemsendi.unpacked.model.Extent
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.RawKind
@@ -74,10 +76,11 @@ class GapReportViewModelTest {
     private val unfinished = storedImport(2, "instagram-me-2026-10-20", files = listOf(adsViewed), complete = false)
     private val imports = FakeImportRepository(older, unfinished)
 
-    private fun viewModel(timeZone: TimeZone = TimeZone.UTC): GapReportViewModel {
-        val reader = GapReportReader(imports, events, claims, EvidenceRules { SourceAdapter.of(it).evidenceRules })
-        return GapReportViewModel(imports, events, claims, timeZone, reader)
-    }
+    private fun viewModel(
+        timeZone: TimeZone = TimeZone.UTC,
+        rules: EvidenceRules = DeclaredEvidenceRules,
+    ): GapReportViewModel =
+        GapReportViewModel(imports, events, claims, timeZone, GapReportReader(imports, events, claims, rules))
 
     @BeforeTest
     fun useTestMain() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -209,6 +212,26 @@ class GapReportViewModelTest {
             viewModel.onAction(GapReportAction.CloseDetail)
 
             assertNull(viewModel.state.value.detail)
+        }
+
+    @Test
+    fun aRuleOverEventsCitesThemAsEventsThatOpenToTheirRecordDetail() =
+        runTest {
+            val adsAreTheCopy = EvidenceRule.EventsOf(ArticleItem.CopyOfData, EventKind.AdShown, Extent.Covered)
+            val viewModel = viewModel(rules = EvidenceRules { listOf(adsAreTheCopy) })
+            viewModel.onAction(GapReportAction.Refresh)
+
+            val report = assertNotNull(viewModel.state.value.report)
+            assertEquals("1 covered, 0 partial, 8 missing", report.summary)
+            val cited = CitedRecordUi(RecordRef.Event(adShown.provenance), "ads_information/ads_viewed.json, record 0")
+            assertEquals(
+                listOf(EvidenceUi.Records("Counts as Covered: 1 Event of Ad shown", listOf(cited))),
+                report.items.first { it.item == ArticleItem.CopyOfData }.evidence,
+            )
+
+            viewModel.onAction(GapReportAction.Open(cited.ref))
+
+            assertEquals(adShown.toDetail(TimeZone.UTC), viewModel.state.value.detail)
         }
 
     @Test

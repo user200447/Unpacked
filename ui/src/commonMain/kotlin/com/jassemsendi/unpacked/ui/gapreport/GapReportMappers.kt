@@ -59,7 +59,6 @@ private fun Evidence.toUi(): EvidenceUi =
                 when (val rule = rule) {
                     is EvidenceRule.EventsOf -> Triple("Event", rule.kind.label(), RecordRef::Event)
                     is EvidenceRule.ClaimsOf -> Triple("Claim", rule.kind.label(), RecordRef::Claim)
-                    is EvidenceRule.FileNamed -> error("a file rule finds files, not records")
                 }
             EvidenceUi.Records(
                 caption = "Counts as ${rule.establishes.name}: ${counted(count, noun)} of $kindLabel",

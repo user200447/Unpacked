@@ -3,6 +3,7 @@ package com.jassemsendi.unpacked.insights
 import com.jassemsendi.unpacked.data.ClaimRepository
 import com.jassemsendi.unpacked.data.EventRepository
 import com.jassemsendi.unpacked.data.ImportRepository
+import com.jassemsendi.unpacked.ingest.SourceAdapter
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.Coverage
 import com.jassemsendi.unpacked.model.DataError
@@ -22,13 +23,18 @@ public fun interface EvidenceRules {
     public fun of(source: Source): List<EvidenceRule>
 }
 
+/** The rules each Source's adapter declares: what the app uses; tests hand the reader others. */
+public object DeclaredEvidenceRules : EvidenceRules {
+    override fun of(source: Source): List<EvidenceRule> = SourceAdapter.of(source).evidenceRules
+}
+
 /** The nine Verdicts for one Import (glossary: Gap report), computed with no model involved. */
 public data class GapReport(
-    val importId: ImportId,
-    val exportId: ExportId,
-    val source: Source,
+    public val importId: ImportId,
+    public val exportId: ExportId,
+    public val source: Source,
     /** One per Article item, in the article's order. */
-    val verdicts: List<Verdict>,
+    public val verdicts: List<Verdict>,
 ) {
     public fun count(coverage: Coverage): Int = verdicts.count { it.coverage == coverage }
 }
@@ -42,7 +48,7 @@ public class GapReportReader(
     private val imports: ImportRepository,
     private val events: EventRepository,
     private val claims: ClaimRepository,
-    private val rules: EvidenceRules,
+    private val rules: EvidenceRules = DeclaredEvidenceRules,
     private val citedCount: Int = CITED_COUNT,
 ) {
     /** [DataError.Local.NOT_FOUND] when no Import has that id. */
@@ -63,10 +69,14 @@ public class GapReportReader(
                 val eventKinds = rules.filterIsInstance<EvidenceRule.EventsOf>().map { it.kind }
                 val claimKinds = rules.filterIsInstance<EvidenceRule.ClaimsOf>().map { it.kind }
                 cited(eventCounts, eventKinds) { kind ->
-                    events.newestFirst(kind, citedCount, 0, import.id).map { page -> page.map { it.provenance } }
+                    events.newestFirst(kind, limit = citedCount, offset = 0, importId = import.id).map { page ->
+                        page.map { it.provenance }
+                    }
                 }.andThen { eventRecords ->
                     cited(claimCounts, claimKinds) { kind ->
-                        claims.byKind(kind, citedCount, 0, import.id).map { page -> page.map { it.provenance } }
+                        claims.byKind(kind, limit = citedCount, offset = 0, importId = import.id).map { page ->
+                            page.map { it.provenance }
+                        }
                     }.map { claimRecords -> ImportContents(import.summary.files, eventRecords, claimRecords) }
                 }
             }

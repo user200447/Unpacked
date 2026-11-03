@@ -105,7 +105,7 @@ One of the nine things GDPR Article 15 says a controller must provide on request
 _Avoid_: Requirement, criterion, check, rule
 
 **Evidence rule**:
-A deterministic statement, declared by a Source's adapter, of what in an Export counts toward one Article item and how far: the presence of files matching a name pattern, or the presence of Claims or Events of a given Kind, each establishing Covered or only Partial when found. Instagram's rules say its Export is a copy organised by category but names only some recipients and shows inferences without their logic.
+A deterministic statement, declared by a Source's adapter, of what in an Export counts toward one Article item and how far: the presence of files matching a name pattern, or the presence of Claims or Events of a given Kind, each establishing Covered or only Partial when found.
 _Avoid_: Heuristic, matcher, check
 
 **Verdict**:
