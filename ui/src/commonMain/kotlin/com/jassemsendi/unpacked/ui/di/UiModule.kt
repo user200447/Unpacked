@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.ui.di
 
 import com.jassemsendi.unpacked.insights.GapReportReader
 import com.jassemsendi.unpacked.insights.InsightCards
+import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestViewModel
 import com.jassemsendi.unpacked.ui.claims.ClaimsViewModel
 import com.jassemsendi.unpacked.ui.entities.EntitiesViewModel
 import com.jassemsendi.unpacked.ui.gapreport.GapReportViewModel
@@ -14,7 +15,10 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
-/** The screens' ViewModels. Expects the library module and an [com.jassemsendi.unpacked.ui.imports.ExportPicker] from the app. */
+/**
+ * The screens' ViewModels. Expects the library module, an [com.jassemsendi.unpacked.ui.imports.ExportPicker] and an
+ * [com.jassemsendi.unpacked.ui.accessrequest.AccessRequestSaver] from the app.
+ */
 val uiModule: Module =
     module {
         single { TimeZone.currentSystemDefault() }
@@ -23,6 +27,7 @@ val uiModule: Module =
         single { GapReportReader(get(), get(), get()) }
         viewModelOf(::ImportViewModel)
         viewModelOf(::GapReportViewModel)
+        viewModelOf(::AccessRequestViewModel)
         // Spelled out because the page sizes have defaults Koin cannot resolve.
         viewModel { HomeViewModel(get(), get(), get(), get()) }
         viewModel { SearchViewModel(get(), get(), get(), get()) }
