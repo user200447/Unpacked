@@ -113,6 +113,7 @@ private fun Header(
             OutlinedButton(onClick = destinations.onSearch) { Text("Search") }
             OutlinedButton(onClick = { destinations.onClaims(null) }) { Text("Claims") }
             OutlinedButton(onClick = destinations.onEntities) { Text("Entities") }
+            OutlinedButton(onClick = destinations.onGapReport) { Text("Gap report") }
             OutlinedButton(onClick = destinations.onImport) { Text("Imports") }
         }
     }
@@ -176,6 +177,7 @@ private fun HomeScreenPreview() {
                     onClaims = {},
                     onEntities = {},
                     onEntity = {},
+                    onGapReport = {},
                 ),
         )
     }

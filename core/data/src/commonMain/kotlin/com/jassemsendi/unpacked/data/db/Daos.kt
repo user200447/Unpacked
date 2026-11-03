@@ -68,17 +68,18 @@ internal interface EventDao {
     @Query("SELECT * FROM events WHERE import_id = :importId ORDER BY time, id")
     suspend fun forImport(importId: Long): List<EventRow>
 
-    /** Every Kind when [kind] is null. */
+    /** Every Kind when [kind] is null; the whole library when [importId] is. */
     @Query(
         """
         SELECT * FROM events
-        WHERE :kind IS NULL OR kind = :kind
+        WHERE (:kind IS NULL OR kind = :kind) AND (:importId IS NULL OR import_id = :importId)
         ORDER BY time DESC, id DESC
         LIMIT :limit OFFSET :offset
         """,
     )
     suspend fun newestFirst(
         kind: String?,
+        importId: Long?,
         limit: Int,
         offset: Int,
     ): List<EventRow>
@@ -115,9 +116,18 @@ internal interface ClaimDao {
     @Query("SELECT * FROM claims WHERE import_id = :importId ORDER BY as_of, path, record_index, item_index")
     suspend fun forImport(importId: Long): List<ClaimRow>
 
-    @Query("SELECT * FROM claims WHERE kind = :kind ORDER BY $CLAIMS_NEWEST_FIRST LIMIT :limit OFFSET :offset")
+    /** The whole library when [importId] is null. */
+    @Query(
+        """
+        SELECT * FROM claims
+        WHERE kind = :kind AND (:importId IS NULL OR import_id = :importId)
+        ORDER BY $CLAIMS_NEWEST_FIRST
+        LIMIT :limit OFFSET :offset
+        """,
+    )
     suspend fun byKind(
         kind: String,
+        importId: Long?,
         limit: Int,
         offset: Int,
     ): List<ClaimRow>

@@ -42,13 +42,15 @@ public interface EventRepository {
     public suspend fun forImport(importId: ImportId): Result<List<Event>, DataError.Local>
 
     /**
-     * One page of the whole library's Events, newest first, narrowed to one Kind when [kind] is given.
-     * Events at the same instant keep a fixed order across pages, so paging never repeats or skips one.
+     * One page of the library's Events, newest first, narrowed to one Kind when [kind] is given and to one
+     * Import when [importId] is. Events at the same instant keep a fixed order across pages, so paging never
+     * repeats or skips one.
      */
     public suspend fun newestFirst(
         kind: EventKind? = null,
         limit: Int,
         offset: Int,
+        importId: ImportId? = null,
     ): Result<List<Event>, DataError.Local>
 
     /** One page of the Events that name the Entity with [entityId], newest first; empty for an unknown Entity. */
@@ -83,13 +85,14 @@ public interface ClaimRepository {
     public suspend fun forImport(importId: ImportId): Result<List<Claim>, DataError.Local>
 
     /**
-     * One page of the whole library's Claims of one Kind: those with an "as of" time newest first, then
-     * those without in file order, so paging never repeats or skips one.
+     * One page of the library's Claims of one Kind, narrowed to one Import when [importId] is given: those
+     * with an "as of" time newest first, then those without in file order, so paging never repeats or skips one.
      */
     public suspend fun byKind(
         kind: ClaimKind,
         limit: Int,
         offset: Int,
+        importId: ImportId? = null,
     ): Result<List<Claim>, DataError.Local>
 
     /** The Claims that name the Entity with [entityId], in the order of [byKind]; empty for an unknown Entity. */

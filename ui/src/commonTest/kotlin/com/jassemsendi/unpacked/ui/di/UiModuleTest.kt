@@ -9,6 +9,7 @@ import com.jassemsendi.unpacked.data.SearchRepository
 import com.jassemsendi.unpacked.ui.claims.ClaimsViewModel
 import com.jassemsendi.unpacked.ui.entities.EntitiesViewModel
 import com.jassemsendi.unpacked.ui.entities.FakeEntityRepository
+import com.jassemsendi.unpacked.ui.gapreport.GapReportViewModel
 import com.jassemsendi.unpacked.ui.home.FakeClaimRepository
 import com.jassemsendi.unpacked.ui.home.FakeEventRepository
 import com.jassemsendi.unpacked.ui.home.HomeViewModel
@@ -61,6 +62,7 @@ class UiModuleTest {
         assertNotNull(koin.get<SearchViewModel>())
         assertNotNull(koin.get<ClaimsViewModel>())
         assertNotNull(koin.get<EntitiesViewModel>())
+        assertNotNull(koin.get<GapReportViewModel>())
         koin.close()
     }
 }
