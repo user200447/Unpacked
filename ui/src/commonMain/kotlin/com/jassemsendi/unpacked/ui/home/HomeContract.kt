@@ -1,5 +1,8 @@
 package com.jassemsendi.unpacked.ui.home
 
+import com.jassemsendi.unpacked.insights.Opens
+import com.jassemsendi.unpacked.model.ClaimKind
+import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.Provenance
 
@@ -11,6 +14,8 @@ data class HomeState(
     val isLoading: Boolean = true,
     /** Events in the whole library, before any filter. */
     val totalCount: Int = 0,
+    /** The Insight cards in the order Home shows them, re-read with every refresh; empty until the first has landed. */
+    val cards: List<InsightCardUi> = emptyList(),
     /** Every Kind with at least one Event, in Kind order, each with its count from the repository. */
     val kinds: List<KindCountUi<EventKind>> = emptyList(),
     /** The Kind the timeline is narrowed to, or null for every Kind. */
@@ -105,12 +110,42 @@ data class AttributeUi(
     val value: String,
 )
 
-/** Where the Home screen leads: the other top-level screens, each a button in its header. */
+/** One Insight card as Home shows it: a headline number, smaller ones under it and the top names; or why it is empty. */
+data class InsightCardUi(
+    val id: String,
+    val title: String,
+    val headline: FigureUi,
+    val details: List<FigureUi>,
+    val rows: List<CardRowUi>,
+    /** What the card says instead of its numbers when the library holds nothing it counts. */
+    val emptyText: String?,
+)
+
+/** A number on a card, its caption, and what it opens. */
+data class FigureUi(
+    val value: String,
+    val caption: String,
+    val opens: Opens,
+)
+
+/** One of the names under a card's numbers, with its count and what it opens. */
+data class CardRowUi(
+    val label: String,
+    val detail: String,
+    val opens: Opens,
+)
+
+/** Where the Home screen leads: the other top-level screens, from a button in its header or a number on a card. */
 data class HomeDestinations(
     val onImport: () -> Unit,
-    val onSearch: () -> Unit,
-    val onClaims: () -> Unit,
-    val onEntities: () -> Unit,
+    /** Search, with text to search for at once, or none. */
+    val onSearch: (String) -> Unit,
+    /** The Claims screen, opened on one Kind's group, or on none. */
+    val onClaims: (ClaimKind?) -> Unit,
+    /** The Entities screen, narrowed to one Kind, or to none. */
+    val onEntities: (EntityKind?) -> Unit,
+    /** One Entity's own timeline and Claims. */
+    val onEntity: (String) -> Unit,
 )
 
 sealed interface HomeAction {

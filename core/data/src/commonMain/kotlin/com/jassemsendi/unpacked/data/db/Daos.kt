@@ -225,6 +225,90 @@ internal interface EntityCountDao {
 }
 
 /**
+ * The aggregate reads behind the Insight cards: times to group, and who or what is named most. Across the
+ * Event, Claim, Entity and attribute tables, so in their own DAO.
+ */
+@Dao
+internal interface InsightDao {
+    @Query("SELECT time FROM events WHERE kind = :kind")
+    suspend fun eventTimes(kind: String): List<Long>
+
+    @Query(
+        """
+        SELECT COUNT(DISTINCT entities.id) FROM event_entities
+        JOIN events ON events.id = event_entities.event_id
+        JOIN entities ON entities.id = event_entities.entity_id
+        WHERE events.kind = :kind AND entities.kind = :entityKind
+        """,
+    )
+    suspend fun eventEntityCount(
+        kind: String,
+        entityKind: String,
+    ): Int
+
+    @Query(
+        """
+        SELECT COUNT(DISTINCT entities.id) FROM claim_entities
+        JOIN claims ON claims.id = claim_entities.claim_id
+        JOIN entities ON entities.id = claim_entities.entity_id
+        WHERE claims.kind = :kind AND entities.kind = :entityKind
+        """,
+    )
+    suspend fun claimEntityCount(
+        kind: String,
+        entityKind: String,
+    ): Int
+
+    @Query(
+        """
+        SELECT entities.*, COUNT(*) AS count FROM event_entities
+        JOIN events ON events.id = event_entities.event_id
+        JOIN entities ON entities.id = event_entities.entity_id
+        WHERE events.kind = :kind AND entities.kind = :entityKind
+        GROUP BY entities.id
+        ORDER BY count DESC, display_name COLLATE NOCASE, entities.id
+        LIMIT :limit
+        """,
+    )
+    suspend fun eventEntityTallies(
+        kind: String,
+        entityKind: String,
+        limit: Int,
+    ): List<EntityTallyRow>
+
+    @Query(
+        """
+        SELECT entities.*, COUNT(*) AS count FROM claim_entities
+        JOIN claims ON claims.id = claim_entities.claim_id
+        JOIN entities ON entities.id = claim_entities.entity_id
+        WHERE claims.kind = :kind AND entities.kind = :entityKind
+        GROUP BY entities.id
+        ORDER BY count DESC, display_name COLLATE NOCASE, entities.id
+        LIMIT :limit
+        """,
+    )
+    suspend fun claimEntityTallies(
+        kind: String,
+        entityKind: String,
+        limit: Int,
+    ): List<EntityTallyRow>
+
+    @Query(
+        """
+        SELECT value, COUNT(*) AS count FROM event_attributes
+        JOIN events ON events.id = event_attributes.event_id
+        WHERE events.kind = :kind AND label = :label AND value <> ''
+        GROUP BY value
+        ORDER BY count DESC, value
+        """,
+    )
+    suspend fun eventValueTallies(
+        kind: String,
+        label: String,
+    ): List<ValueTallyRow>
+}
+
+/**
  * The full-text index over Events and Claims (ADR 0004). Only the text tables are written; Room's
  * triggers fill the FTS tables from them, and the cascade from a deleted record empties both.
  */

@@ -38,7 +38,7 @@ fun HomeRoot(
     HomeScreen(state = state, onAction = viewModel::onAction, destinations = destinations)
 }
 
-/** The timeline, with the opened Record beside or over it. */
+/** The Insight cards over the timeline, with the opened Record beside or over them. */
 @Composable
 fun HomeScreen(
     state: HomeState,
@@ -66,6 +66,9 @@ private fun Timeline(
     ) {
         item { Header(state.totalCount, destinations) }
         state.error?.let { error -> item { ErrorNotice(error) } }
+        if (state.cards.isNotEmpty()) {
+            item { InsightCardRow(state.cards) { it.follow(onAction, destinations) } }
+        }
         if (state.kinds.isNotEmpty()) {
             item { KindFilter(state.kinds, state.totalCount, state.filter) { onAction(HomeAction.Filter(it)) } }
         }
@@ -107,9 +110,9 @@ private fun Header(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(Spacing.small),
         ) {
-            OutlinedButton(onClick = destinations.onSearch) { Text("Search") }
-            OutlinedButton(onClick = destinations.onClaims) { Text("Claims") }
-            OutlinedButton(onClick = destinations.onEntities) { Text("Entities") }
+            OutlinedButton(onClick = { destinations.onSearch("") }) { Text("Search") }
+            OutlinedButton(onClick = { destinations.onClaims(null) }) { Text("Claims") }
+            OutlinedButton(onClick = { destinations.onEntities(null) }) { Text("Entities") }
             OutlinedButton(onClick = destinations.onImport) { Text("Imports") }
         }
     }
@@ -166,7 +169,14 @@ private fun HomeScreenPreview() {
                     entries = listOf(entry),
                 ),
             onAction = {},
-            destinations = HomeDestinations(onImport = {}, onSearch = {}, onClaims = {}, onEntities = {}),
+            destinations =
+                HomeDestinations(
+                    onImport = {},
+                    onSearch = {},
+                    onClaims = {},
+                    onEntities = {},
+                    onEntity = {},
+                ),
         )
     }
 }

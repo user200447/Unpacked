@@ -57,6 +57,28 @@ public interface EventRepository {
         limit: Int,
         offset: Int,
     ): Result<List<Event>, DataError.Local>
+
+    /** When every Event of one Kind happened, in no particular order: what an Insight card groups by day or hour. */
+    public suspend fun timesOf(kind: EventKind): Result<List<Instant>, DataError.Local>
+
+    /**
+     * The Entities of [entityKind] that Events of [kind] name most often, with how many name each, most first;
+     * ties by name then id. At most [limit] of them.
+     */
+    public suspend fun topEntities(
+        kind: EventKind,
+        entityKind: EntityKind,
+        limit: Int,
+    ): Result<EntityTallies, DataError.Local>
+
+    /**
+     * The distinct non-blank values Events of [kind] record under [label], with how many Events record each,
+     * most first then by value. The label is the Source's own, as Raw kinds are.
+     */
+    public suspend fun valueCounts(
+        kind: EventKind,
+        label: String,
+    ): Result<List<ValueTally>, DataError.Local>
 }
 
 public interface ClaimRepository {
@@ -81,7 +103,33 @@ public interface ClaimRepository {
 
     /** The Claims that name the Entity with [entityId], in the order of [byKind]; empty for an unknown Entity. */
     public suspend fun forEntity(entityId: String): Result<List<Claim>, DataError.Local>
+
+    /** The Entities of [entityKind] that Claims of [kind] name most often; see [EventRepository.topEntities]. */
+    public suspend fun topEntities(
+        kind: ClaimKind,
+        entityKind: EntityKind,
+        limit: Int,
+    ): Result<EntityTallies, DataError.Local>
 }
+
+/** The Entities of one Kind that Events or Claims of one Kind name: how many there are, and the most named of them. */
+public data class EntityTallies(
+    /** How many distinct Entities are named at all, not only the ones in [top]. */
+    val count: Int,
+    val top: List<EntityTally>,
+)
+
+/** An Entity and how many Events or Claims of one Kind name it: one line of an Insight card. */
+public data class EntityTally(
+    val entity: Entity,
+    val count: Int,
+)
+
+/** One recorded value and how many Events of one Kind record it: one line of an Insight card. */
+public data class ValueTally(
+    val value: String,
+    val count: Int,
+)
 
 public interface EntityRepository {
     /** By `source:kind:key` (ADR 0002); [DataError.Local.NOT_FOUND] when no Entity has that id. */

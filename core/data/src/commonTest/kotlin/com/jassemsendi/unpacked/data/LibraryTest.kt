@@ -767,6 +767,71 @@ abstract class LibraryTest {
         }
 
     @Test
+    fun theReadsBehindTheInsightCardsCountWhatTheFixtureHolds() =
+        runTest {
+            val export = SyntheticInstagramExport(adsViewed = 12, includeTimedFiles = true, includeClaimFiles = true)
+            export.writeTo(fs, root)
+            val import = import(Export.directory(fs, root))
+            val events = library.events.forImport(import.id).orFail()
+
+            val viewed = events.filter { it.kind == EventKind.ContentViewed }.map { it.time }
+            assertEquals(9, viewed.size)
+            assertEquals(
+                viewed.sorted(),
+                library.events
+                    .timesOf(EventKind.ContentViewed)
+                    .orFail()
+                    .sorted(),
+            )
+            assertEquals(emptyList(), library.events.timesOf(EventKind.MessageSent).orFail())
+
+            // Ads name their advertiser by username; the two shown most, ties by name, and how many there are in all.
+            val shown =
+                export.ads
+                    .groupingBy { it.name }
+                    .eachCount()
+                    .entries
+                    .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key.lowercase() })
+                    .map { it.key to it.value }
+            val shownBy = library.events.topEntities(EventKind.AdShown, EntityKind.Advertiser, limit = 2).orFail()
+            assertEquals(shown.size, shownBy.count)
+            assertEquals(shown.take(2), shownBy.top.map { it.entity.displayName to it.count })
+            assertEquals(
+                EntityTallies(0, emptyList()),
+                library.events.topEntities(EventKind.AdShown, EntityKind.Device, limit = 2).orFail(),
+            )
+
+            // Three logins from two devices, all from one address.
+            val devices = library.events.topEntities(EventKind.Login, EntityKind.Device, limit = 10).orFail()
+            assertEquals(2, devices.count)
+            assertEquals(listOf(2, 1), devices.top.map { it.count })
+            assertTrue(
+                devices.top[0]
+                    .entity.displayName
+                    .startsWith("Instagram"),
+            )
+            assertTrue(
+                devices.top[1]
+                    .entity.displayName
+                    .startsWith("Mozilla"),
+            )
+            assertEquals(
+                listOf(ValueTally("203.0.113.7", 3)),
+                library.events.valueCounts(EventKind.Login, "IP Address").orFail(),
+            )
+            assertEquals(emptyList(), library.events.valueCounts(EventKind.Login, "No such label").orFail())
+
+            // Four advertisers uploaded a list, one Claim each, in name order when the counts tie.
+            val holders =
+                library.claims.topEntities(ClaimKind.AdvertiserHoldsContact, EntityKind.Advertiser, limit = 10).orFail()
+            assertEquals(4, holders.count)
+            assertEquals(
+                listOf("Example Courier" to 1, "Example Fashion" to 1, "Example Hotels" to 1, "Smith, Jones & Co" to 1),
+                holders.top.map { it.entity.displayName to it.count },
+            )
+        }
+
+    @Test
     fun importingTheSameExportTwiceRecordsTwoImportsAndChangesNoCounts() =
         runTest {
             SyntheticInstagramExport(adsViewed = 6).writeTo(fs, root)

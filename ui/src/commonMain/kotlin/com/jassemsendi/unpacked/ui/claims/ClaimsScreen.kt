@@ -41,11 +41,15 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun ClaimsRoot(
     onBack: () -> Unit,
+    expanded: ClaimKind? = null,
     viewModel: ClaimsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // Imports may have come or gone while another screen was up, so every appearance re-reads the library.
-    LaunchedEffect(viewModel) { viewModel.onAction(ClaimsAction.Refresh) }
+    // Imports may have come or gone while another screen was up, so every appearance re-reads the library,
+    // opening the group it was sent to, if any, over whichever was open before.
+    LaunchedEffect(viewModel, expanded) {
+        viewModel.onAction(expanded?.let { ClaimsAction.Expand(it) } ?: ClaimsAction.Refresh)
+    }
     ClaimsScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
 }
 

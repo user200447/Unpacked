@@ -1,9 +1,12 @@
 package com.jassemsendi.unpacked.ui.home
 
 import app.cash.turbine.test
+import com.jassemsendi.unpacked.insights.InsightCards
+import com.jassemsendi.unpacked.insights.Opens
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.DataError
+import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.RawKind
 import com.jassemsendi.unpacked.model.Result
@@ -19,6 +22,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
@@ -66,10 +70,17 @@ class HomeViewModelTest {
     private val events = FakeEventRepository(adShown, liked, login)
     private val claims = FakeClaimRepository(consent, interest)
 
+    private fun cards(
+        events: FakeEventRepository = this.events,
+        timeZone: TimeZone = TimeZone.UTC,
+    ) = InsightCards(events, claims, timeZone)
+
     private fun viewModel(
         timeZone: TimeZone = TimeZone.UTC,
         pageSize: Int = 2,
-    ) = HomeViewModel(events, claims, timeZone, pageSize).also { it.onAction(HomeAction.Refresh) }
+    ) = HomeViewModel(events, claims, timeZone, cards(timeZone = timeZone), pageSize).also {
+        it.onAction(HomeAction.Refresh)
+    }
 
     @BeforeTest
     fun useTestMain() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -80,7 +91,7 @@ class HomeViewModelTest {
     @Test
     fun nothingIsReadUntilTheScreenAsksForARefresh() =
         runTest {
-            assertEquals(HomeState(), HomeViewModel(events, claims, TimeZone.UTC).state.value)
+            assertEquals(HomeState(), HomeViewModel(events, claims, TimeZone.UTC, cards()).state.value)
         }
 
     @Test
@@ -126,7 +137,7 @@ class HomeViewModelTest {
     @Test
     fun refreshingPassesThroughLoadingAndKeepsTheLastReadOnScreenMeanwhile() =
         runTest {
-            val viewModel = HomeViewModel(events, claims, TimeZone.UTC, pageSize = 2)
+            val viewModel = HomeViewModel(events, claims, TimeZone.UTC, cards(), pageSize = 2)
 
             viewModel.state.test {
                 assertEquals(HomeState(isLoading = true), awaitItem(), "loading until the screen asks for a refresh")
@@ -288,6 +299,52 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun theFourCardsAreReadWithTheTimelineAndEveryNumberOpensWhatItCounted() =
+        runTest {
+            val cards = viewModel().state.value.cards
+
+            assertEquals(
+                listOf("Who has your contact details", "Ads shown to you", "What you viewed", "Your logins"),
+                cards.map { it.title },
+            )
+            val ads = cards[1]
+            assertEquals("1", ads.headline.value)
+            assertEquals(Opens.Timeline(EventKind.AdShown), ads.headline.opens)
+            assertEquals(Opens.Entities(EntityKind.Advertiser), ads.details.single().opens)
+            assertEquals("Example Courier", ads.rows.single().label)
+            assertEquals(Opens.Entity(courier.id), ads.rows.single().opens)
+            val logins = cards[3]
+            assertEquals("1", logins.headline.value)
+            assertEquals(Opens.Timeline(EventKind.Login), logins.headline.opens)
+            assertEquals(Opens.Entities(EntityKind.Device), logins.details.first().opens)
+        }
+
+    @Test
+    fun aCardOverALibraryWithoutItsKindShowsAnHonestEmptyStateNotAnError() =
+        runTest {
+            val state = viewModel().state.value
+
+            val contact = state.cards[0]
+            assertNotNull(contact.emptyText)
+            assertTrue(contact.rows.isEmpty())
+            assertNotNull(state.cards[2].emptyText, "nothing was viewed")
+            assertNull(state.cards[1].emptyText, "an ad was shown")
+            assertNull(state.error)
+        }
+
+    @Test
+    fun narrowingTheTimelineKeepsTheCardsAsTheyAre() =
+        runTest {
+            val viewModel = viewModel()
+            val before = viewModel.state.value.cards
+
+            viewModel.onAction(HomeAction.Filter(EventKind.Login))
+
+            assertEquals(before, viewModel.state.value.cards)
+            assertEquals(1, viewModel.state.value.entries.size)
+        }
+
+    @Test
     fun claimsNeverAppearInTheTimelineEvenWhenTheirAsOfTimeIsTheNewest() =
         runTest {
             val viewModel = viewModel(pageSize = 50)
@@ -424,10 +481,15 @@ class HomeViewModelTest {
     @Test
     fun anEmptyLibraryListsNothingAndOffersNoKinds() =
         runTest {
-            val viewModel = HomeViewModel(FakeEventRepository(), claims, TimeZone.UTC)
+            val empty = FakeEventRepository()
+            val viewModel = HomeViewModel(empty, claims, TimeZone.UTC, cards(empty))
 
             viewModel.onAction(HomeAction.Refresh)
 
-            assertEquals(HomeState(isLoading = false), viewModel.state.value)
+            val state = viewModel.state.value
+            assertEquals(HomeState(isLoading = false), state.copy(cards = emptyList()))
+            // The cards still stand, each saying honestly that it has nothing to count.
+            assertEquals(4, state.cards.size)
+            assertTrue(state.cards.all { it.emptyText != null })
         }
 }

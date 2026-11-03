@@ -77,7 +77,7 @@ _Avoid_: Contacts, people, directory, merged view
 ### Insights
 
 **Insight card**:
-One of a fixed set of eight deterministic summaries computed from the library with no model involved: for example advertisers holding the user's contact info, logins by device, content viewed per hour. Cards are what the user sees when no agent is available.
+One of a fixed set of eight deterministic summaries computed from the Library through its repository interfaces, with no model and no database of its own (`core:insights`). The first four: the advertisers holding the user's contact details, the ads shown, the content viewed per day with its busiest hour and weekday in the device's zone, and the logins by device and network. Every number on a card opens what it was counted from: the Timeline narrowed to a Kind, the Claims screen on a group, the Entities screen, one Entity, or a Search for a value. A card over a Library with nothing of its Kind is empty, not an error. Cards are what the user sees when no agent is available.
 _Avoid_: Widget, stat, metric, dashboard tile, insight (alone)
 
 ### Agent
