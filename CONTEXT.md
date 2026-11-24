@@ -5,7 +5,7 @@ A privacy-first app that turns the personal-data archives people download from l
 ## Language
 
 **Source**:
-A platform whose personal-data archive Unpacked can read. Instagram is the first Source; Google Takeout is the planned second.
+A platform whose personal-data archive Unpacked can read. Instagram is the first Source; Google Takeout is the planned second, already named in the model so that a Match has a second Source to pair across, but with no adapter yet, so nothing imports it and the Welcome screen does not offer it.
 _Avoid_: Platform, provider, integration
 
 **Export**:
@@ -83,7 +83,7 @@ _Avoid_: Widget, stat, metric, dashboard tile, insight (alone)
 ### Agent
 
 **Tool**:
-One typed, read-only question the agent may ask the library, such as counting Events of a Kind in a date range or listing the top Entities. Tools are the only way the agent reaches data.
+One typed, read-only question the agent may ask the Library, and the only way the agent reaches data. There are eight, plain Kotlin over the repository interfaces in `core:agent` with no model involved: listImports; countEvents by Kind, date range, Source and optionally spread per day or month; topEntities by Kind, count and range; entityTimeline for one Entity; searchText; findMatches by Entity Kind; gapReport for an Import; and chartSpec, which describes a chart from a count over time or a ranking, hands a chart back as it is, and refuses any other shape with a typed reason. Inputs are what a model writes, names and `YYYY-MM-DD` days as text, each checked into a typed error rather than thrown; days are read in the device's zone. Every output carries the Provenance of the records it summarises, listed in full or the newest few of a count, and never a Record's label and value pairs or an Entity's attributes, because Tool outputs are all a cloud model may receive (ADR 0006).
 _Avoid_: Function, action, skill, capability, query (for the agent-facing thing)
 
 **Tool trace**:

@@ -6,6 +6,7 @@ import com.jassemsendi.unpacked.data.db.ClaimRow
 import com.jassemsendi.unpacked.data.db.EntityCountRow
 import com.jassemsendi.unpacked.data.db.EntityLink
 import com.jassemsendi.unpacked.data.db.EntityTallyRow
+import com.jassemsendi.unpacked.data.db.EventDao
 import com.jassemsendi.unpacked.data.db.EventRow
 import com.jassemsendi.unpacked.data.db.HitType
 import com.jassemsendi.unpacked.data.db.LibraryDatabase
@@ -162,6 +163,7 @@ internal class RoomEventRepository(
     private val db: LibraryDatabase,
 ) : EventRepository {
     private val dao get() = db.eventDao()
+    private val filtered get() = db.eventFilterDao()
     private val entities = RoomEntityRepository(db)
 
     override suspend fun countByKind(importId: ImportId?): Result<Map<EventKind, Int>, DataError.Local> =
@@ -171,7 +173,7 @@ internal class RoomEventRepository(
         localCall { byIds(listOf(provenance.hash)).singleOrNull() }.orNotFound()
 
     override suspend fun forImport(importId: ImportId): Result<List<Event>, DataError.Local> =
-        localCall { hydrate(dao.forImport(importId.value)) }
+        localCall { entities.hydrateEvents(dao, dao.forImport(importId.value)) }
 
     override suspend fun newestFirst(
         kind: EventKind?,
@@ -179,38 +181,67 @@ internal class RoomEventRepository(
         offset: Int,
         importId: ImportId?,
     ): Result<List<Event>, DataError.Local> =
-        localCall { hydrate(dao.newestFirst(kind?.name, importId?.value, limit, offset)) }
+        localCall { entities.hydrateEvents(dao, dao.newestFirst(kind?.name, importId?.value, limit, offset)) }
 
     override suspend fun forEntity(
         entityId: String,
         limit: Int,
         offset: Int,
-    ): Result<List<Event>, DataError.Local> = localCall { hydrate(db.entityCountDao().events(entityId, limit, offset)) }
+    ): Result<List<Event>, DataError.Local> =
+        localCall {
+            entities.hydrateEvents(dao, db.entityCountDao().events(entityId, limit, offset))
+        }
 
-    override suspend fun timesOf(kind: EventKind): Result<List<Instant>, DataError.Local> =
-        localCall { db.insightCardDao().eventTimes(kind.name).map(Instant::fromEpochMilliseconds) }
+    override suspend fun count(filter: EventFilter): Result<Int, DataError.Local> =
+        localCall { with(filter) { filtered.count(kind?.name, from, to, source?.id, entityId) } }
+
+    override suspend fun times(filter: EventFilter): Result<List<Instant>, DataError.Local> =
+        localCall {
+            with(
+                filter,
+            ) { filtered.times(kind?.name, from, to, source?.id, entityId) }.map(Instant::fromEpochMilliseconds)
+        }
+
+    override suspend fun newest(
+        filter: EventFilter,
+        limit: Int,
+    ): Result<List<Event>, DataError.Local> =
+        localCall {
+            entities.hydrateEvents(
+                dao,
+                with(filter) { filtered.newest(kind?.name, from, to, source?.id, entityId, limit) },
+            )
+        }
 
     override suspend fun topEntities(
-        kind: EventKind,
+        filter: EventFilter,
         entityKind: EntityKind,
         limit: Int,
     ): Result<EntityTallies, DataError.Local> =
         localCall {
-            val dao = db.insightCardDao()
-            entities.tallies(
-                dao.eventEntityCount(kind.name, entityKind.name),
-                dao.eventEntityTallies(kind.name, entityKind.name, limit),
-            )
+            with(filter) {
+                entities.tallies(
+                    filtered.entityCount(kind?.name, from, to, source?.id, entityId, entityKind.name),
+                    filtered.entityTallies(kind?.name, from, to, source?.id, entityId, entityKind.name, limit),
+                )
+            }
         }
+
+    private val EventFilter.from: Long? get() = range?.start?.toEpochMilliseconds()
+    private val EventFilter.to: Long? get() = range?.endInclusive?.toEpochMilliseconds()
 
     /** The Events with these ids, in no particular order; ids that no longer exist are left out. */
-    suspend fun byIds(ids: List<Long>): List<Event> = hydrate(ids.inChunks { dao.byIds(it) })
-
-    private suspend fun hydrate(rows: List<EventRow>): List<Event> =
-        entities.hydrate(rows, { it.id }, dao::attributes, dao::links) { row, attributes, linked ->
-            row.toModel(attributes, linked)
-        }
+    suspend fun byIds(ids: List<Long>): List<Event> = entities.hydrateEvents(dao, ids.inChunks { dao.byIds(it) })
 }
+
+/** Event rows with their attributes and the Entities they link to, as [RoomEntityRepository.hydrate] reads them. */
+private suspend fun RoomEntityRepository.hydrateEvents(
+    dao: EventDao,
+    rows: List<EventRow>,
+): List<Event> =
+    hydrate(rows, { it.id }, dao::attributes, dao::links) { row, attributes, linked ->
+        row.toModel(attributes, linked)
+    }
 
 internal class RoomClaimRepository(
     private val db: LibraryDatabase,

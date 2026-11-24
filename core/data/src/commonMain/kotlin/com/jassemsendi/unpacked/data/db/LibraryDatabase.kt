@@ -36,6 +36,8 @@ internal abstract class LibraryDatabase : RoomDatabase() {
 
     abstract fun eventDao(): EventDao
 
+    abstract fun eventFilterDao(): EventFilterDao
+
     abstract fun claimDao(): ClaimDao
 
     abstract fun entityDao(): EntityDao

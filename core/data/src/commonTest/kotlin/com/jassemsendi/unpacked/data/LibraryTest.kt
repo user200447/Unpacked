@@ -911,6 +911,72 @@ abstract class LibraryTest {
         }
 
     @Test
+    fun eventsAreCountedTimedListedAndTalliedThroughOneFilter() =
+        runTest {
+            val export = SyntheticInstagramExport(adsViewed = 5, includeTimedFiles = true).also { it.writeTo(fs, root) }
+            val import = import(Export.directory(fs, root))
+            val all = library.events.forImport(import.id).orFail()
+            val ads = all.filter { it.kind == EventKind.AdShown }.sortedBy { it.time }
+            assertEquals(5, ads.size)
+
+            // No part given: the whole library. Each part narrows on its own and all of them together.
+            assertEquals(all.size, library.events.count(EventFilter()).orFail())
+            assertEquals(5, library.events.count(EventFilter(kind = EventKind.AdShown)).orFail())
+            val middleThree = ads[1].time..ads[3].time
+            assertEquals(3, library.events.count(EventFilter(range = middleThree)).orFail(), "both ends inclusive")
+            assertEquals(all.size, library.events.count(EventFilter(source = Source.Instagram)).orFail())
+            assertEquals(0, library.events.count(EventFilter(source = Source.GoogleTakeout)).orFail())
+            val courier = "instagram:advertiser:examplecourier"
+            val courierAds = ads.filter { ad -> ad.entities.any { it.id == courier } }
+            assertEquals(courierAds.size, library.events.count(EventFilter(entityId = courier)).orFail())
+            assertEquals(
+                courierAds.count { it.time in middleThree },
+                library.events.count(EventFilter(EventKind.AdShown, middleThree, Source.Instagram, courier)).orFail(),
+            )
+
+            // The same filter decides what is timed, what is listed and what is tallied.
+            assertEquals(
+                ads.map { it.time },
+                library.events
+                    .times(EventFilter(kind = EventKind.AdShown))
+                    .orFail()
+                    .sorted(),
+            )
+            assertEquals(
+                ads.takeLast(2).reversed(),
+                library.events.newest(EventFilter(kind = EventKind.AdShown), 2).orFail(),
+            )
+            assertEquals(
+                ads.filter { it.time in middleThree }.reversed(),
+                library.events.newest(EventFilter(range = middleThree), limit = 10).orFail(),
+            )
+            val shownInTheMiddle =
+                ads
+                    .filter { it.time in middleThree }
+                    .flatMap { it.entities }
+                    .groupingBy { it.displayName }
+                    .eachCount()
+                    .entries
+                    .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key.lowercase() })
+                    .map { it.key to it.value }
+            val tallied =
+                library.events
+                    .topEntities(EventFilter(EventKind.AdShown, middleThree), EntityKind.Advertiser, limit = 10)
+                    .orFail()
+            assertEquals(shownInTheMiddle.size, tallied.count)
+            assertEquals(shownInTheMiddle, tallied.top.map { it.entity.displayName to it.count })
+            assertEquals(
+                EntityTallies(0, emptyList()),
+                library.events
+                    .topEntities(
+                        EventFilter(source = Source.GoogleTakeout),
+                        EntityKind.Advertiser,
+                        10,
+                    ).orFail(),
+            )
+        }
+
+    @Test
     fun importingTheSameExportTwiceRecordsTwoImportsAndChangesNoCounts() =
         runTest {
             SyntheticInstagramExport(adsViewed = 6).writeTo(fs, root)

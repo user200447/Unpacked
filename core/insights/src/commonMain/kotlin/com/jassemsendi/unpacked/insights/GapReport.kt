@@ -23,9 +23,13 @@ public fun interface EvidenceRules {
     public fun of(source: Source): List<EvidenceRule>
 }
 
-/** The rules each Source's adapter declares: what the app uses; tests hand the reader others. */
+/**
+ * The rules each Source's adapter declares: what the app uses; tests hand the reader others. A Source with no
+ * adapter yet declares none, so an Import of it would get nine Missing Verdicts rather than fail.
+ */
 public object DeclaredEvidenceRules : EvidenceRules {
-    override fun of(source: Source): List<EvidenceRule> = SourceAdapter.of(source).evidenceRules
+    override fun of(source: Source): List<EvidenceRule> =
+        SourceAdapter.all.find { it.source == source }?.evidenceRules ?: emptyList()
 }
 
 /** The nine Verdicts for one Import (glossary: Gap report), computed with no model involved. */

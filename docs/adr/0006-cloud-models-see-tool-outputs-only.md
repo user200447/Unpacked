@@ -10,5 +10,6 @@ The agent runs on Ollama locally by default (desktop only) and on Google Gemini 
 ## Consequences
 
 - A test asserts that the serialized cloud request contains no field from an Export record.
+- The Tool outputs themselves (`core:agent`) are built so that there is nothing to leak: they carry Kinds, times, counts, Entity ids and display names and Provenance, and refer to an Event or Claim by those alone, never by its Record's label and value pairs or an Entity's attributes.
 - Without Ollama (iOS, Android, or desktop with Ollama stopped) and without a Gemini key, the Ask screen explains why the agent is off and the Insight cards and Gap report carry the app.
 - The mapping assistant and model-written letters are not planned; either may return in Week 7 if the tool-use eval scores well.

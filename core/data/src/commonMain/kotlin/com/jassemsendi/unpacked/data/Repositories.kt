@@ -13,6 +13,7 @@ import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.Result
+import com.jassemsendi.unpacked.model.Source
 import kotlin.time.Instant
 
 // The boundary of the library: everything outside core:data reads through these and never sees Room.
@@ -70,19 +71,55 @@ public interface EventRepository {
         offset: Int,
     ): Result<List<Event>, DataError.Local>
 
-    /** When every Event of one Kind happened, in no particular order: what an Insight card groups by day or hour. */
-    public suspend fun timesOf(kind: EventKind): Result<List<Instant>, DataError.Local>
+    /** How many Events [filter] keeps. */
+    public suspend fun count(filter: EventFilter): Result<Int, DataError.Local>
+
+    /** When every Event [filter] keeps happened, in no particular order. */
+    public suspend fun times(filter: EventFilter): Result<List<Instant>, DataError.Local>
+
+    /** The newest [limit] Events [filter] keeps, in the order of [newestFirst]: what a Tool cites. */
+    public suspend fun newest(
+        filter: EventFilter,
+        limit: Int,
+    ): Result<List<Event>, DataError.Local>
 
     /**
-     * The Entities of [entityKind] that Events of [kind] name most often, with how many name each, most first;
-     * ties by name then id. At most [limit] of them.
+     * The Entities of [entityKind] that the Events [filter] keeps name most often, with how many name each, most
+     * first; ties by name then id. At most [limit] of them.
      */
     public suspend fun topEntities(
-        kind: EventKind,
+        filter: EventFilter,
         entityKind: EntityKind,
         limit: Int,
     ): Result<EntityTallies, DataError.Local>
 }
+
+/** When every Event of one Kind happened, in no particular order: what an Insight card groups by day or hour. */
+public suspend fun EventRepository.timesOf(kind: EventKind): Result<List<Instant>, DataError.Local> =
+    times(EventFilter(kind = kind))
+
+/** The Entities of [entityKind] that Events of [kind] name most often; see [EventRepository.topEntities]. */
+public suspend fun EventRepository.topEntities(
+    kind: EventKind,
+    entityKind: EntityKind,
+    limit: Int,
+): Result<EntityTallies, DataError.Local> = topEntities(EventFilter(kind = kind), entityKind, limit)
+
+/**
+ * What narrows a read of Events: each part narrows the read when given and is ignored when null, and every
+ * given part applies at once. With no part given, the read is over the whole library. The agent's Tools
+ * read Events through one of these, so that a count, its times, its newest records and its top Entities
+ * all agree on what was counted.
+ */
+public data class EventFilter(
+    val kind: EventKind? = null,
+    /** Both ends inclusive. */
+    val range: ClosedRange<Instant>? = null,
+    /** Only the Events of this Source's Imports. */
+    val source: Source? = null,
+    /** Only the Events that name this Entity. */
+    val entityId: String? = null,
+)
 
 public interface ClaimRepository {
     /** Claims per Kind across the whole library, or within one Import. Kinds with no Claims are absent. */

@@ -3,6 +3,7 @@ package com.jassemsendi.unpacked.ui.home
 import com.jassemsendi.unpacked.data.ClaimRepository
 import com.jassemsendi.unpacked.data.EntityTallies
 import com.jassemsendi.unpacked.data.EntityTally
+import com.jassemsendi.unpacked.data.EventFilter
 import com.jassemsendi.unpacked.data.EventRepository
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
@@ -75,19 +76,40 @@ class FakeEventRepository(
         }
     }
 
-    override suspend fun timesOf(kind: EventKind): Result<List<Instant>, DataError.Local> =
-        answer { events.filter { it.kind == kind }.map { it.time } }
+    override suspend fun count(filter: EventFilter): Result<Int, DataError.Local> =
+        answer { events.count(filter::keeps) }
+
+    override suspend fun times(filter: EventFilter): Result<List<Instant>, DataError.Local> =
+        answer { events.filter(filter::keeps).map { it.time } }
+
+    override suspend fun newest(
+        filter: EventFilter,
+        limit: Int,
+    ): Result<List<Event>, DataError.Local> =
+        answer {
+            events
+                .filter(filter::keeps)
+                .sortedWith(compareByDescending<Event> { it.time }.thenByDescending { it.id })
+                .take(limit)
+        }
 
     override suspend fun topEntities(
-        kind: EventKind,
+        filter: EventFilter,
         entityKind: EntityKind,
         limit: Int,
     ): Result<EntityTallies, DataError.Local> =
-        answer { events.filter { it.kind == kind }.flatMap { it.entities }.tallied(entityKind, limit) }
+        answer { events.filter(filter::keeps).flatMap { it.entities }.tallied(entityKind, limit) }
 
     private fun <T> answer(read: () -> T): Result<T, DataError.Local> =
         failure?.let { Result.Error(it) } ?: Result.Success(read())
 }
+
+/** Whether the Room filter would keep this Event. A fake has no Imports, so every Event counts as Instagram's. */
+fun EventFilter.keeps(event: Event): Boolean =
+    (kind == null || event.kind == kind) &&
+        (range?.let { event.time in it } ?: true) &&
+        (source == null || source == Source.Instagram) &&
+        (entityId == null || event.entities.any { it.id == entityId })
 
 /** How the Room repositories tally the Entities a set of Events or Claims name: most named first, ties by name then id. */
 fun List<Entity>.tallied(
