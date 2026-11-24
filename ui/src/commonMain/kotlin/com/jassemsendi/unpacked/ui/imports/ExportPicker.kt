@@ -16,13 +16,3 @@ interface ExportPicker {
     /** Null when the user cancels. */
     suspend fun pickFolder(): ExportLocation?
 }
-
-/** For a platform whose chooser is not bound yet: nothing can be picked, and the screen says so. */
-object NoExportPicker : ExportPicker {
-    override val canPickZip: Boolean = false
-    override val canPickFolder: Boolean = false
-
-    override suspend fun pickZip(): ExportLocation? = null
-
-    override suspend fun pickFolder(): ExportLocation? = null
-}
