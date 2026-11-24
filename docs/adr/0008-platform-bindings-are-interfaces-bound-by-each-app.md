@@ -30,6 +30,12 @@ opens its library and starts Koin, playing the part `main` and `UnpackedApplicat
 - The same shape serves the later bindings the spec lists: secure key storage, the Ollama check,
   and the model provider factory.
 - Koin is started in three places: `desktopApp`'s `main`, `UnpackedApplication` on Android and
-  `MainViewController` in `ui/iosMain`. Each is a few lines and lists the same three modules.
+  `MainViewController` in `ui/iosMain`. Each lists the same three modules; Android's also builds
+  the bindings those modules take (the picker, the Import host and the scope it runs in).
 - `ImportUseCase` is the only write path the UI has; everything else it reads goes through the
-  repository interfaces.
+  repository interfaces. A platform that must do something around a long run wraps it through
+  `libraryModule`'s `hostImport`: Android hosts the run in a foreground service with a progress
+  notification and keeps it going when the screen that started it is gone (#17).
+- The `FileSystem` an app passes to `libraryModule` is its own binding too: desktop and iOS read the
+  Export from the file system by path, Android through the content resolver from a document URI
+  written as a path (`androidApp`'s `ContentFileSystem`), so `core:ingest` never learns about URIs.

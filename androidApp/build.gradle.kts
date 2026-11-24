@@ -16,8 +16,13 @@ dependencies {
     implementation(project(":ui"))
     implementation(project(":core:data"))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.koin.core)
     implementation(libs.okio)
+    // The app module compiles Kotlin through AGP, which does not pick the JUnit variant of kotlin-test by itself.
+    testImplementation(libs.kotlin.testJunit)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutinesTest)
 }
 
 android {

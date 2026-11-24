@@ -8,21 +8,31 @@ import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestSaver
 import com.jassemsendi.unpacked.ui.accessrequest.NoAccessRequestSaver
 import com.jassemsendi.unpacked.ui.di.uiModule
 import com.jassemsendi.unpacked.ui.imports.ExportPicker
-import com.jassemsendi.unpacked.ui.imports.NoExportPicker
-import okio.FileSystem
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.koin.core.context.startKoin
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 class UnpackedApplication : Application() {
+    /** Outlives every screen: where a hosted Import runs. */
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     override fun onCreate() {
         super.onCreate()
+        ImportService.createChannel(this)
         val library = Library.open(this, getDatabasePath("library.db").absolutePath)
+        val picker = AndroidExportPicker(contentResolver)
         startKoin {
             modules(
-                libraryModule(library, FileSystem.SYSTEM),
-                // The Storage Access Framework picker arrives with ticket #17; nothing shares the Access request yet.
+                // Exports are read from the documents the user picked, through the content resolver.
+                libraryModule(library, contentResolver.exportFileSystem()) { importUseCase ->
+                    HostedImportUseCase(importUseCase, ForegroundImportHost(this@UnpackedApplication), appScope)
+                },
+                // Nothing shares the Access request on Android yet.
                 module {
-                    single<ExportPicker> { NoExportPicker }
+                    single { picker } bind ExportPicker::class
                     single<AccessRequestSaver> { NoAccessRequestSaver }
                 },
                 uiModule,
