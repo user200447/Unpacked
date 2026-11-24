@@ -8,6 +8,7 @@ import com.jassemsendi.unpacked.model.Entity
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.Event
 import com.jassemsendi.unpacked.model.EventKind
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Provenance
@@ -29,6 +30,15 @@ public interface ImportRepository {
      * An Import that is already gone is a success: it is gone either way.
      */
     public suspend fun delete(id: ImportId): EmptyResult<DataError.Local>
+
+    /**
+     * Records that the Import's Export now lives at [location], after the user pointed at it again;
+     * [DataError.Local.NOT_FOUND] when no Import has that id.
+     */
+    public suspend fun relocate(
+        id: ImportId,
+        location: ExportLocation,
+    ): EmptyResult<DataError.Local>
 }
 
 public interface EventRepository {

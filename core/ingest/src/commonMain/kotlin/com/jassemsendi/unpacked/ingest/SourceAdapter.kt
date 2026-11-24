@@ -22,6 +22,16 @@ public sealed interface SourceAdapter {
      */
     public fun begin(export: Export): ExportReader
 
+    /**
+     * One file of this Source's Export as the Records the Source wrote, with no Kind assigned: what the Explorer
+     * shows. A file in none of the Source's dialects is read as plain JSON instead, with why the Source could not
+     * read it; one that is not JSON at all yields no Records. Must not throw.
+     */
+    public fun records(
+        file: ExportFile,
+        text: String,
+    ): FileRecords
+
     public companion object {
         /** The adapter for a Source. Exhaustive, so a Source added to the enum must bring its adapter. */
         public fun of(source: Source): SourceAdapter =

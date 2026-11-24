@@ -23,7 +23,15 @@ internal data class ImportRow(
     @ColumnInfo(name = "json_files") val jsonFiles: Int,
     @ColumnInfo(name = "media_files") val mediaFiles: Int,
     @ColumnInfo(name = "other_files") val otherFiles: Int,
-)
+    /** Where the Export was when it was read, as [ZIP] or [FOLDER] and the absolute path, for the Explorer to open again. */
+    @ColumnInfo(name = "export_location_kind") val exportLocationKind: String,
+    @ColumnInfo(name = "export_location_path") val exportLocationPath: String,
+) {
+    companion object {
+        const val ZIP = "zip"
+        const val FOLDER = "folder"
+    }
+}
 
 @Entity(
     tableName = "import_files",

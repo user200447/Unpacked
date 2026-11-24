@@ -56,6 +56,16 @@ data class ImportUi(
     val failed: List<FileResultUi>,
 )
 
+/** One stored Import as a chooser names it: the Gap report's and the Explorer's. */
+data class ImportChoiceUi(
+    val id: ImportId,
+    val exportName: String,
+    /** When the run started, in the device's time zone. */
+    val startedAt: String,
+    /** False for a run that never finished (ADR 0007); what is shown of it covers what landed before it stopped. */
+    val isComplete: Boolean,
+)
+
 /** One file of an Export as the Import reported it: the reason it was Skipped or Failed, or its counts. */
 data class FileResultUi(
     val path: String,

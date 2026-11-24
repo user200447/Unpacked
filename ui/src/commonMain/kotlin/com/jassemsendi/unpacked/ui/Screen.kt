@@ -35,6 +35,11 @@ sealed interface Screen {
         val importId: ImportId,
     ) : Screen
 
+    /** The Explorer, over one Import's Export files, or over the latest when none is named. */
+    data class Explorer(
+        val importId: ImportId? = null,
+    ) : Screen
+
     companion object {
         /** Saved as a name and an argument, so the screen survives process death on every platform. */
         val saver: Saver<Screen, Any> = listSaver(save = { it.toSaved() }, restore = { it.toScreen() })
@@ -49,6 +54,7 @@ sealed interface Screen {
                 is Entities -> listOf("Entities", opened.orEmpty())
                 is GapReport -> listOf("GapReport", importId?.value?.toString().orEmpty())
                 is AccessRequest -> listOf("AccessRequest", importId.value.toString())
+                is Explorer -> listOf("Explorer", importId?.value?.toString().orEmpty())
             }
 
         /** A name no screen answers to any more, a Kind renamed since, or a letter with no Import, lands on Home. */
@@ -62,6 +68,7 @@ sealed interface Screen {
                 "Entities" -> Entities(argument.ifEmpty { null })
                 "GapReport" -> GapReport(argument.toLongOrNull()?.let(::ImportId))
                 "AccessRequest" -> argument.toLongOrNull()?.let { AccessRequest(ImportId(it)) } ?: Home
+                "Explorer" -> Explorer(argument.toLongOrNull()?.let(::ImportId))
                 else -> Home
             }
         }

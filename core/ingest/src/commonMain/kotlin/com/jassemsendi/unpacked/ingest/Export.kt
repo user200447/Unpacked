@@ -1,6 +1,7 @@
 package com.jassemsendi.unpacked.ingest
 
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.Result
 import okio.FileSystem
 import okio.Path
@@ -9,10 +10,12 @@ import okio.openZip
 
 /**
  * An Export as downloaded, presented as one read-only file tree behind a root path whether it is
- * a zip or an unzipped directory. Zip entries are read in place and never extracted.
+ * a zip or an unzipped directory. Zip entries are read in place and never extracted. [location] is
+ * where it was opened from, which the Import it feeds remembers.
  */
 public class Export private constructor(
     public val id: ExportId,
+    public val location: ExportLocation,
     private val fileSystem: FileSystem,
     private val root: Path,
 ) {
@@ -45,7 +48,12 @@ public class Export private constructor(
             directory: Path,
         ): Export {
             val id = exportIdOfFolder(directory)
-            return Export(id, fileSystem, unwrap(fileSystem, directory, id))
+            return Export(
+                id,
+                ExportLocation.Folder(directory.toString()),
+                fileSystem,
+                unwrap(fileSystem, directory, id),
+            )
         }
 
         /** A zipped Export read entry by entry; its id is the file name without `.zip`. */
@@ -55,7 +63,12 @@ public class Export private constructor(
         ): Export {
             val id = exportIdOfZip(zipFile)
             val zipFileSystem = fileSystem.openZip(zipFile)
-            return Export(id, zipFileSystem, unwrap(zipFileSystem, "/".toPath(), id))
+            return Export(
+                id,
+                ExportLocation.Zip(zipFile.toString()),
+                zipFileSystem,
+                unwrap(zipFileSystem, "/".toPath(), id),
+            )
         }
 
         /**

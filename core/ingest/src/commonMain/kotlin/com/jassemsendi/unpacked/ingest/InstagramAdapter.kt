@@ -27,6 +27,13 @@ public object InstagramAdapter : SourceAdapter {
 
     override fun begin(export: Export): ExportReader = Reader(ExportOwners.of(export))
 
+    /** Threads read as their messages, every other file in its dialect; what neither shapes shows as plain JSON, repaired. */
+    override fun records(
+        file: ExportFile,
+        text: String,
+    ): FileRecords =
+        if (MessageThreads.isThreadFile(file.name)) MessageThreads.records(text) else InstagramDecoder.records(text)
+
     private class Reader(
         private val owner: ExportOwner?,
     ) : ExportReader {

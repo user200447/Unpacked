@@ -1,6 +1,6 @@
 package com.jassemsendi.unpacked
 
-import com.jassemsendi.unpacked.ingest.ExportLocation
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.ui.imports.ExportPicker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.swing.Swing

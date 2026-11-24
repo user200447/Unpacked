@@ -2,7 +2,11 @@ package com.jassemsendi.unpacked.ingest.instagram
 
 import com.jassemsendi.unpacked.ingest.ExportFile
 import com.jassemsendi.unpacked.ingest.FileOutcome
+import com.jassemsendi.unpacked.ingest.FileRecords
+import com.jassemsendi.unpacked.ingest.JsonRecords
 import com.jassemsendi.unpacked.ingest.Output
+import com.jassemsendi.unpacked.ingest.Record
+import com.jassemsendi.unpacked.ingest.instagram.InstagramDecoder.repaired
 import com.jassemsendi.unpacked.model.Entity
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.Event
@@ -12,6 +16,8 @@ import com.jassemsendi.unpacked.model.Source
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 
 /**
  * One part of a message thread as the Export writes it, read only as far as the counts need: the
@@ -38,6 +44,7 @@ internal data class MessageThread(
 internal object MessageThreads {
     private val json = Json { ignoreUnknownKeys = true }
     private const val THREAD_FILE = "message.json"
+    private const val MESSAGES = "messages"
 
     /** Why every message of a thread is dropped when the Export's profile names nobody. */
     const val OWNER_UNKNOWN: String =
@@ -56,6 +63,28 @@ internal object MessageThreads {
                 FileOutcome(FileResult.Failed(file.path, file.rawKind, error.message ?: "could not decode the thread"))
             },
         )
+
+    /**
+     * A thread as the Explorer shows it, read now from the Export and never stored (ADR 0003): one Record per message
+     * with every field the Source wrote, in the file's order. A part that is not a thread shows as plain JSON.
+     */
+    fun records(text: String): FileRecords =
+        runCatching {
+            val messages = (json.parseToJsonElement(text) as? JsonObject)?.get(MESSAGES) as? JsonArray
+            messages ?: throw UnsupportedFileShapeException("thread has no $MESSAGES list")
+        }.fold(
+            onSuccess = { messages ->
+                FileRecords(
+                    messages.mapIndexed {
+                        index,
+                        message,
+                        ->
+                        Record(index, JsonRecords.flatten(message))
+                    },
+                )
+            },
+            onFailure = { error -> JsonRecords.fallback(text, error.message) },
+        ).repaired()
 
     /** Without an owner no message can be told sent from received, so every one is counted and dropped, with the reason. */
     private fun count(

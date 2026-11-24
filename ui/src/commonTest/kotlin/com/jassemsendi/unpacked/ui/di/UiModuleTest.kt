@@ -6,12 +6,15 @@ import com.jassemsendi.unpacked.data.EventRepository
 import com.jassemsendi.unpacked.data.ImportRepository
 import com.jassemsendi.unpacked.data.ImportUseCase
 import com.jassemsendi.unpacked.data.SearchRepository
+import com.jassemsendi.unpacked.ingest.ExportFileReader
 import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestSaver
 import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestViewModel
 import com.jassemsendi.unpacked.ui.accessrequest.FakeAccessRequestSaver
 import com.jassemsendi.unpacked.ui.claims.ClaimsViewModel
 import com.jassemsendi.unpacked.ui.entities.EntitiesViewModel
 import com.jassemsendi.unpacked.ui.entities.FakeEntityRepository
+import com.jassemsendi.unpacked.ui.explorer.ExplorerViewModel
+import com.jassemsendi.unpacked.ui.explorer.FakeExportFileReader
 import com.jassemsendi.unpacked.ui.gapreport.GapReportViewModel
 import com.jassemsendi.unpacked.ui.home.FakeClaimRepository
 import com.jassemsendi.unpacked.ui.home.FakeEventRepository
@@ -55,6 +58,7 @@ class UiModuleTest {
                 single<ClaimRepository> { claims }
                 single<SearchRepository> { FakeSearchRepository(events, claims) }
                 single<EntityRepository> { FakeEntityRepository(events, claims) }
+                single<ExportFileReader> { FakeExportFileReader(emptyMap()) }
                 single<ExportPicker> { FakeExportPicker() }
                 single<AccessRequestSaver> { FakeAccessRequestSaver() }
             }
@@ -68,6 +72,7 @@ class UiModuleTest {
         assertNotNull(koin.get<EntitiesViewModel>())
         assertNotNull(koin.get<GapReportViewModel>())
         assertNotNull(koin.get<AccessRequestViewModel>())
+        assertNotNull(koin.get<ExplorerViewModel>())
         koin.close()
     }
 }

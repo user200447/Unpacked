@@ -20,10 +20,12 @@ import com.jassemsendi.unpacked.model.Entity
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.Event
 import com.jassemsendi.unpacked.model.EventKind
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.Result
+import com.jassemsendi.unpacked.model.asEmptyResult
 import kotlin.time.Instant
 
 /** A row that is not there is [DataError.Local.NOT_FOUND]; every repository answers absence the same way. */
@@ -59,6 +61,14 @@ internal class RoomImportRepository(
                 }
             }
         }
+
+    override suspend fun relocate(
+        id: ImportId,
+        location: ExportLocation,
+    ): EmptyResult<DataError.Local> =
+        localCall { dao.relocate(id.value, location.kindColumn, location.path).takeIf { it > 0 } }
+            .orNotFound()
+            .asEmptyResult()
 }
 
 internal class RoomEntityRepository(

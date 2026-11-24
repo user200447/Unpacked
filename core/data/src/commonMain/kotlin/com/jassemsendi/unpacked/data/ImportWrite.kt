@@ -9,6 +9,7 @@ import com.jassemsendi.unpacked.data.db.inChunks
 import com.jassemsendi.unpacked.ingest.FileOutcome
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.model.Entity
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.ImportId
 import kotlin.time.Instant
 
@@ -62,10 +63,11 @@ internal class ImportWrite private constructor(
     }
 
     companion object {
-        /** Records that an Import of this Export began [at] and returns the write that will fill it. */
+        /** Records that an Import of the Export at [location] began [at] and returns the write that will fill it. */
         suspend fun begin(
             db: LibraryDatabase,
             started: ImportStep.Started,
+            location: ExportLocation,
             at: Instant,
         ): ImportWrite {
             val rowId =
@@ -78,6 +80,8 @@ internal class ImportWrite private constructor(
                         jsonFiles = started.inventory.jsonFiles,
                         mediaFiles = started.inventory.mediaFiles,
                         otherFiles = started.inventory.otherFiles,
+                        exportLocationKind = location.kindColumn,
+                        exportLocationPath = location.path,
                     ),
                 )
             return ImportWrite(db, ImportId(rowId))

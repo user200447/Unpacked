@@ -54,7 +54,7 @@ public class Library internal constructor(
                     val written: Result<ImportStep, DataError.Local> =
                         when (step) {
                             is ImportStep.Started -> {
-                                localCall { ImportWrite.begin(db, step, clock.now()) }
+                                localCall { ImportWrite.begin(db, step, export.location, clock.now()) }
                                     .onSuccess { write = it }
                                     .map { step }
                             }

@@ -61,8 +61,9 @@ internal fun RecordDetailPane(
     }
 }
 
+/** One label over its value, the way every Record's pairs read. */
 @Composable
-private fun LabelValue(
+internal fun LabelValue(
     label: String,
     value: String,
 ) {

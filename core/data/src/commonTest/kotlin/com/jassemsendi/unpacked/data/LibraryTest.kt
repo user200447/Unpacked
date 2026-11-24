@@ -8,7 +8,6 @@ import com.jassemsendi.unpacked.fixtures.orFail
 import com.jassemsendi.unpacked.fixtures.writeText
 import com.jassemsendi.unpacked.ingest.Export
 import com.jassemsendi.unpacked.ingest.ExportError
-import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ImportError
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.InstagramAdapter
@@ -19,8 +18,10 @@ import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.Event
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.Import
+import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Inventory
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.RawKind
@@ -376,6 +377,42 @@ abstract class LibraryTest {
                 library.imports.all().orFail(),
                 "a location that will not open records no Import",
             )
+        }
+
+    @Test
+    fun anImportRemembersWhereItsExportWasAndCanBeToldItHasMoved() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 1, mediaFiles = 0).writeTo(fs, root)
+            val zip = "/downloads/instagram-synthetic.zip".toPath()
+
+            val import = import(Export.directory(fs, root))
+
+            assertEquals(ExportLocation.Folder(root.toString()), import.location)
+            assertEquals(
+                import.location,
+                library.imports
+                    .get(import.id)
+                    .orFail()
+                    .location,
+            )
+
+            library.imports.relocate(import.id, ExportLocation.Zip(zip.toString())).orFail()
+
+            assertEquals(
+                ExportLocation.Zip(zip.toString()),
+                library.imports
+                    .get(import.id)
+                    .orFail()
+                    .location,
+            )
+            assertEquals(
+                listOf(ExportLocation.Zip(zip.toString())),
+                library.imports
+                    .all()
+                    .orFail()
+                    .map { it.location },
+            )
+            assertEquals(notFound, library.imports.relocate(ImportId(99), ExportLocation.Folder("/elsewhere")))
         }
 
     @Test

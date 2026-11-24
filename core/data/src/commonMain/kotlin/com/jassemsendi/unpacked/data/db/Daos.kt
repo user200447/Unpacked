@@ -36,6 +36,14 @@ internal interface ImportDao {
     @Query("DELETE FROM imports WHERE id = :id")
     suspend fun delete(id: Long)
 
+    /** How many rows changed: 0 when no Import has that id. */
+    @Query("UPDATE imports SET export_location_kind = :kind, export_location_path = :path WHERE id = :id")
+    suspend fun relocate(
+        id: Long,
+        kind: String,
+        path: String,
+    ): Int
+
     @Insert
     suspend fun insertFile(row: ImportFileRow)
 

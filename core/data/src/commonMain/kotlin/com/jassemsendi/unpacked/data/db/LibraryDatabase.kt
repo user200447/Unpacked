@@ -7,7 +7,8 @@ import androidx.room.RoomDatabaseConstructor
 
 /**
  * The local library's schema (ADR 0004). The exported schema lives in `core/data/schemas`; version 2
- * added the item index to the Provenance columns, version 3 the full-text search tables.
+ * added the item index to the Provenance columns, version 3 the full-text search tables, version 4 the
+ * Export's location on the Import.
  */
 @Database(
     entities = [
@@ -26,7 +27,7 @@ import androidx.room.RoomDatabaseConstructor
         EventSearchRow::class,
         ClaimSearchRow::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @ConstructedBy(LibraryDatabaseConstructor::class)

@@ -1,6 +1,5 @@
 package com.jassemsendi.unpacked.ui.gapreport
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,10 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -28,6 +25,8 @@ import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.ui.home.RecordDetailLayout
 import com.jassemsendi.unpacked.ui.home.RecordRef
+import com.jassemsendi.unpacked.ui.imports.ImportChoiceUi
+import com.jassemsendi.unpacked.ui.imports.ImportChooser
 import com.jassemsendi.unpacked.ui.theme.ErrorNotice
 import com.jassemsendi.unpacked.ui.theme.Spacing
 import com.jassemsendi.unpacked.ui.theme.readable
@@ -120,24 +119,6 @@ private fun Header(onBack: () -> Unit) {
             )
         }
         OutlinedButton(onClick = onBack) { Text("Timeline") }
-    }
-}
-
-/** One chip per stored Import, newest first; the report is over the selected one. */
-@Composable
-private fun ImportChooser(
-    imports: List<ImportChoiceUi>,
-    selected: ImportId?,
-    onSelect: (ImportId) -> Unit,
-) {
-    Row(
-        modifier = Modifier.readable().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-    ) {
-        imports.forEach { import ->
-            val name = if (import.isComplete) import.exportName else "${import.exportName} (incomplete)"
-            FilterChip(selected = import.id == selected, onClick = { onSelect(import.id) }, label = { Text(name) })
-        }
     }
 }
 
