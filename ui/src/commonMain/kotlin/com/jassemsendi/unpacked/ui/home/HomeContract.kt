@@ -148,6 +148,8 @@ data class CardRowUi(
 /** Where the Home screen leads: the other top-level screens, from a button in its header or a number on a card. */
 data class HomeDestinations(
     val onImport: () -> Unit,
+    /** The Ask screen: a question to the agent. */
+    val onAsk: () -> Unit,
     val onSearch: () -> Unit,
     /** The Claims screen, opened on one Kind's group, or on none. */
     val onClaims: (ClaimKind?) -> Unit,

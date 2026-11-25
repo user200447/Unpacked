@@ -1,6 +1,8 @@
 package com.jassemsendi.unpacked
 
 import android.app.Application
+import com.jassemsendi.unpacked.agent.ModelProvider
+import com.jassemsendi.unpacked.agent.NoModelProvider
 import com.jassemsendi.unpacked.data.Library
 import com.jassemsendi.unpacked.data.libraryModule
 import com.jassemsendi.unpacked.data.open
@@ -30,10 +32,11 @@ class UnpackedApplication : Application() {
                 libraryModule(library, contentResolver.exportFileSystem()) { importUseCase ->
                     HostedImportUseCase(importUseCase, ForegroundImportHost(this@UnpackedApplication), appScope)
                 },
-                // Nothing shares the Access request on Android yet.
+                // Nothing shares the Access request on Android yet, and no model runs on the phone yet (spec story 44).
                 module {
                     single { picker } bind ExportPicker::class
                     single<AccessRequestSaver> { NoAccessRequestSaver }
+                    single<ModelProvider> { NoModelProvider }
                 },
                 uiModule,
             )

@@ -20,6 +20,7 @@ class InsightCardMappersTest {
         val destinations =
             HomeDestinations(
                 onImport = { visited += "import" },
+                onAsk = { visited += "ask" },
                 onSearch = { visited += "search" },
                 onClaims = { visited += "claims:$it" },
                 onEntities = { visited += "entities" },

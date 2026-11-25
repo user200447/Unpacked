@@ -12,7 +12,7 @@ Nothing leaves the device by default. The domain language and the decisions behi
 | `core:ingest` | Reads an Export (zip or folder) through a Source adapter into the canonical model. |
 | `core:data` | Local library on Room KMP; the only module that touches persistence. |
 | `core:insights` | Insight cards and the Gap report as pure functions over repository interfaces. |
-| `core:agent` | The eight read-only Tools over the repository interfaces and the query-time Match rule, with no model dependency; the Koog agent, provider selection and citation validation follow. |
+| `core:agent` | The eight read-only Tools over the repository interfaces and the query-time Match rule, with no model dependency; the Koog Ask agent that classifies a question, calls the Tools under a step cap, cites by marker and validates every number in the answer against the Tool outputs; the model provider interface, with Ollama bound on desktop and no model on the phones. |
 | `ui` | Compose Multiplatform screens shared by all targets (MVI per screen, Koin-injected ViewModels); produces the `UnpackedKit` iOS framework, whose entry point in `ui/iosMain` starts the app on iOS. |
 | `androidApp`, `desktopApp`, `iosApp` | Thin entry points. |
 | `build-logic` | Gradle convention plugins (`unpacked.kmp.library`, `unpacked.kmp.compose`, `unpacked.quality`). |
@@ -32,6 +32,8 @@ Every core module compiles for JVM, Android, iosArm64 and iosSimulatorArm64 with
 ./gradlew :androidApp:assembleDebug       # Android APK
 open iosApp/iosApp.xcodeproj              # iOS: run the iosApp scheme in Xcode
 ```
+
+On desktop the Ask screen answers through [Ollama](https://ollama.com) on `localhost:11434` with a model that calls tools, for example after `ollama run qwen3`; `UNPACKED_OLLAMA_MODEL=<name>` picks one when several are installed. With Ollama stopped, or on a phone, the Ask screen says the agent is off and points to the Insight cards and the Gap report; nothing else needs a model.
 
 On Android the Export zip is picked through the system file picker and read in place through its document URI; a running Import is hosted in a foreground service with a progress notification, so leaving the app does not stop it.
 

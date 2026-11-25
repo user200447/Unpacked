@@ -33,6 +33,7 @@ import com.jassemsendi.unpacked.ui.theme.readable
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
 
+@Suppress("ParamsComparedByRef")
 @Composable
 fun SearchRoot(
     onBack: () -> Unit,
