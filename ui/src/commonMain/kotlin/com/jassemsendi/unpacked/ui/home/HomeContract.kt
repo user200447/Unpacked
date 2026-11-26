@@ -43,6 +43,14 @@ data class TimelineEntryUi(
     val rawKind: String,
 )
 
+/** The four lines a list shows of one Event or Claim: its time, its Kind, what it concerned, and where it came from. */
+internal data class RecordCardLines(
+    val time: String,
+    val kindLabel: String,
+    val summary: String,
+    val footnote: String,
+)
+
 /** Whose Record to open: an Event's or a Claim's, told apart because each has its own repository. */
 sealed interface RecordRef {
     val provenance: Provenance

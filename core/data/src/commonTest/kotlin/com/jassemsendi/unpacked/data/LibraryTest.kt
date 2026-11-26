@@ -12,6 +12,7 @@ import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ImportError
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.InstagramAdapter
+import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.EntityKind
@@ -46,7 +47,9 @@ import kotlin.time.Instant
 /**
  * Seam 1: a synthetic Export in, a library out, asserted only through the repository interfaces.
  * Abstract because opening an in-memory library differs per platform; each target has a one-line subclass.
+ * One class by design, however large it grows: every repository is asserted against the same imported library.
  */
+@Suppress("LargeClass")
 abstract class LibraryTest {
     private val fs = FakeFileSystem()
     private val root = "/exports/instagram-synthetic".toPath()
@@ -74,6 +77,24 @@ abstract class LibraryTest {
                 page = library.events.newestFirst(limit = pageSize, offset = size * pageSize).orFail()
             }
         }
+
+    /** Every page of a search in turn, until one comes back empty. */
+    private suspend fun searchEveryPage(text: String): List<List<SearchHit>> =
+        buildList {
+            var page = library.search.search(text, limit = pageSize, offset = 0).orFail()
+            while (page.isNotEmpty()) {
+                add(page)
+                page = library.search.search(text, limit = pageSize, offset = size * pageSize).orFail()
+            }
+        }
+
+    /** Whether any of these texts has a word that starts with [word], the way the search reads them. */
+    private fun Iterable<String>.mention(word: String): Boolean =
+        any { text -> text.split(nonWord).any { it.startsWith(word, ignoreCase = true) } }
+
+    private fun Event.mentions(word: String) = (attributes.values + entities.map { it.displayName }).mention(word)
+
+    private fun Claim.mentions(word: String) = (attributes.values + entities.map { it.displayName }).mention(word)
 
     private suspend fun import(export: Export): Import {
         val steps = library.import(export, InstagramAdapter).toList()
@@ -450,6 +471,136 @@ abstract class LibraryTest {
         }
 
     @Test
+    fun searchFindsTheEventsAndClaimsThatMentionAWordNewestFirstWithUndatedClaimsLast() =
+        runTest {
+            val generator = SyntheticInstagramExport(adsViewed = 8, includeTimedFiles = true, includeClaimFiles = true)
+            generator.writeTo(fs, root)
+            val import = import(Export.directory(fs, root))
+            val events = library.events.forImport(import.id).orFail()
+            val claims = library.claims.forImport(import.id).orFail()
+            assertTrue(generator.ads.any { it.name == "Example Hotels" }, "the fixture must show an Example Hotels ad")
+
+            val hits = library.search.search("hotels", limit = pageSize, offset = 0).orFail()
+
+            assertEquals(
+                events.filter { it.mentions("hotels") }.sortedByDescending { it.time }.map { SearchHit.OfEvent(it) },
+                hits.filterIsInstance<SearchHit.OfEvent>(),
+            )
+            assertEquals(
+                claims.filter { it.mentions("hotels") }.map { SearchHit.OfClaim(it) },
+                hits.filterIsInstance<SearchHit.OfClaim>(),
+                "the advertisers list names Example Hotels in a Claim",
+            )
+            assertTrue(hits.last() is SearchHit.OfClaim && hits.last().time == null, "the undated Claim sorts last")
+            val found = hits.filterIsInstance<SearchHit.OfClaim>().single()
+            assertEquals(found.claim, library.claims.byProvenance(found.provenance).orFail(), "a hit opens its Record")
+
+            val everything = searchEveryPage("example").flatten()
+
+            assertTrue(everything.size > pageSize, "the fixture must span more than one page")
+            assertEquals(
+                events.count { it.mentions("example") } + claims.count { it.mentions("example") },
+                everything.size,
+            )
+            assertEquals(everything.distinct(), everything, "no page repeats a hit")
+            val dated = everything.takeWhile { it.time != null }
+            assertTrue(everything.drop(dated.size).all { it.time == null }, "undated Claims come after every dated hit")
+            assertEquals(
+                dated.map { it.time },
+                dated.map { it.time }.sortedByDescending { it },
+                "dated hits read newest first",
+            )
+            assertTrue(dated.first() is SearchHit.OfClaim, "the dated Claims are the newest records in the fixture")
+            assertEquals(
+                everything,
+                library.search.search("example", limit = everything.size + 1, offset = 0).orFail(),
+                "pages read the same as one read",
+            )
+        }
+
+    @Test
+    fun searchMatchesEveryWordFromItsStartIgnoringCaseAndAccents() =
+        runTest {
+            fs.writeText(root / InstagramFixtures.ADS_VIEWED_PATH.toPath(), InstagramFixtures.ADS_VIEWED_JSON)
+            fs.writeText(
+                root / InstagramClaimFixtures.SYNCED_CONTACTS_PATH.toPath(),
+                InstagramClaimFixtures.SYNCED_CONTACTS_JSON,
+            )
+            import(Export.directory(fs, root))
+            val courier = Provenance(ExportId("instagram-synthetic"), InstagramFixtures.ADS_VIEWED_PATH, 1)
+
+            suspend fun found(text: String) = library.search.search(text, limit = pageSize, offset = 0).orFail()
+
+            suspend fun firstNames(text: String) =
+                found(text).map { (it as SearchHit.OfClaim).claim.attributes.getValue("First Name") }
+
+            assertEquals(listOf(courier), found("cour").map { it.provenance }, "a word matches from its start")
+            assertEquals(listOf(courier), found("COURIER").map { it.provenance })
+            assertEquals(listOf(courier), found("ship anything").map { it.provenance }, "every word must be there")
+            assertEquals(emptyList(), found("ship nobody"))
+            assertEquals(listOf(courier), found("logistics").map { it.provenance }, "a hashtag Topic is a name")
+            assertEquals(listOf(InstagramClaimFixtures.LATIN1_NAME), firstNames("zoe"))
+            assertEquals(listOf(InstagramClaimFixtures.REPAIRED_NAME), firstNames("emilie noel"))
+            assertEquals(listOf(InstagramClaimFixtures.ARABIC_NAME), firstNames(InstagramClaimFixtures.ARABIC_NAME))
+            assertEquals(emptyList(), found("caption"), "labels are not searched, only values")
+        }
+
+    @Test
+    fun searchReadsTypedPunctuationAsWordBreaksAndBlankTextFindsNothing() =
+        runTest {
+            fs.writeText(root / InstagramFixtures.ADS_VIEWED_PATH.toPath(), InstagramFixtures.ADS_VIEWED_JSON)
+            import(Export.directory(fs, root))
+
+            suspend fun found(text: String) = library.search.search(text, limit = pageSize, offset = 0).orFail()
+
+            assertEquals(emptyList(), found(""))
+            assertEquals(emptyList(), found("   "))
+            assertEquals(emptyList(), found("\"*()-:"), "nothing but punctuation is no word")
+            assertEquals(1, found("\"courier*\"").size, "quotes and stars are not operators")
+            assertEquals(1, found("(courier) -growth").size, "every word is one more word to find")
+            assertEquals(1, found("instagram.com/p/BBB").size)
+            assertEquals(2, found("www.instagram.com").size, "both dated impressions carry a URL")
+            assertEquals(emptyList(), found("courier OR club"), "OR is a word like any other, so it is required too")
+        }
+
+    @Test
+    fun deletingAnImportRemovesItsHitsAndReimportingAddsNone() =
+        runTest {
+            val rootA = "/exports/instagram-a".toPath()
+            val rootB = "/exports/instagram-b".toPath()
+            SyntheticInstagramExport(adsViewed = 6, seed = 1).writeTo(fs, rootA)
+            SyntheticInstagramExport(adsViewed = 3, seed = 2).writeTo(fs, rootB)
+            val importA = import(Export.directory(fs, rootA))
+            val importB = import(Export.directory(fs, rootB))
+
+            suspend fun found() = library.search.search("synthetic ad", limit = 50, offset = 0).orFail()
+            assertEquals(9, found().size, "every ad's caption reads 'Synthetic ad N'")
+
+            val importAAgain = import(Export.directory(fs, rootA))
+
+            assertEquals(9, found().size, "a re-imported record is one hit, not two")
+
+            library.imports.delete(importA.id).orFail()
+
+            assertEquals(9, found().size, "the re-imported records belong to the newer Import (ADR 0007)")
+
+            library.imports.delete(importAAgain.id).orFail()
+
+            assertEquals(
+                library.events
+                    .forImport(importB.id)
+                    .orFail()
+                    .map { it.provenance }
+                    .toSet(),
+                found().map { it.provenance }.toSet(),
+            )
+
+            library.imports.delete(importB.id).orFail()
+
+            assertEquals(emptyList(), found())
+        }
+
+    @Test
     fun importingTheSameExportTwiceRecordsTwoImportsAndChangesNoCounts() =
         runTest {
             SyntheticInstagramExport(adsViewed = 6).writeTo(fs, root)
@@ -584,6 +735,8 @@ abstract class LibraryTest {
             assertEquals(mapOf(EventKind.AdShown to 2), library.events.countByKind(import.id).orFail())
         }
 }
+
+private val nonWord = Regex("[^\\p{L}\\p{N}]+")
 
 /** A Clock that advances by one tick per reading, so started and completed times are distinct and predictable. */
 private class TickingClock : Clock {

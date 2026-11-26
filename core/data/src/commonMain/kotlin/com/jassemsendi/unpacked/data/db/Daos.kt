@@ -43,7 +43,7 @@ internal interface EventDao {
     @Insert
     suspend fun insertLinks(rows: List<EventEntityRow>)
 
-    /** Cascades to the attributes and Entity links of those Events. */
+    /** Cascades to the attributes, Entity links and search text of those Events. */
     @Query("DELETE FROM events WHERE id IN (:ids)")
     suspend fun delete(ids: List<Long>)
 
@@ -51,8 +51,8 @@ internal interface EventDao {
     @Query("SELECT kind, COUNT(*) AS count FROM events WHERE :importId IS NULL OR import_id = :importId GROUP BY kind")
     suspend fun countByKind(importId: Long?): List<KindCount>
 
-    @Query("SELECT * FROM events WHERE id = :id")
-    suspend fun byId(id: Long): EventRow?
+    @Query("SELECT * FROM events WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<EventRow>
 
     @Query("SELECT * FROM events WHERE import_id = :importId ORDER BY time, id")
     suspend fun forImport(importId: Long): List<EventRow>
@@ -90,7 +90,7 @@ internal interface ClaimDao {
     @Insert
     suspend fun insertLinks(rows: List<ClaimEntityRow>)
 
-    /** Cascades to the attributes and Entity links of those Claims. */
+    /** Cascades to the attributes, Entity links and search text of those Claims. */
     @Query("DELETE FROM claims WHERE id IN (:ids)")
     suspend fun delete(ids: List<Long>)
 
@@ -98,8 +98,8 @@ internal interface ClaimDao {
     @Query("SELECT kind, COUNT(*) AS count FROM claims WHERE :importId IS NULL OR import_id = :importId GROUP BY kind")
     suspend fun countByKind(importId: Long?): List<KindCount>
 
-    @Query("SELECT * FROM claims WHERE id = :id")
-    suspend fun byId(id: Long): ClaimRow?
+    @Query("SELECT * FROM claims WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<ClaimRow>
 
     @Query("SELECT * FROM claims WHERE import_id = :importId ORDER BY as_of, path, record_index, item_index")
     suspend fun forImport(importId: Long): List<ClaimRow>
@@ -147,4 +147,41 @@ internal interface EntityDao {
         """,
     )
     suspend fun deleteOrphans()
+}
+
+/**
+ * The full-text index over Events and Claims (ADR 0004). Only the text tables are written; Room's
+ * triggers fill the FTS tables from them, and the cascade from a deleted record empties both.
+ */
+@Dao
+internal interface SearchDao {
+    @Insert
+    suspend fun insertEvents(rows: List<EventTextRow>)
+
+    @Insert
+    suspend fun insertClaims(rows: List<ClaimTextRow>)
+
+    /**
+     * One page of the Events and Claims whose text matches [match], an FTS4 expression: newest first by an
+     * Event's time or a Claim's "as of" time, undated Claims last, ties in a fixed order so pages never
+     * overlap. The literals are the names of [HitType].
+     */
+    @Query(
+        """
+        SELECT * FROM (
+            SELECT 'EVENT' AS hit_type, id AS hit_id, time FROM events
+            WHERE id IN (SELECT rowid FROM event_search WHERE event_search MATCH :match)
+            UNION ALL
+            SELECT 'CLAIM' AS hit_type, id AS hit_id, as_of AS time FROM claims
+            WHERE id IN (SELECT rowid FROM claim_search WHERE claim_search MATCH :match)
+        )
+        ORDER BY time IS NULL, time DESC, hit_type, hit_id DESC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun hits(
+        match: String,
+        limit: Int,
+        offset: Int,
+    ): List<SearchHitRow>
 }

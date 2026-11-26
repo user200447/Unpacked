@@ -4,6 +4,7 @@ import com.jassemsendi.unpacked.data.ClaimRepository
 import com.jassemsendi.unpacked.data.EventRepository
 import com.jassemsendi.unpacked.data.ImportRepository
 import com.jassemsendi.unpacked.data.ImportUseCase
+import com.jassemsendi.unpacked.data.SearchRepository
 import com.jassemsendi.unpacked.ui.home.FakeClaimRepository
 import com.jassemsendi.unpacked.ui.home.FakeEventRepository
 import com.jassemsendi.unpacked.ui.home.HomeViewModel
@@ -12,6 +13,8 @@ import com.jassemsendi.unpacked.ui.imports.FakeExportPicker
 import com.jassemsendi.unpacked.ui.imports.FakeImportRepository
 import com.jassemsendi.unpacked.ui.imports.FakeImportUseCase
 import com.jassemsendi.unpacked.ui.imports.ImportViewModel
+import com.jassemsendi.unpacked.ui.search.FakeSearchRepository
+import com.jassemsendi.unpacked.ui.search.SearchViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -34,12 +37,15 @@ class UiModuleTest {
     @Test
     fun everyViewModelResolvesFromTheLibraryInterfacesAndAPicker() {
         val repository = FakeImportRepository()
+        val events = FakeEventRepository()
+        val claims = FakeClaimRepository()
         val appModule =
             module {
                 single<ImportRepository> { repository }
                 single<ImportUseCase> { FakeImportUseCase(repository) }
-                single<EventRepository> { FakeEventRepository() }
-                single<ClaimRepository> { FakeClaimRepository() }
+                single<EventRepository> { events }
+                single<ClaimRepository> { claims }
+                single<SearchRepository> { FakeSearchRepository(events, claims) }
                 single<ExportPicker> { FakeExportPicker() }
             }
 
@@ -47,6 +53,7 @@ class UiModuleTest {
 
         assertNotNull(koin.get<ImportViewModel>())
         assertNotNull(koin.get<HomeViewModel>())
+        assertNotNull(koin.get<SearchViewModel>())
         koin.close()
     }
 }
