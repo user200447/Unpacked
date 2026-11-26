@@ -1,21 +1,14 @@
 package com.jassemsendi.unpacked.ui.home
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -36,14 +29,13 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun HomeRoot(
-    onImport: () -> Unit,
-    onSearch: () -> Unit,
+    destinations: HomeDestinations,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Imports may have come or gone while another screen was up, so every appearance re-reads the library.
     LaunchedEffect(viewModel) { viewModel.onAction(HomeAction.Refresh) }
-    HomeScreen(state = state, onAction = viewModel::onAction, onImport = onImport, onSearch = onSearch)
+    HomeScreen(state = state, onAction = viewModel::onAction, destinations = destinations)
 }
 
 /** The timeline, with the opened Record beside or over it. */
@@ -51,12 +43,11 @@ fun HomeRoot(
 fun HomeScreen(
     state: HomeState,
     onAction: (HomeAction) -> Unit,
-    onImport: () -> Unit,
-    onSearch: () -> Unit,
+    destinations: HomeDestinations,
     modifier: Modifier = Modifier,
 ) {
     RecordDetailLayout(detail = state.detail, onClose = { onAction(HomeAction.CloseDetail) }, modifier = modifier) {
-        Timeline(state, onAction, onImport, onSearch, modifier = it)
+        Timeline(state, onAction, destinations, modifier = it)
     }
 }
 
@@ -64,8 +55,7 @@ fun HomeScreen(
 private fun Timeline(
     state: HomeState,
     onAction: (HomeAction) -> Unit,
-    onImport: () -> Unit,
-    onSearch: () -> Unit,
+    destinations: HomeDestinations,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -74,7 +64,7 @@ private fun Timeline(
         verticalArrangement = Arrangement.spacedBy(Spacing.medium),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        item { Header(state.totalCount, onImport, onSearch) }
+        item { Header(state.totalCount, destinations) }
         state.error?.let { error -> item { ErrorNotice(error) } }
         if (state.kinds.isNotEmpty()) {
             item { KindFilter(state.kinds, state.totalCount, state.filter) { onAction(HomeAction.Filter(it)) } }
@@ -108,41 +98,19 @@ private fun Timeline(
 @Composable
 private fun Header(
     totalCount: Int,
-    onImport: () -> Unit,
-    onSearch: () -> Unit,
+    destinations: HomeDestinations,
 ) {
-    Row(
-        modifier = Modifier.readable(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.medium),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(weight = 1f)) {
-            Text("Your timeline", style = MaterialTheme.typography.headlineMedium)
-            Text("$totalCount Events, newest first", style = MaterialTheme.typography.bodyMedium)
-        }
-        OutlinedButton(onClick = onSearch) { Text("Search") }
-        OutlinedButton(onClick = onImport) { Text("Imports") }
-    }
-}
-
-@Composable
-private fun KindFilter(
-    kinds: List<KindCountUi>,
-    totalCount: Int,
-    filter: EventKind?,
-    onFilter: (EventKind?) -> Unit,
-) {
-    Row(
-        modifier = Modifier.readable().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-    ) {
-        FilterChip(selected = filter == null, onClick = { onFilter(null) }, label = { Text("All ($totalCount)") })
-        kinds.forEach { kind ->
-            FilterChip(
-                selected = filter == kind.kind,
-                onClick = { onFilter(kind.kind) },
-                label = { Text("${kind.label} (${kind.count})") },
-            )
+    Column(modifier = Modifier.readable(), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        Text("Your timeline", style = MaterialTheme.typography.headlineMedium)
+        Text("$totalCount Events, newest first", style = MaterialTheme.typography.bodyMedium)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+        ) {
+            OutlinedButton(onClick = destinations.onSearch) { Text("Search") }
+            OutlinedButton(onClick = destinations.onClaims) { Text("Claims") }
+            OutlinedButton(onClick = destinations.onEntities) { Text("Entities") }
+            OutlinedButton(onClick = destinations.onImport) { Text("Imports") }
         }
     }
 }
@@ -198,8 +166,7 @@ private fun HomeScreenPreview() {
                     entries = listOf(entry),
                 ),
             onAction = {},
-            onImport = {},
-            onSearch = {},
+            destinations = HomeDestinations(onImport = {}, onSearch = {}, onClaims = {}, onEntities = {}),
         )
     }
 }

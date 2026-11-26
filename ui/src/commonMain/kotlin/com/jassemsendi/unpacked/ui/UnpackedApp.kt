@@ -9,6 +9,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.jassemsendi.unpacked.ui.claims.ClaimsRoot
+import com.jassemsendi.unpacked.ui.entities.EntitiesRoot
+import com.jassemsendi.unpacked.ui.home.HomeDestinations
 import com.jassemsendi.unpacked.ui.home.HomeRoot
 import com.jassemsendi.unpacked.ui.imports.ImportRoot
 import com.jassemsendi.unpacked.ui.search.SearchRoot
@@ -16,7 +19,8 @@ import com.jassemsendi.unpacked.ui.welcome.WelcomeScreen
 
 /**
  * Root of the shared UI: the Welcome screen first, then the Import screen, then Home with the timeline;
- * Home and Import lead to each other, and Home to Search and back. Koin must be started before this runs.
+ * Home and Import lead to each other, and Home to Search, Claims and Entities and back. Koin must be started
+ * before this runs.
  */
 @Composable
 fun UnpackedApp() {
@@ -24,10 +28,36 @@ fun UnpackedApp() {
         Surface(modifier = Modifier.fillMaxSize()) {
             var screen by rememberSaveable(stateSaver = Screen.saver) { mutableStateOf(Screen.Welcome) }
             when (screen) {
-                Screen.Welcome -> WelcomeScreen(onContinue = { screen = Screen.Import })
-                Screen.Import -> ImportRoot(onShowTimeline = { screen = Screen.Home })
-                Screen.Home -> HomeRoot(onImport = { screen = Screen.Import }, onSearch = { screen = Screen.Search })
-                Screen.Search -> SearchRoot(onBack = { screen = Screen.Home })
+                Screen.Welcome -> {
+                    WelcomeScreen(onContinue = { screen = Screen.Import })
+                }
+
+                Screen.Import -> {
+                    ImportRoot(onShowTimeline = { screen = Screen.Home })
+                }
+
+                Screen.Home -> {
+                    HomeRoot(
+                        HomeDestinations(
+                            onImport = { screen = Screen.Import },
+                            onSearch = { screen = Screen.Search },
+                            onClaims = { screen = Screen.Claims },
+                            onEntities = { screen = Screen.Entities },
+                        ),
+                    )
+                }
+
+                Screen.Search -> {
+                    SearchRoot(onBack = { screen = Screen.Home })
+                }
+
+                Screen.Claims -> {
+                    ClaimsRoot(onBack = { screen = Screen.Home })
+                }
+
+                Screen.Entities -> {
+                    EntitiesRoot(onBack = { screen = Screen.Home })
+                }
             }
         }
     }

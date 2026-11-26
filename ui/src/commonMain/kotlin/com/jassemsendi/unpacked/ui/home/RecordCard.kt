@@ -14,6 +14,27 @@ import androidx.compose.ui.Modifier
 import com.jassemsendi.unpacked.ui.theme.Spacing
 import com.jassemsendi.unpacked.ui.theme.readable
 
+/** A [RecordRowUi] as a card: its time as words and its Provenance as the footnote. */
+@Composable
+internal fun RecordRow(
+    row: RecordRowUi,
+    selected: Boolean,
+    onOpen: () -> Unit,
+) {
+    RecordCard(
+        lines = RecordCardLines(row.time.text(), row.kindLabel, row.summary, row.ref.provenance.text()),
+        selected = selected,
+        onOpen = onOpen,
+    )
+}
+
+/** A list key the platform can save: an Event and a Claim read from the same record share a Provenance hash. */
+internal fun RecordRef.listKey(): String =
+    when (this) {
+        is RecordRef.Event -> "event:${provenance.hash}"
+        is RecordRef.Claim -> "claim:${provenance.hash}"
+    }
+
 /**
  * One Event or Claim in a list, the same on the timeline and among search hits. Opens on tap; shows as
  * selected while its Record is open.

@@ -66,6 +66,14 @@ _Avoid_: Feed, history, activity log, event list
 The screen that finds the Events and Claims whose Record values or Entity names contain every word the user types, each word matched from its start ("cour" finds "courier") without regard to case or accents. Hits are listed newest first by an Event's time or a Claim's "as of" time, undated Claims last, never by relevance (ADR 0004, 0010); each opens to the same Record detail as the Timeline, with its Provenance.
 _Avoid_: Find, lookup, query (for the screen), filter (for this)
 
+**Claims screen**:
+The screen that shows what a Source believes about the user: one group per Claim Kind with its count, opened to list its Claims a page at a time, dated ones newest first by their "as of" time and undated ones after in file order. Each opens to the same Record detail as the Timeline.
+_Avoid_: Beliefs, profile, inferences (for the screen), facts
+
+**Entities screen**:
+The screen that lists the Library's Entities with how many Events and Claims name each, narrowed to one Kind or ordered by name on request, every row and pane naming the Entity's Source because Entities are never merged across Sources (ADR 0002). Opening one shows its own timeline, newest first in pages, and its Claims, each opening to the Record detail.
+_Avoid_: Contacts, people, directory, merged view
+
 ### Insights
 
 **Insight card**:

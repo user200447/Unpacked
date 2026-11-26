@@ -57,26 +57,74 @@ class FakeEventRepository(
         }
     }
 
+    override suspend fun forEntity(
+        entityId: String,
+        limit: Int,
+        offset: Int,
+    ): Result<List<Event>, DataError.Local> {
+        gate?.await()
+        return answer {
+            events
+                .filter { event -> event.entities.any { it.id == entityId } }
+                .sortedWith(compareByDescending<Event> { it.time }.thenByDescending { it.id })
+                .drop(offset)
+                .take(limit)
+        }
+    }
+
     private fun <T> answer(read: () -> T): Result<T, DataError.Local> =
         failure?.let { Result.Error(it) } ?: Result.Success(read())
 }
+
+/** How the Room repository orders Claims for a Kind or an Entity: dated ones newest first, then undated ones in file order. */
+val claimsNewestFirst: Comparator<Claim> =
+    compareBy<Claim> { it.asOf == null }
+        .thenByDescending { it.asOf }
+        .thenBy { it.provenance.path }
+        .thenBy { it.provenance.recordIndex }
+        .thenBy { it.provenance.itemIndex }
 
 class FakeClaimRepository(
     vararg initial: Claim,
 ) : ClaimRepository {
     val claims = initial.toMutableList()
+    var gate: CompletableDeferred<Unit>? = null
+    var failure: DataError.Local? = null
 
-    override suspend fun countByKind(importId: ImportId?): Result<Map<ClaimKind, Int>, DataError.Local> =
-        Result.Success(claims.groupingBy { it.kind }.eachCount())
+    override suspend fun countByKind(importId: ImportId?): Result<Map<ClaimKind, Int>, DataError.Local> {
+        gate?.await()
+        return answer { claims.groupingBy { it.kind }.eachCount() }
+    }
 
     override suspend fun byProvenance(provenance: Provenance): Result<Claim, DataError.Local> =
-        Result.Success(claims.find { it.provenance == provenance }).orNotFound()
+        answer { claims.find { it.provenance == provenance } }.orNotFound()
 
-    override suspend fun forImport(importId: ImportId): Result<List<Claim>, DataError.Local> = Result.Success(claims)
+    override suspend fun forImport(importId: ImportId): Result<List<Claim>, DataError.Local> = answer { claims }
+
+    override suspend fun byKind(
+        kind: ClaimKind,
+        limit: Int,
+        offset: Int,
+    ): Result<List<Claim>, DataError.Local> {
+        gate?.await()
+        return answer {
+            claims
+                .filter { it.kind == kind }
+                .sortedWith(claimsNewestFirst)
+                .drop(offset)
+                .take(limit)
+        }
+    }
+
+    override suspend fun forEntity(entityId: String): Result<List<Claim>, DataError.Local> =
+        answer { claims.filter { claim -> claim.entities.any { it.id == entityId } }.sortedWith(claimsNewestFirst) }
+
+    private fun <T> answer(read: () -> T): Result<T, DataError.Local> =
+        failure?.let { Result.Error(it) } ?: Result.Success(read())
 }
 
 /** Absence answers as the Room repositories answer it. */
-private fun <T : Any> Result<T?, DataError.Local>.orNotFound(): Result<T, DataError.Local> =
+fun <T : Any> Result<T?, DataError.Local>.orNotFound(): Result<T, DataError.Local> =
     when (this) {
         is Result.Error -> this
         is Result.Success -> data?.let { Result.Success(it) } ?: Result.Error(DataError.Local.NOT_FOUND)

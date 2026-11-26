@@ -2,7 +2,7 @@ package com.jassemsendi.unpacked.ui.search
 
 import com.jassemsendi.unpacked.ui.home.RecordDetailUi
 import com.jassemsendi.unpacked.ui.home.RecordRef
-import com.jassemsendi.unpacked.ui.home.RecordTimeUi
+import com.jassemsendi.unpacked.ui.home.RecordRowUi
 
 data class SearchState(
     /** What the user typed, as typed. */
@@ -10,7 +10,7 @@ data class SearchState(
     /** True while the first page for [text] is being read; what is listed meanwhile is the last search. */
     val isSearching: Boolean = false,
     /** The hits read so far for [text]: newest first, undated Claims last. */
-    val hits: List<SearchHitUi> = emptyList(),
+    val hits: List<RecordRowUi> = emptyList(),
     /** True while the last page read was full, so the library may hold more. */
     val hasMore: Boolean = false,
     val isReadingNextPage: Boolean = false,
@@ -18,16 +18,6 @@ data class SearchState(
     val detail: RecordDetailUi? = null,
     /** Why the last read failed, until the next one succeeds; what is listed is the last successful read. */
     val error: String? = null,
-)
-
-/** One Event or Claim a search found, as the list shows it; its Provenance travels in [ref]. */
-data class SearchHitUi(
-    val ref: RecordRef,
-    val kindLabel: String,
-    /** An Event happened at its time; a Claim was at most last updated at its "as of" time. */
-    val time: RecordTimeUi,
-    /** What it concerned: the Entities it names, or failing that its first recorded value. */
-    val summary: String,
 )
 
 sealed interface SearchAction {

@@ -1,5 +1,7 @@
 package com.jassemsendi.unpacked.ui.di
 
+import com.jassemsendi.unpacked.ui.claims.ClaimsViewModel
+import com.jassemsendi.unpacked.ui.entities.EntitiesViewModel
 import com.jassemsendi.unpacked.ui.home.HomeViewModel
 import com.jassemsendi.unpacked.ui.imports.ImportViewModel
 import com.jassemsendi.unpacked.ui.search.SearchViewModel
@@ -17,4 +19,6 @@ val uiModule: Module =
         // Spelled out because the page sizes have defaults Koin cannot resolve.
         viewModel { HomeViewModel(get(), get(), get()) }
         viewModel { SearchViewModel(get(), get(), get(), get()) }
+        viewModel { ClaimsViewModel(get(), get(), get()) }
+        viewModel { EntitiesViewModel(get(), get(), get(), get()) }
     }
