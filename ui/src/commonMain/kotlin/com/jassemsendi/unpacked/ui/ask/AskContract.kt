@@ -1,5 +1,6 @@
 package com.jassemsendi.unpacked.ui.ask
 
+import com.jassemsendi.unpacked.agent.ModelLocality
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.ui.home.RecordDetailUi
 
@@ -12,6 +13,8 @@ data class AskState(
     val isAsking: Boolean = false,
     /** How the last question ended, until the next one does. */
     val outcome: OutcomeUi? = null,
+    /** The payload waiting in the Payload inspector for the user to send or refuse, while a cloud question is asked. */
+    val payload: PayloadUi? = null,
     /** The Record opened from a citation, if any. */
     val detail: RecordDetailUi? = null,
     /** Why the last ask or open failed, until the next one succeeds. */
@@ -22,9 +25,13 @@ data class AskState(
 sealed interface ModelUi {
     data object Checking : ModelUi
 
-    /** A model is ready; [marker] is how every answer is marked, such as "local · qwen3:8b". */
+    /**
+     * A model is ready; [marker] is how every answer is marked, such as "local · qwen3:8b", and [locality] says
+     * whether a question leaves the device, in which case the Payload inspector shows it first.
+     */
     data class Ready(
         val marker: String,
+        val locality: ModelLocality,
     ) : ModelUi
 
     /** No model answers; [message] says why and what answers without one. */
@@ -32,6 +39,12 @@ sealed interface ModelUi {
         val message: String,
     ) : ModelUi
 }
+
+/** What would leave the device for a cloud model (spec story 40): the model, and the exact request as text. */
+data class PayloadUi(
+    val model: String,
+    val text: String,
+)
 
 /** How a question ended: with an answer, or with the agent stopped at its step cap. */
 sealed interface OutcomeUi {
@@ -100,6 +113,12 @@ sealed interface AskAction {
     /** Ask again whether a model answers, say after starting Ollama. */
     data object CheckModel : AskAction
 
+    /** Let the payload in the inspector leave the device; the question goes on. */
+    data object SendPayload : AskAction
+
+    /** Keep the payload on the device; the question ends with nothing sent. */
+    data object RefusePayload : AskAction
+
     /** Open the Record a citation marker names. */
     data class OpenCitation(
         val provenance: Provenance,
@@ -107,3 +126,10 @@ sealed interface AskAction {
 
     data object CloseDetail : AskAction
 }
+
+/** Where the Ask screen leads: back to the timeline, to the Gap report, and to Settings when the agent is off. */
+data class AskDestinations(
+    val onBack: () -> Unit,
+    val onGapReport: () -> Unit,
+    val onSettings: () -> Unit,
+)

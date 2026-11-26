@@ -18,6 +18,9 @@ sealed interface Screen {
     /** The Ask screen: a question to the agent, answered with a Tool trace and citations. */
     data object Ask : Screen
 
+    /** Settings: how the agent runs, the Gemini key, and the Exports the app was tested against. */
+    data object Settings : Screen
+
     /** The Claims screen, with the group to open, or none. */
     data class Claims(
         val expanded: ClaimKind? = null,
@@ -54,6 +57,7 @@ sealed interface Screen {
                 Home -> listOf("Home", "")
                 Search -> listOf("Search", "")
                 Ask -> listOf("Ask", "")
+                Settings -> listOf("Settings", "")
                 is Claims -> listOf("Claims", expanded?.name.orEmpty())
                 is Entities -> listOf("Entities", opened.orEmpty())
                 is GapReport -> listOf("GapReport", importId?.value?.toString().orEmpty())
@@ -69,6 +73,7 @@ sealed interface Screen {
                 "Import" -> Import
                 "Search" -> Search
                 "Ask" -> Ask
+                "Settings" -> Settings
                 "Claims" -> Claims(ClaimKind.entries.firstOrNull { it.name == argument })
                 "Entities" -> Entities(argument.ifEmpty { null })
                 "GapReport" -> GapReport(argument.toLongOrNull()?.let(::ImportId))

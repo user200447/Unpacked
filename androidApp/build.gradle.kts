@@ -12,6 +12,12 @@ kotlin {
     }
 }
 
+configurations.all {
+    // Koog's Jackson bridge is a JVM-only extra that will not dex at minSdk 24; the agent serialises with
+    // kotlinx.serialization and nothing on Android calls it.
+    exclude(group = "ai.koog", module = "serialization-jackson")
+}
+
 dependencies {
     implementation(project(":ui"))
     implementation(project(":core:data"))

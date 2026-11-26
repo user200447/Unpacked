@@ -41,24 +41,31 @@ public class KoogAskAgent(
             is Result.Error -> Result.Error(connected.error)
         }
 
-    override suspend fun ask(question: String): Result<AskOutcome, AskError> {
+    override suspend fun ask(
+        question: String,
+        inspector: PayloadInspector,
+    ): Result<AskOutcome, AskError> {
         val asked = question.trim()
         if (asked.isEmpty()) return Result.Error(AskError.BlankQuestion)
         return when (val connected = provider.connect()) {
             is Result.Error -> Result.Error(AskError.Unavailable(connected.error))
-            is Result.Success -> run(asked, connected.data)
+            is Result.Success -> run(asked, connected.data, inspector)
         }
     }
 
     private suspend fun run(
         question: String,
         connected: ConnectedModel,
+        inspector: PayloadInspector,
     ): Result<AskOutcome, AskError> {
         val state = RunState(stepCap, timeZone)
         val wrapped = agentTools(tools, state)
+        val isCloud = connected.info.locality == ModelLocality.Cloud
+        // A cloud model's first request is shown before it leaves the device (ADR 0006); a local one just runs.
+        val executor = if (isCloud) InspectedExecutor(connected.executor, inspector) else connected.executor
         val agent =
             GraphAIAgent(
-                promptExecutor = connected.executor,
+                promptExecutor = executor,
                 agentConfig =
                     AIAgentConfig(
                         prompt = prompt("unpacked-ask") { system(systemPrompt(clock, timeZone)) },
@@ -73,10 +80,18 @@ public class KoogAskAgent(
                 Result.Success(agent.run(question))
             } catch (e: CancellationException) {
                 throw e
+            } catch (_: PayloadRefusedException) {
+                Result.Error(AskError.PayloadRefused)
             } catch (
                 @Suppress("TooGenericExceptionCaught") e: Exception,
             ) {
-                Result.Error(AskError.ModelFailed(e.message ?: "The model stopped without a reason."))
+                // A cloud that refuses the key or the quota mid-question is the agent going away, not a broken answer.
+                val refusal = if (isCloud) cloudFailure(e) else null
+                if (refusal != null) {
+                    Result.Error(AskError.Unavailable(refusal))
+                } else {
+                    Result.Error(AskError.ModelFailed(e.message ?: "The model stopped without a reason."))
+                }
             }
         return ending.andThen { outcome(it, state, connected.info) }
     }

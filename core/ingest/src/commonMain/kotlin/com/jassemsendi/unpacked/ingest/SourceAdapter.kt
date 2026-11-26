@@ -16,6 +16,9 @@ public sealed interface SourceAdapter {
     /** The Source's Evidence rules: what the Gap report applies to an Import of this Source, and all it reads of the adapter. */
     public val evidenceRules: List<EvidenceRule>
 
+    /** The Exports of this Source the adapter was tested against: the one list Settings shows (spec story 55). */
+    public val testedExports: List<TestedExport>
+
     /**
      * Begins reading one Export: whatever the Source must know before any file is parsed, such as
      * whose Export it is, is read here. Must not throw; what cannot be read is simply not known.
@@ -35,6 +38,9 @@ public sealed interface SourceAdapter {
     public companion object {
         /** Every adapter there is: the Sources an Export can be imported from, in the order the Welcome screen lists them. */
         public val all: List<SourceAdapter> = listOf(InstagramAdapter)
+
+        /** Every tested Export of every Source, in Source order: what Settings lists. */
+        public val allTestedExports: List<TestedExport> get() = all.flatMap { it.testedExports }
 
         /**
          * The adapter for a Source. Only an Import's Source is ever looked up, and an Import can only be of a Source

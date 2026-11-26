@@ -117,6 +117,7 @@ private fun Header(
             OutlinedButton(onClick = destinations.onGapReport) { Text("Gap report") }
             OutlinedButton(onClick = destinations.onExplorer) { Text("Explorer") }
             OutlinedButton(onClick = destinations.onImport) { Text("Imports") }
+            OutlinedButton(onClick = destinations.onSettings) { Text("Settings") }
         }
     }
 }
@@ -182,6 +183,7 @@ private fun HomeScreenPreview() {
                     onEntity = {},
                     onGapReport = {},
                     onExplorer = {},
+                    onSettings = {},
                 ),
         )
     }

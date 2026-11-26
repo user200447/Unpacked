@@ -107,12 +107,28 @@ The most Tool calls one question may spend, eight today, counted over the whole 
 _Avoid_: Iteration limit, timeout, budget
 
 **Model provider**:
-The platform binding (ADR 0008) that says which model answers and how to reach it, asked anew for every question so a model started or stopped since the last one is noticed: Ollama on localhost on desktop, choosing the model named by `UNPACKED_OLLAMA_MODEL` when it is installed and calls Tools, else the first preferred family that does; no model on Android and iOS until a cloud model is offered (ADR 0006).
+The binding (ADR 0008) that says which model answers and how to reach it, asked anew for every question so a model started or stopped since the last one, a key saved since, or a changed Settings choice is noticed. It follows the Provider choice: "local" is the platform's own model, Ollama on localhost on desktop, choosing the model named by `UNPACKED_OLLAMA_MODEL` when it is installed and calls Tools, else the first preferred family that does, and nothing on Android and iOS, which therefore do not offer the choice; "cloud" is Google Gemini Flash on its free tier with the Gemini key from secure storage, probed by listing the models Google serves to that key so a rejected key or a spent quota is known before anything is sent, the newest Flash model listed being the one used since Google retires them for new accounts; "off" answers nobody (ADR 0006, ADR 0012).
 _Avoid_: Backend, LLM client, engine
 
 **Payload inspector**:
-The screen that shows the exact text that would leave the device before any cloud model call, and lets the user refuse. Only Tool outputs ever appear in it; never Export records.
+The card on the Ask screen that shows the exact request about to leave the device for a cloud model and lets the user send it or refuse. It appears before the first request of every question asked of a cloud model and never for a local one; approval covers the rest of that question, whose later requests add only the Tool outputs the Tool trace shows afterwards, and a refusal ends the question with nothing sent. The request is rendered as readable JSON: the model, every message in full and in order, and every Tool offered with its parameters; the client adds protocol framing and nothing else. Only the question, the agent's instructions and Tool outputs can ever be in it, never Export records, which a test over the fixture proves (ADR 0006).
 _Avoid_: Preview, consent dialog, privacy prompt
+
+**Provider choice**:
+What Settings lets the user pick for the agent: local, cloud or off. Kept as a plain preference, never beside the key. A platform with no local model offers cloud and off only and starts off; saving a Gemini key turns the cloud on, and removing it falls back to local where there is one, else off.
+_Avoid_: Mode, backend setting, model setting
+
+**Gemini key**:
+The API key the user pastes to opt in to the cloud model (spec story 39), kept only in the platform's secure storage through one binding per app (ADR 0008, ADR 0012): the macOS Keychain, or a file only the user's account can read on another desktop; the Android Keystore sealing it into a SharedPreferences file of its own; the iOS Keychain. Settings says where it is kept, and whether one is saved, and never shows it again.
+_Avoid_: Token, credential, API secret, password
+
+**Settings**:
+The screen with the Provider choice, the Gemini key and the Tested Exports, reached from Home and from the Ask screen when the agent is off.
+_Avoid_: Preferences (for the screen), options, configuration
+
+**Tested Export**:
+One Export a Source's adapter was tested against: the Source, the format, the date it was downloaded and the choices made when requesting it. Each adapter declares its own list, the one place they are declared, and Settings shows them all so a user can judge whether their Export is likely to import (spec story 55).
+_Avoid_: Supported format, compatibility, version
 
 **Explorer**:
 The screen that shows any Export file as its Records, including files no Kind was assigned to. The fallback for anything the Import did not understand: nothing in the Export is hidden. It lists every file of one Import's inventory, newest complete Import by default, each with its Raw kind, its result (Parsed with its counts, Skipped or Failed with the reason) and the media files counted and never opened. Opening a JSON file reads its Records from the Export now, through the Source's adapter with no Kind assigned, in the file's order; a file the Source cannot read in its dialects shows as plain JSON with why, a Failed file shows the reason and whatever was readable. When the Export is no longer where the Import remembers it, the screen says so and offers the platform's chooser to pick it again.

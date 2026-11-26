@@ -12,6 +12,7 @@ import com.jassemsendi.unpacked.ingest.instagram.MessageThreads
 import com.jassemsendi.unpacked.model.EvidenceRule
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.Source
+import kotlinx.datetime.LocalDate
 
 /**
  * Reads an Instagram "Download your information" Export in its JSON dialects: one mapper per
@@ -21,6 +22,18 @@ import com.jassemsendi.unpacked.model.Source
 public object InstagramAdapter : SourceAdapter {
     override val source: Source = Source.Instagram
     override val evidenceRules: List<EvidenceRule> = InstagramEvidenceRules.all
+
+    override val testedExports: List<TestedExport> =
+        listOf(
+            TestedExport(
+                source = Source.Instagram,
+                format = "JSON",
+                downloadedOn = LocalDate(2026, 10, 20),
+                note =
+                    "“Download your information”, all of your information, all time, in the JSON format, as the zip " +
+                        "or the unzipped folder. The HTML format is not read.",
+            ),
+        )
 
     /** Why every message of a thread is dropped when the Export's profile names nobody. */
     public const val OWNER_UNKNOWN: String = MessageThreads.OWNER_UNKNOWN

@@ -13,7 +13,14 @@ public interface AskAgent {
     /** Whether a model can answer now, and which one. */
     public suspend fun available(): Result<ModelInfo, AgentUnavailable>
 
-    public suspend fun ask(question: String): Result<AskOutcome, AskError>
+    /**
+     * Answers [question]. When the model is a cloud one, its first request is shown to [inspector] before it leaves
+     * the device, and a refusal ends the question with nothing sent (ADR 0006); a local model never asks.
+     */
+    public suspend fun ask(
+        question: String,
+        inspector: PayloadInspector = PayloadInspector.SendAll,
+    ): Result<AskOutcome, AskError>
 }
 
 /** How a question ended: with an answer, or with the agent stopped at its step cap (spec story 43). */
@@ -71,6 +78,9 @@ public sealed interface AskError : Error {
     ) : AskError
 
     public data object BlankQuestion : AskError
+
+    /** The user refused the payload in the Payload inspector; nothing left the device. */
+    public data object PayloadRefused : AskError
 
     /** The model stopped answering mid-way, or answered with nothing the agent could use. */
     public data class ModelFailed(

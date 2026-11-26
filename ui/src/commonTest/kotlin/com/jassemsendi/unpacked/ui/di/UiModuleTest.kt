@@ -1,7 +1,9 @@
 package com.jassemsendi.unpacked.ui.di
 
-import com.jassemsendi.unpacked.agent.ModelProvider
+import com.jassemsendi.unpacked.agent.LocalModelProvider
 import com.jassemsendi.unpacked.agent.NoModelProvider
+import com.jassemsendi.unpacked.agent.PreferenceStore
+import com.jassemsendi.unpacked.agent.SecureKeyStore
 import com.jassemsendi.unpacked.data.ClaimRepository
 import com.jassemsendi.unpacked.data.EntityRepository
 import com.jassemsendi.unpacked.data.EventRepository
@@ -29,6 +31,9 @@ import com.jassemsendi.unpacked.ui.imports.FakeImportUseCase
 import com.jassemsendi.unpacked.ui.imports.ImportViewModel
 import com.jassemsendi.unpacked.ui.search.FakeSearchRepository
 import com.jassemsendi.unpacked.ui.search.SearchViewModel
+import com.jassemsendi.unpacked.ui.settings.FakePreferenceStore
+import com.jassemsendi.unpacked.ui.settings.FakeSecureKeyStore
+import com.jassemsendi.unpacked.ui.settings.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -40,7 +45,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 
-/** The wiring every app repeats: the UI module resolves once the app binds the library interfaces, a picker, a saver and a model. */
+/** The wiring every app repeats: the UI module resolves once the app binds the library interfaces, a picker, a saver, a local model and the two stores. */
 class UiModuleTest {
     @BeforeTest
     fun useTestMain() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -49,7 +54,7 @@ class UiModuleTest {
     fun resetMainDispatcher() = Dispatchers.resetMain()
 
     @Test
-    fun everyViewModelResolvesFromTheLibraryInterfacesAPickerASaverAndAModel() {
+    fun everyViewModelResolvesFromTheLibraryInterfacesAPickerASaverALocalModelAndTheStores() {
         val repository = FakeImportRepository()
         val events = FakeEventRepository()
         val claims = FakeClaimRepository()
@@ -64,7 +69,9 @@ class UiModuleTest {
                 single<ExportFileReader> { FakeExportFileReader(emptyMap()) }
                 single<ExportPicker> { FakeExportPicker() }
                 single<AccessRequestSaver> { FakeAccessRequestSaver() }
-                single<ModelProvider> { NoModelProvider }
+                single<LocalModelProvider> { NoModelProvider }
+                single<PreferenceStore> { FakePreferenceStore() }
+                single<SecureKeyStore> { FakeSecureKeyStore() }
             }
 
         val koin = koinApplication { modules(appModule, uiModule) }.koin
@@ -78,6 +85,7 @@ class UiModuleTest {
         assertNotNull(koin.get<AccessRequestViewModel>())
         assertNotNull(koin.get<ExplorerViewModel>())
         assertNotNull(koin.get<AskViewModel>())
+        assertNotNull(koin.get<SettingsViewModel>())
         koin.close()
     }
 }

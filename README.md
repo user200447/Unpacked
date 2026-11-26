@@ -12,7 +12,7 @@ Nothing leaves the device by default. The domain language and the decisions behi
 | `core:ingest` | Reads an Export (zip or folder) through a Source adapter into the canonical model. |
 | `core:data` | Local library on Room KMP; the only module that touches persistence. |
 | `core:insights` | Insight cards and the Gap report as pure functions over repository interfaces. |
-| `core:agent` | The eight read-only Tools over the repository interfaces and the query-time Match rule, with no model dependency; the Koog Ask agent that classifies a question, calls the Tools under a step cap, cites by marker and validates every number in the answer against the Tool outputs; the model provider interface, with Ollama bound on desktop and no model on the phones. |
+| `core:agent` | The eight read-only Tools over the repository interfaces and the query-time Match rule, with no model dependency; the Koog Ask agent that classifies a question, calls the Tools under a step cap, cites by marker and validates every number in the answer against the Tool outputs; the model providers: the platform's own (Ollama on desktop, none on the phones), Gemini Flash with a key from the platform's secure storage, and the switch between them that Settings drives; the Payload inspector's rendering of a cloud request. |
 | `ui` | Compose Multiplatform screens shared by all targets (MVI per screen, Koin-injected ViewModels); produces the `UnpackedKit` iOS framework, whose entry point in `ui/iosMain` starts the app on iOS. |
 | `androidApp`, `desktopApp`, `iosApp` | Thin entry points. |
 | `build-logic` | Gradle convention plugins (`unpacked.kmp.library`, `unpacked.kmp.compose`, `unpacked.quality`). |
@@ -33,7 +33,9 @@ Every core module compiles for JVM, Android, iosArm64 and iosSimulatorArm64 with
 open iosApp/iosApp.xcodeproj              # iOS: run the iosApp scheme in Xcode
 ```
 
-On desktop the Ask screen answers through [Ollama](https://ollama.com) on `localhost:11434` with a model that calls tools, for example after `ollama run qwen3`; `UNPACKED_OLLAMA_MODEL=<name>` picks one when several are installed. With Ollama stopped, or on a phone, the Ask screen says the agent is off and points to the Insight cards and the Gap report; nothing else needs a model.
+On desktop the Ask screen answers through [Ollama](https://ollama.com) on `localhost:11434` with a model that calls tools, for example after `ollama run qwen3`; `UNPACKED_OLLAMA_MODEL=<name>` picks one when several are installed. With Ollama stopped, or on a phone, the Ask screen says why the agent is off and points to the Insight cards and the Gap report; nothing else needs a model.
+
+Settings (from Home) switches the agent among local, cloud and off, and takes a Google Gemini key for the cloud model, Gemini Flash on its free tier. The key is kept in the platform's secure storage: the macOS Keychain (an owner-only file in the app's data directory on Windows and Linux), the Android Keystore, the iOS Keychain. Before the first request of every question asked of the cloud model, the Payload inspector shows the exact request and waits for the user to send or refuse it; only the question and the Tool outputs ever leave the device, never a record from the Export, and every answer is marked `local` or `cloud`. Settings also lists the Export formats and dates the app was tested against.
 
 On Android the Export zip is picked through the system file picker and read in place through its document URI; a running Import is hosted in a foreground service with a progress notification, so leaving the app does not stop it.
 
