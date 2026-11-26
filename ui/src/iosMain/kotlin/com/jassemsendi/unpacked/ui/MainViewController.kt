@@ -4,6 +4,8 @@ import androidx.compose.ui.window.ComposeUIViewController
 import com.jassemsendi.unpacked.data.Library
 import com.jassemsendi.unpacked.data.libraryModule
 import com.jassemsendi.unpacked.data.open
+import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestSaver
+import com.jassemsendi.unpacked.ui.accessrequest.NoAccessRequestSaver
 import com.jassemsendi.unpacked.ui.di.uiModule
 import com.jassemsendi.unpacked.ui.imports.ExportPicker
 import com.jassemsendi.unpacked.ui.imports.NoExportPicker
@@ -25,8 +27,11 @@ fun MainViewController(): UIViewController {
         startKoin {
             modules(
                 libraryModule(library, FileSystem.SYSTEM),
-                // The iOS document picker arrives with ticket #18.
-                module { single<ExportPicker> { NoExportPicker } },
+                // The iOS document picker arrives with ticket #18; nothing shares the Access request yet.
+                module {
+                    single<ExportPicker> { NoExportPicker }
+                    single<AccessRequestSaver> { NoAccessRequestSaver }
+                },
                 uiModule,
             )
         }
