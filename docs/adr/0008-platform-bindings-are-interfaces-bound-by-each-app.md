@@ -25,8 +25,17 @@ opens its library and starts Koin, playing the part `main` and `UnpackedApplicat
 
 ## Consequences
 
-- A platform without a chooser yet binds `NoExportPicker`; the Import screen says so instead of
-  failing to start. Android (#17) and iOS (#18) replace that binding.
+- Every app binds a chooser: desktop its native dialogs, Android the Storage Access Framework
+  picker (#17) and iOS the system document picker (#18); only desktop offers a folder, and the
+  Import screen hides the choices a platform's chooser does not report. Until #17 and #18 the
+  phones bound a `NoExportPicker` that could pick nothing, so the screen said so instead of failing
+  to start; a new platform does the same until its chooser lands.
+- iOS has no app module of its own in Kotlin, so its binding, `IosExportPicker` with the UIKit
+  presenter it drives, lives in `ui/iosMain` beside the entry point that binds it, and the Swift
+  shell stays an entry point only. The app offers no folder to pick on iOS. The picker opens the zip in place: the path it hands to the
+  Import is readable under the security scope the pick grants, which the binding holds for the rest
+  of the process. After a relaunch an Export outside the app's own documents is unreachable again,
+  and the Explorer's "pick it again" path covers that as it covers an Export that moved.
 - The same shape serves the later bindings the spec lists: secure key storage, the Ollama check,
   and the model provider factory.
 - Koin is started in three places: `desktopApp`'s `main`, `UnpackedApplication` on Android and
