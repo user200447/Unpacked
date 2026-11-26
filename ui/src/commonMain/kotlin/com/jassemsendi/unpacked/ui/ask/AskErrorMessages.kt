@@ -48,6 +48,11 @@ fun AgentUnavailable.toMessage(): String =
                 WITHOUT_A_MODEL
         }
 
+        is AgentUnavailable.NoCloudModel -> {
+            "The agent is off: Google serves no Gemini Flash model to this key ($detail). Check your Google AI " +
+                "Studio account, then check again. $WITHOUT_A_MODEL"
+        }
+
         is AgentUnavailable.CloudUnreachable -> {
             "The agent is off: Gemini could not be reached ($message). Check the connection, then check again. " +
                 WITHOUT_A_MODEL

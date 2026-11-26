@@ -270,6 +270,7 @@ class AskViewModelTest {
                 AgentUnavailable.KeyUnreadable,
                 AgentUnavailable.KeyRejected,
                 AgentUnavailable.QuotaExceeded,
+                AgentUnavailable.NoCloudModel("Google lists no Gemini Flash model: gemini-3.1-pro"),
                 AgentUnavailable.CloudUnreachable("no route to host"),
             )
 

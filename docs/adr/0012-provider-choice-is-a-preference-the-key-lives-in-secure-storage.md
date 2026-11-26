@@ -19,9 +19,11 @@ is kept, and never reads the key back onto the screen.
 
 The provider the agent is given is `SwitchingModelProvider`, which reads the choice at every connection and goes to
 the platform's `LocalModelProvider`, to `GeminiModelProvider`, or answers `Off`. The Gemini provider reads the key at
-every connection and probes the cloud by listing its models, so a missing, unreadable or rejected key and a spent
-quota are typed reasons (`NoKey`, `KeyUnreadable`, `KeyRejected`, `QuotaExceeded`, `CloudUnreachable`) before a
-question is sent, and the same reading of the HTTP status turns a refusal mid-question into the agent being
+every connection and probes the cloud by listing the models Google serves to that key, so a missing, unreadable or
+rejected key, a spent quota and a key served no Flash model are typed reasons (`NoKey`, `KeyUnreadable`,
+`KeyRejected`, `QuotaExceeded`, `NoCloudModel`, `CloudUnreachable`) before a question is sent; the newest Flash model
+in that list is the one asked, because Google retires Flash versions for new accounts (2.5 answered 404 to a key made
+in November 2026 while Koog's newest constant was 3.7), and the same reading of the HTTP status turns a refusal mid-question into the agent being
 unavailable rather than a broken answer.
 
 The Payload inspector is a gate on the prompt executor, not on the HTTP client: for a cloud model the agent wraps the

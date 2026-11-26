@@ -51,6 +51,14 @@ public sealed interface AgentUnavailable : Error {
     /** Google accepted the key but the free tier's quota is spent for now. */
     public data object QuotaExceeded : AgentUnavailable
 
+    /**
+     * Google serves no Gemini Flash model to this key: none is listed, or the one listed is gone since; [detail] says
+     * which.
+     */
+    public data class NoCloudModel(
+        val detail: String,
+    ) : AgentUnavailable
+
     /** The cloud could not be reached at all, most often with no network; [message] is the client's own wording. */
     public data class CloudUnreachable(
         val message: String,
