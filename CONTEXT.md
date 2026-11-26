@@ -12,6 +12,10 @@ _Avoid_: Platform, provider, integration
 The archive a Source hands to a user under their right of access, as downloaded, before Unpacked touches it.
 _Avoid_: Dump, download, takeout, archive (as a generic noun)
 
+**Sample Export**:
+The synthetic Instagram Export checked into the repository at `sample/instagram-sample-export.zip` for anyone to try the app with: the generator's full output (ads, every timed file, every untimed file, the message threads with their media, one file no mapper knows), with nobody's data in it. Written by `./gradlew writeSampleExport` from the same generator the tests use, the same files whenever the generator is the same, and proven on every test run to hold exactly what the generator writes and to import with no Failed file. The twenty-question eval asks its questions over this same Export.
+_Avoid_: Demo data, test export, example archive, fixture (for the zip)
+
 **Import**:
 One run of reading one Export into the user's local library. The unit the user deletes: removing an Import removes every Event, Claim and Entity it produced. An Import remembers where its Export was when it was read, the zip or the folder by absolute path (on Android, the picked document's URI written as a path ending in the zip's name), so the Explorer can open the Export's files again; nothing keeps the Export there, and when it has moved the user points at it again and the Import remembers the new place. On Android a running Import is hosted in a foreground service with a progress notification, so leaving the app does not stop it. On iOS the Export is picked with the system document picker and read in place under the scope that pick grants, which lasts until the app is relaunched; the Import runs while the app is in the foreground.
 _Avoid_: Sync, load, ingestion (as the noun for the result), session

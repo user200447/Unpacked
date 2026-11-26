@@ -22,6 +22,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Lint
         run: ./gradlew ktlintCheck detekt
+      - name: Shared-code report (the README's table, from cloc)
+        run: |
+          sudo apt-get update && sudo apt-get install -y cloc
+          ./gradlew sharedCodeReport
+          git diff --exit-code README.md || echo "::warning::README's shared-code table is behind the tree; run ./gradlew sharedCodeReport"
+      - name: Build-logic tests
+        run: ./gradlew -p build-logic test
       - name: Tests on JVM and Android (libraries and apps)
         run: ./gradlew jvmTest testAndroidHostTest :desktopApp:test :androidApp:testDebugUnitTest
       - name: Coverage report

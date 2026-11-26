@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.eval
 
 import com.jassemsendi.unpacked.data.Library
 import com.jassemsendi.unpacked.data.inMemory
+import com.jassemsendi.unpacked.fixtures.SampleExport
 import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
 import com.jassemsendi.unpacked.ingest.Export
 import com.jassemsendi.unpacked.ingest.ImportStep
@@ -12,9 +13,10 @@ import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 
 /**
- * The Library the eval asks about: the full synthetic Export (ads, every timed file, every untimed file and the
- * message threads) imported once through the real Instagram adapter into an in-memory Library, so every expected
- * value can be read back from what the fixture is known to hold.
+ * The Library the eval asks about: the Sample Export (the full synthetic Export: ads, every timed file, every
+ * untimed file and the message threads) imported once through the real Instagram adapter into an in-memory
+ * Library, so every expected value can be read back from what the Sample Export is known to hold, and so the
+ * eval answers over the very Export a reader of the README imports.
  */
 class EvalFixture private constructor(
     val export: SyntheticInstagramExport,
@@ -25,13 +27,7 @@ class EvalFixture private constructor(
 
     companion object {
         suspend fun seed(): EvalFixture {
-            val export =
-                SyntheticInstagramExport(
-                    adsViewed = 5,
-                    includeTimedFiles = true,
-                    includeClaimFiles = true,
-                    includeMessageThreads = true,
-                )
+            val export = SampleExport.export()
             val fs = FakeFileSystem()
             val root = "/exports/instagram-synthetic".toPath()
             export.writeTo(fs, root)
