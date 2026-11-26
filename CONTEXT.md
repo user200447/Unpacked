@@ -13,7 +13,7 @@ The archive a Source hands to a user under their right of access, as downloaded,
 _Avoid_: Dump, download, takeout, archive (as a generic noun)
 
 **Import**:
-One run of reading one Export into the user's local library. The unit the user deletes: removing an Import removes every Event, Claim and Entity it produced. An Import remembers where its Export was when it was read, the zip or the folder by absolute path, so the Explorer can open the Export's files again; nothing keeps the Export there, and when it has moved the user points at it again and the Import remembers the new place.
+One run of reading one Export into the user's local library. The unit the user deletes: removing an Import removes every Event, Claim and Entity it produced. An Import remembers where its Export was when it was read, the zip or the folder by absolute path (on Android, the picked document's URI written as a path ending in the zip's name), so the Explorer can open the Export's files again; nothing keeps the Export there, and when it has moved the user points at it again and the Import remembers the new place. On Android a running Import is hosted in a foreground service with a progress notification, so leaving the app does not stop it.
 _Avoid_: Sync, load, ingestion (as the noun for the result), session
 
 **Export owner**:

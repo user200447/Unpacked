@@ -33,6 +33,8 @@ Every core module compiles for JVM, Android, iosArm64 and iosSimulatorArm64 with
 open iosApp/iosApp.xcodeproj              # iOS: run the iosApp scheme in Xcode
 ```
 
+On Android the Export zip is picked through the system file picker and read in place through its document URI; a running Import is hosted in a foreground service with a progress notification, so leaving the app does not stop it.
+
 ## Tests and quality gates
 
 ```sh
