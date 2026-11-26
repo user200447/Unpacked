@@ -1,5 +1,6 @@
 package com.jassemsendi.unpacked.ui.di
 
+import com.jassemsendi.unpacked.insights.InsightCards
 import com.jassemsendi.unpacked.ui.claims.ClaimsViewModel
 import com.jassemsendi.unpacked.ui.entities.EntitiesViewModel
 import com.jassemsendi.unpacked.ui.home.HomeViewModel
@@ -15,9 +16,10 @@ import org.koin.dsl.module
 val uiModule: Module =
     module {
         single { TimeZone.currentSystemDefault() }
+        single { InsightCards(get(), get(), get()) }
         viewModelOf(::ImportViewModel)
         // Spelled out because the page sizes have defaults Koin cannot resolve.
-        viewModel { HomeViewModel(get(), get(), get()) }
+        viewModel { HomeViewModel(get(), get(), get(), get()) }
         viewModel { SearchViewModel(get(), get(), get(), get()) }
         viewModel { ClaimsViewModel(get(), get(), get()) }
         viewModel { EntitiesViewModel(get(), get(), get(), get()) }

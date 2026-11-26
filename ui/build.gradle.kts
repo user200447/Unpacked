@@ -18,6 +18,7 @@ kotlin {
         commonMain.dependencies {
             // The library is reached through its repository interfaces and the Import use case only.
             implementation(project(":core:data"))
+            implementation(project(":core:insights"))
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)

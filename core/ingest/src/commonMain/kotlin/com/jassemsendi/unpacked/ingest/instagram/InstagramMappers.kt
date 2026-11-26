@@ -116,8 +116,8 @@ internal object InstagramMappers {
             "story_reaction_sticker_reactions.json" to
                 EventMapper(EventKind.ContentLiked, owner(EntityKind.Account, prefix = "Owner / Owner")),
             // Logins and logouts
-            "login_activity.json" to EventMapper(EventKind.Login, device()),
-            "logout_activity.json" to EventMapper(EventKind.Logout, device()),
+            "login_activity.json" to EventMapper(EventKind.Login, deviceAndNetwork()),
+            "logout_activity.json" to EventMapper(EventKind.Logout, deviceAndNetwork()),
             // Social graph
             "followers.json" to EventMapper(EventKind.Follow, account("Value", nameField = "Title", urlField = "Href")),
             "following.json" to EventMapper(EventKind.Follow, account("Title", urlField = "Href")),
@@ -181,6 +181,10 @@ internal object InstagramMappers {
         )
 
     private val partSuffix = Regex("_\\d+(?=\\.json$)")
+
+    /** Where a login or logout came from: the device by its user agent, the network by its address. */
+    private fun deviceAndNetwork(): EntityRule =
+        namedBy(EntityKind.Device, "User Agent") + namedBy(EntityKind.Network, "IP Address")
 
     /** The one list in the advertisers file, labelled by the sentence Instagram writes above it. */
     private const val AUDIENCE_LIST_LABEL =
