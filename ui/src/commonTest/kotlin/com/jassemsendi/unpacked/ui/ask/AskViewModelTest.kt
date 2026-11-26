@@ -165,10 +165,10 @@ class AskViewModelTest {
         }
 
     @Test
-    fun aChartComesBackAsBarsScaledToTheLargestValue() =
+    fun aChartComesBackWithItsAxesAndTheToolsOwnNumbers() =
         runTest {
             val points = listOf(ChartPoint("A", 4), ChartPoint("B", 1))
-            val chart = ChartSpec(ChartKind.Bars, "Advertisers", "AdShown Events", points, emptyList())
+            val chart = ChartSpec(ChartKind.Bars, "Advertisers", "AdShown Events", "Advertiser", points, emptyList())
             val agent =
                 FakeAskAgent(answer = { Result.Success(AskOutcome.Answered(answer("A led [1].", chart = chart))) })
             val viewModel = viewModel(agent)
@@ -177,9 +177,23 @@ class AskViewModelTest {
             viewModel.onAction(AskAction.Ask)
 
             val shown = assertIs<OutcomeUi.Answered>(viewModel.state.value.outcome).answer
-            val rows = listOf(ChartRowUi("A", 4, 1f), ChartRowUi("B", 1, 0.25f))
-            assertEquals(ChartUi("Advertisers", "AdShown Events", rows), shown.chart)
+            val rows = listOf(ChartRowUi("A", 4), ChartRowUi("B", 1))
+            assertEquals(
+                ChartUi(ChartKind.Bars, "Advertisers", "AdShown Events", "Advertiser", rows, top = 4),
+                shown.chart,
+            )
         }
+
+    @Test
+    fun aChartOfNothingButZerosHasNoTopToItsValueAxis() {
+        val points = listOf(ChartPoint("2026-09", 0), ChartPoint("2026-10", 0))
+        val chart = ChartSpec(ChartKind.TimeSeries, "Logins per month", "Login", "Month", points, emptyList())
+
+        val shown = chart.toUi()
+
+        assertEquals(0, shown.top, "no number the Tool never gave is drawn")
+        assertEquals(ChartKind.TimeSeries, shown.kind)
+    }
 
     @Test
     fun aModelStoppedAtTheStepCapShowsTheBoundedStepsMessageWithItsTrace() =

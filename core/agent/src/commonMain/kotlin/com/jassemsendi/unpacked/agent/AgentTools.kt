@@ -23,7 +23,9 @@ internal class RunState(
     val citations = CitationIndex()
     private val json = ToolOutputJson(citations, timeZone)
     private val steps = mutableListOf<TraceStep>()
-    val latest = mutableMapOf<String, ToolOutput>()
+
+    /** Each Tool's latest successful output, the Tool called least recently first. */
+    val latest = linkedMapOf<String, ToolOutput>()
     var retried = false
 
     val trace: List<TraceStep> get() = steps
@@ -43,9 +45,36 @@ internal class RunState(
         result: Result<ToolOutput, ToolError>,
     ): String {
         if (capReached) return "No more Tool calls: this question has spent its $stepCap. Answer with what you have."
+        return append(tool, input, result)
+    }
+
+    /**
+     * The strategy's own chartSpec call once the model has answered (spec story 36): when the model drew no chart,
+     * the most recently called Tool whose latest output has the shape of one is charted, as if the model had asked
+     * for it, and the call joins the trace. It is the agent's call, not the model's, so it spends none of the cap;
+     * a question whose outputs have no such shape gets no chart and no refusal.
+     */
+    fun chartLatest() {
+        if (chart != null) return
+        latest.entries
+            .reversed()
+            .firstNotNullOfOrNull { (tool, output) ->
+                (chartSpecOf(output) as? Result.Success)?.let { tool to it }
+            }?.let { (tool, charted) ->
+                append(CHART_SPEC, argsJson.encodeToString(ChartArgs.serializer(), ChartArgs(tool)), charted)
+            }
+    }
+
+    private fun append(
+        tool: String,
+        input: String,
+        result: Result<ToolOutput, ToolError>,
+    ): String {
         val (output, failed) =
             when (result) {
                 is Result.Success -> {
+                    // Re-inserted so that the map's order is the order the Tools were last called in.
+                    latest.remove(tool)
                     latest[tool] = result.data
                     json.render(result.data).toString() to false
                 }
@@ -249,7 +278,8 @@ private fun lookingTools(
         object : RecordedTool<ChartArgs>(
             typeToken<ChartArgs>(),
             CHART_SPEC,
-            "Turns the latest countEvents series or topEntities ranking into a chart the user sees under the answer.",
+            "Charts the latest countEvents series or topEntities ranking under the answer. The newest such output " +
+                "is charted for you when you answer; call this only to chart an earlier Tool's output instead.",
             ChartArgs.serializer(),
             state,
         ) {

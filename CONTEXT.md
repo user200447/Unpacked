@@ -83,15 +83,19 @@ _Avoid_: Widget, stat, metric, dashboard tile, insight (alone)
 ### Agent
 
 **Tool**:
-One typed, read-only question the agent may ask the Library, and the only way the agent reaches data. There are eight, plain Kotlin over the repository interfaces in `core:agent` with no model involved: listImports; countEvents by Kind, date range, Source and optionally spread per day or month; topEntities by Kind, count and range; entityTimeline for one Entity; searchText; findMatches by Entity Kind; gapReport for an Import; and chartSpec, which describes a chart from a count over time or a ranking, hands a chart back as it is, and refuses any other shape with a typed reason. Inputs are what a model writes, names and `YYYY-MM-DD` days as text, each checked into a typed error rather than thrown; days are read in the device's zone. Every output carries the Provenance of the records it summarises, listed in full or the newest few of a count, and never a Record's label and value pairs or an Entity's attributes, because Tool outputs are all a cloud model may receive (ADR 0006).
+One typed, read-only question the agent may ask the Library, and the only way the agent reaches data. There are eight, plain Kotlin over the repository interfaces in `core:agent` with no model involved: listImports; countEvents by Kind, date range, Source and optionally spread per day or month; topEntities by Kind, count and range; entityTimeline for one Entity; searchText; findMatches by Entity Kind; gapReport for an Import; and chartSpec, which describes a chart from a count over time or a ranking, hands a chart back as it is, and refuses any other shape with a typed reason, and which the agent calls itself once the model has answered (see Chart). Inputs are what a model writes, names and `YYYY-MM-DD` days as text, each checked into a typed error rather than thrown; days are read in the device's zone. Every output carries the Provenance of the records it summarises, listed in full or the newest few of a count, and never a Record's label and value pairs or an Entity's attributes, because Tool outputs are all a cloud model may receive (ADR 0006).
 _Avoid_: Function, action, skill, capability, query (for the agent-facing thing)
 
 **Tool trace**:
 The ordered list of Tool calls and their outputs that produced one answer, shown to the user alongside the answer: each call's input as the Tool read it and its output as the model saw it, a refused call included with its reason. Every number in an answer must appear in its Tool trace, a refusal's wording included.
 _Avoid_: Log, reasoning, chain of thought, steps
 
+**Chart**:
+The line or bar chart drawn under an answer whose Tool outputs include a count over time or a ranking (spec story 36): a line over days or months from a countEvents series, bars across Entities from a topEntities ranking, both axes named. Once the model has answered, the agent's strategy calls chartSpec on the latest output of the most recently called Tool that has such a shape, unless the model charted one itself; that call joins the Tool trace as the last step, spends none of the Step cap, and every number drawn is the number the trace shows. A question whose outputs have no such shape gets no chart and no refusal.
+_Avoid_: Graph, visualization, plot, diagram
+
 **Ask screen**:
-The screen where the user asks the agent a question in their own words and reads the answer with its citations, its Tool trace and the marker saying where the model ran ("local" for a model on this device). The agent behind it (`core:agent`, on Koog) classifies the question to choose the Tools it is offered, lets the model call them, composes the answer with citations, and validates it; a question that is still calling Tools at the step cap ends with a bounded-steps message and the trace so far. When no model answers, the screen says why and points to the Insight cards on Home and the Gap report, which carry the app without one.
+The screen where the user asks the agent a question in their own words and reads the answer with its citations, its Tool trace, its Chart when it has one, and the marker saying where the model ran ("local" for a model on this device). The agent behind it (`core:agent`, on Koog) classifies the question to choose the Tools it is offered, lets the model call them, composes the answer with citations, and validates it; a question that is still calling Tools at the step cap ends with a bounded-steps message and the trace so far. When no model answers, the screen says why and points to the Insight cards on Home and the Gap report, which carry the app without one.
 _Avoid_: Chat, assistant, conversation, Q&A
 
 **Citation**:
@@ -103,7 +107,7 @@ The check every answer passes before it is shown: each number in the answer, rea
 _Avoid_: Fact check, grounding, hallucination filter
 
 **Step cap**:
-The most Tool calls one question may spend, eight today, counted over the whole question, retry included. At the cap the model gets its last results with no Tool on offer, so one that has what it needs still answers; one that asks for a Tool anyway is stopped, and the user sees that it was, with the calls it made.
+The most Tool calls one question may spend, eight today, counted over the whole question, retry included; the Chart's own call is the agent's, not the model's, and is not counted. At the cap the model gets its last results with no Tool on offer, so one that has what it needs still answers; one that asks for a Tool anyway is stopped, and the user sees that it was, with the calls it made.
 _Avoid_: Iteration limit, timeout, budget
 
 **Model provider**:

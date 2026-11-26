@@ -36,6 +36,7 @@ class ChartSpecTest {
                 ChartKind.TimeSeries,
                 "AdShown per month",
                 "AdShown",
+                "Month",
                 listOf(ChartPoint("2026-09", 1), ChartPoint("2026-10", 3)),
                 cited,
             ),
@@ -49,7 +50,14 @@ class ChartSpecTest {
                 series = listOf(SeriesPoint(LocalDate(2026, 10, 27), 3)),
             )
         assertEquals(
-            ChartSpec(ChartKind.TimeSeries, "Events per day", "Events", listOf(ChartPoint("2026-10-27", 3)), cited),
+            ChartSpec(
+                ChartKind.TimeSeries,
+                "Events per day",
+                "Events",
+                "Day",
+                listOf(ChartPoint("2026-10-27", 3)),
+                cited,
+            ),
             chartSpecOf(byDay).orFail(),
         )
     }
@@ -73,6 +81,7 @@ class ChartSpecTest {
                 ChartKind.Bars,
                 "Advertiser named most by AdShown Events",
                 "AdShown Events",
+                "Advertiser",
                 listOf(ChartPoint("Example Courier", 2), ChartPoint("Example Hotels", 1)),
                 cited,
             ),
@@ -99,7 +108,7 @@ class ChartSpecTest {
             refusal(MatchesFound(EntityKind.Advertiser, emptyList())),
         )
 
-        val chart = ChartSpec(ChartKind.Bars, "t", "v", listOf(ChartPoint("a", 1)), cited)
+        val chart = ChartSpec(ChartKind.Bars, "t", "v", "p", listOf(ChartPoint("a", 1)), cited)
         assertEquals(chart, chartSpecOf(chart).orFail(), "a chart is already a chart")
     }
 }
