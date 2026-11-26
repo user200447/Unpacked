@@ -1,5 +1,7 @@
 package com.jassemsendi.unpacked.ui.di
 
+import com.jassemsendi.unpacked.agent.ModelProvider
+import com.jassemsendi.unpacked.agent.NoModelProvider
 import com.jassemsendi.unpacked.data.ClaimRepository
 import com.jassemsendi.unpacked.data.EntityRepository
 import com.jassemsendi.unpacked.data.EventRepository
@@ -10,6 +12,7 @@ import com.jassemsendi.unpacked.ingest.ExportFileReader
 import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestSaver
 import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestViewModel
 import com.jassemsendi.unpacked.ui.accessrequest.FakeAccessRequestSaver
+import com.jassemsendi.unpacked.ui.ask.AskViewModel
 import com.jassemsendi.unpacked.ui.claims.ClaimsViewModel
 import com.jassemsendi.unpacked.ui.entities.EntitiesViewModel
 import com.jassemsendi.unpacked.ui.entities.FakeEntityRepository
@@ -37,7 +40,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 
-/** The wiring every app repeats: the UI module resolves once the app binds the library interfaces, a picker and a saver. */
+/** The wiring every app repeats: the UI module resolves once the app binds the library interfaces, a picker, a saver and a model. */
 class UiModuleTest {
     @BeforeTest
     fun useTestMain() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -46,7 +49,7 @@ class UiModuleTest {
     fun resetMainDispatcher() = Dispatchers.resetMain()
 
     @Test
-    fun everyViewModelResolvesFromTheLibraryInterfacesAPickerAndASaver() {
+    fun everyViewModelResolvesFromTheLibraryInterfacesAPickerASaverAndAModel() {
         val repository = FakeImportRepository()
         val events = FakeEventRepository()
         val claims = FakeClaimRepository()
@@ -61,6 +64,7 @@ class UiModuleTest {
                 single<ExportFileReader> { FakeExportFileReader(emptyMap()) }
                 single<ExportPicker> { FakeExportPicker() }
                 single<AccessRequestSaver> { FakeAccessRequestSaver() }
+                single<ModelProvider> { NoModelProvider }
             }
 
         val koin = koinApplication { modules(appModule, uiModule) }.koin
@@ -73,6 +77,7 @@ class UiModuleTest {
         assertNotNull(koin.get<GapReportViewModel>())
         assertNotNull(koin.get<AccessRequestViewModel>())
         assertNotNull(koin.get<ExplorerViewModel>())
+        assertNotNull(koin.get<AskViewModel>())
         koin.close()
     }
 }

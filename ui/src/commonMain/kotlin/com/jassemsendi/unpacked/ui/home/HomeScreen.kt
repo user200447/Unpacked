@@ -110,6 +110,7 @@ private fun Header(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(Spacing.small),
         ) {
+            OutlinedButton(onClick = destinations.onAsk) { Text("Ask") }
             OutlinedButton(onClick = destinations.onSearch) { Text("Search") }
             OutlinedButton(onClick = { destinations.onClaims(null) }) { Text("Claims") }
             OutlinedButton(onClick = destinations.onEntities) { Text("Entities") }
@@ -174,6 +175,7 @@ private fun HomeScreenPreview() {
             destinations =
                 HomeDestinations(
                     onImport = {},
+                    onAsk = {},
                     onSearch = {},
                     onClaims = {},
                     onEntities = {},

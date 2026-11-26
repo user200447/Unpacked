@@ -83,6 +83,11 @@ public sealed interface ToolError : Error {
         }
     }
 
+    /** The chart Tool was asked to chart the latest output of a Tool that has not been called yet. */
+    public data class NoOutputToChart(
+        val tool: String,
+    ) : ToolError
+
     /** The Library could not be read; the Tool has nothing to say about the question. */
     public data class Library(
         val error: DataError.Local,

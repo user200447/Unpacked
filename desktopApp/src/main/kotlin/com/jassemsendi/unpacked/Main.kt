@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked
 
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.jassemsendi.unpacked.agent.ModelProvider
 import com.jassemsendi.unpacked.data.Library
 import com.jassemsendi.unpacked.data.libraryModule
 import com.jassemsendi.unpacked.data.open
@@ -22,6 +23,8 @@ fun main() {
             module {
                 single<ExportPicker> { DesktopExportPicker() }
                 single<AccessRequestSaver> { DesktopAccessRequestSaver() }
+                // The agent answers with Ollama on this computer, and stays off when nothing answers there.
+                single<ModelProvider> { OllamaModelProvider() }
             },
             uiModule,
         )

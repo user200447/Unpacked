@@ -87,8 +87,28 @@ One typed, read-only question the agent may ask the Library, and the only way th
 _Avoid_: Function, action, skill, capability, query (for the agent-facing thing)
 
 **Tool trace**:
-The ordered list of Tool calls and their outputs that produced one answer, shown to the user alongside the answer. Every number in an answer must appear in its Tool trace.
+The ordered list of Tool calls and their outputs that produced one answer, shown to the user alongside the answer: each call's input as the Tool read it and its output as the model saw it, a refused call included with its reason. Every number in an answer must appear in its Tool trace, a refusal's wording included.
 _Avoid_: Log, reasoning, chain of thought, steps
+
+**Ask screen**:
+The screen where the user asks the agent a question in their own words and reads the answer with its citations, its Tool trace and the marker saying where the model ran ("local" for a model on this device). The agent behind it (`core:agent`, on Koog) classifies the question to choose the Tools it is offered, lets the model call them, composes the answer with citations, and validates it; a question that is still calling Tools at the step cap ends with a bounded-steps message and the trace so far. When no model answers, the screen says why and points to the Insight cards on Home and the Gap report, which carry the app without one.
+_Avoid_: Chat, assistant, conversation, Q&A
+
+**Citation**:
+A marker such as `[3]` in an answer, naming one Provenance; clicking it opens the Record. Every Tool output marks the records it cites with such markers, numbered in the order a question's outputs first cite them, so the model only ever quotes a marker and never sees a record's location (the Gap report names the Export's files, as it does on its own screen), and the Ask screen resolves the marker back to the Provenance. A marker that names nothing is shown as plain text, not a link.
+_Avoid_: Reference, footnote, source link, provenance (for the marker)
+
+**Citation validator**:
+The check every answer passes before it is shown: each number in the answer, read as written and compared canonically ("1,200" is 1200, "3.0" is 3, a date or time part by part), must appear in some Tool output of the question. An answer that fails is sent back to the model once with the numbers it could not find; one that fails again is shown flagged as unverified, with those numbers named, never hidden and never silently corrected.
+_Avoid_: Fact check, grounding, hallucination filter
+
+**Step cap**:
+The most Tool calls one question may spend, eight today, counted over the whole question, retry included. At the cap the model gets its last results with no Tool on offer, so one that has what it needs still answers; one that asks for a Tool anyway is stopped, and the user sees that it was, with the calls it made.
+_Avoid_: Iteration limit, timeout, budget
+
+**Model provider**:
+The platform binding (ADR 0008) that says which model answers and how to reach it, asked anew for every question so a model started or stopped since the last one is noticed: Ollama on localhost on desktop, choosing the model named by `UNPACKED_OLLAMA_MODEL` when it is installed and calls Tools, else the first preferred family that does; no model on Android and iOS until a cloud model is offered (ADR 0006).
+_Avoid_: Backend, LLM client, engine
 
 **Payload inspector**:
 The screen that shows the exact text that would leave the device before any cloud model call, and lets the user refuse. Only Tool outputs ever appear in it; never Export records.

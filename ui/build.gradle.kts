@@ -21,6 +21,8 @@ kotlin {
             // For the Export location and part types the Import screen names, and nothing that reads an Export.
             implementation(project(":core:ingest"))
             implementation(project(":core:insights"))
+            // The Ask screen talks to the agent through its interface; the app binds which model answers.
+            implementation(project(":core:agent"))
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)

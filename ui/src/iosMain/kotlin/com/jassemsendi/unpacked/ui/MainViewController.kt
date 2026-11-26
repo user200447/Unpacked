@@ -10,6 +10,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeUIViewController
+import com.jassemsendi.unpacked.agent.ModelProvider
+import com.jassemsendi.unpacked.agent.NoModelProvider
 import com.jassemsendi.unpacked.data.Library
 import com.jassemsendi.unpacked.data.libraryModule
 import com.jassemsendi.unpacked.data.open
@@ -41,10 +43,11 @@ fun MainViewController(): UIViewController {
             modules(
                 libraryModule(library, FileSystem.SYSTEM),
                 // Exports are picked with the system document picker and read in place; nothing shares the Access
-                // request on iOS yet.
+                // request on iOS yet, and no model runs on the phone yet (spec story 44).
                 module {
                     single<ExportPicker> { IosExportPicker(UiKitDocumentPickerPresenter()) }
                     single<AccessRequestSaver> { NoAccessRequestSaver }
+                    single<ModelProvider> { NoModelProvider }
                 },
                 uiModule,
             )
