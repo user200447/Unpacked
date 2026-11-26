@@ -69,9 +69,10 @@ internal fun dateRangeOf(
 
 /**
  * The days as instants in [timeZone], from the first day's start to the last millisecond of the last day, the
- * Library's finest grain; an open end reaches as far as time goes. Null when neither end was given.
+ * Library's finest grain; an open end reaches as far as time goes. Null when neither end was given. Public so
+ * that a test reading the Library for the value a Tool must report reads the same days the Tool does.
  */
-internal fun DateRange.toInstants(timeZone: TimeZone): ClosedRange<Instant>? {
+public fun DateRange.toInstants(timeZone: TimeZone): ClosedRange<Instant>? {
     if (from == null && to == null) return null
     val start = from?.atStartOfDayIn(timeZone) ?: Instant.DISTANT_PAST
     val end = to?.plus(1, DateTimeUnit.DAY)?.atStartOfDayIn(timeZone)?.minus(1.milliseconds) ?: Instant.DISTANT_FUTURE

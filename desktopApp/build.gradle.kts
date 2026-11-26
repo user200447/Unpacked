@@ -24,6 +24,28 @@ dependencies {
     runtimeOnly(libs.slf4j.nop)
     testImplementation(libs.kotlin.testJunit)
     testImplementation(libs.kotlinx.coroutinesTest)
+    // The twenty-question eval seeds an in-memory Library from the synthetic Export, written to a fake file system.
+    testImplementation(project(":core:fixtures"))
+    testImplementation(libs.okio.fakefilesystem)
+}
+
+// The twenty-question eval (spec: a manually run JVM integration test) asks a live Ollama model and is not part
+// of CI's test run: `test` leaves it out and `eval` runs it alone, skipping when Ollama is not reachable.
+val evalHarnessClass = "com.jassemsendi.unpacked.eval.EvalHarness"
+
+tasks.test {
+    filter.excludeTestsMatching(evalHarnessClass)
+}
+
+tasks.register<Test>("eval") {
+    description = "Asks the twenty eval questions of a live Ollama model and reports the score; skipped without Ollama."
+    group = "verification"
+    val tests = sourceSets.test.get()
+    testClassesDirs = tests.output.classesDirs
+    classpath = tests.runtimeClasspath
+    filter.includeTestsMatching(evalHarnessClass)
+    testLogging.showStandardStreams = true
+    outputs.upToDateWhen { false }
 }
 
 compose.desktop {

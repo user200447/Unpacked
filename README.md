@@ -78,6 +78,12 @@ An opt-in smoke test imports your own Instagram Export, asserts that no file Fai
 UNPACKED_INSTAGRAM_EXPORT=~/Downloads/instagram-export.zip ./gradlew :core:data:jvmTest --tests '*RealExportSmokeTest*'
 ```
 
+The twenty-question eval asks a live Ollama model twenty fixed questions over the synthetic Export, scores each answer against the value the fixture is known to hold (a flagged answer counts as a failure) and prints a per-question table with the overall score; it passes at 70 percent or better. It has its own task, is left out of `test` and CI, and is skipped when Ollama is not reachable:
+
+```sh
+./gradlew :desktopApp:eval                # UNPACKED_OLLAMA_MODEL=<name> picks the model, as in the app
+```
+
 `./gradlew ktlintFormat` fixes formatting. The CI workflow in `.github/workflows/ci.yml` runs lint, all tests, the desktop and Android builds, and both iOS slices (simulator via `xcodebuild`, device via the Kotlin compiler) on every push.
 
 ## License
