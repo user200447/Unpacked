@@ -154,6 +154,8 @@ data class HomeDestinations(
     val onEntities: () -> Unit,
     /** One Entity's own timeline and Claims. */
     val onEntity: (String) -> Unit,
+    /** The Gap report over the latest Import. */
+    val onGapReport: () -> Unit,
 )
 
 sealed interface HomeAction {

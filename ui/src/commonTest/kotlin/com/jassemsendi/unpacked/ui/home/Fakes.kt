@@ -48,6 +48,7 @@ class FakeEventRepository(
         kind: EventKind?,
         limit: Int,
         offset: Int,
+        importId: ImportId?,
     ): Result<List<Event>, DataError.Local> {
         gate?.await()
         return answer {
@@ -134,6 +135,7 @@ class FakeClaimRepository(
         kind: ClaimKind,
         limit: Int,
         offset: Int,
+        importId: ImportId?,
     ): Result<List<Claim>, DataError.Local> {
         gate?.await()
         return answer {

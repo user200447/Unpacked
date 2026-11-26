@@ -36,6 +36,7 @@ class FakeEventRepository(
         kind: EventKind?,
         limit: Int,
         offset: Int,
+        importId: ImportId?,
     ): Result<List<Event>, DataError.Local> =
         answer {
             events
@@ -91,6 +92,7 @@ class FakeClaimRepository(
         kind: ClaimKind,
         limit: Int,
         offset: Int,
+        importId: ImportId?,
     ): Result<List<Claim>, DataError.Local> = answer { claims.filter { it.kind == kind }.drop(offset).take(limit) }
 
     override suspend fun forEntity(entityId: String): Result<List<Claim>, DataError.Local> =

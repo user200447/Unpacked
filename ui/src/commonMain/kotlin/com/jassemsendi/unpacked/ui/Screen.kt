@@ -3,6 +3,7 @@ package com.jassemsendi.unpacked.ui
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import com.jassemsendi.unpacked.model.ClaimKind
+import com.jassemsendi.unpacked.model.ImportId
 
 /** The top-level screens, in the order a first-time user meets them, each with what it is opened on. */
 sealed interface Screen {
@@ -24,6 +25,11 @@ sealed interface Screen {
         val opened: String? = null,
     ) : Screen
 
+    /** The Gap report, over one Import, or over the latest when none is named. */
+    data class GapReport(
+        val importId: ImportId? = null,
+    ) : Screen
+
     companion object {
         /** Saved as a name and an argument, so the screen survives process death on every platform. */
         val saver: Saver<Screen, Any> = listSaver(save = { it.toSaved() }, restore = { it.toScreen() })
@@ -36,6 +42,7 @@ sealed interface Screen {
                 Search -> listOf("Search", "")
                 is Claims -> listOf("Claims", expanded?.name.orEmpty())
                 is Entities -> listOf("Entities", opened.orEmpty())
+                is GapReport -> listOf("GapReport", importId?.value?.toString().orEmpty())
             }
 
         /** A name no screen answers to any more, or a Kind renamed since, lands on Home. */
@@ -47,6 +54,7 @@ sealed interface Screen {
                 "Search" -> Search
                 "Claims" -> Claims(ClaimKind.entries.firstOrNull { it.name == argument })
                 "Entities" -> Entities(argument.ifEmpty { null })
+                "GapReport" -> GapReport(argument.toLongOrNull()?.let(::ImportId))
                 else -> Home
             }
         }

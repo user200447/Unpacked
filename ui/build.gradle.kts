@@ -18,6 +18,8 @@ kotlin {
         commonMain.dependencies {
             // The library is reached through its repository interfaces and the Import use case only.
             implementation(project(":core:data"))
+            // For the Export location and part types the Import screen names, and nothing that reads an Export.
+            implementation(project(":core:ingest"))
             implementation(project(":core:insights"))
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)

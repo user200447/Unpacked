@@ -12,6 +12,8 @@ kotlin {
         commonTest.dependencies {
             implementation(project(":core:fixtures"))
             implementation(libs.kotlinx.coroutinesTest)
+            // The Gap report seam seeds its fakes by running the real adapter over the synthetic Export in memory.
+            implementation(libs.okio.fakefilesystem)
         }
     }
 }
