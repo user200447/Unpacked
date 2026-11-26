@@ -2,9 +2,16 @@ package com.jassemsendi.unpacked.ui.welcome
 
 import com.jassemsendi.unpacked.model.Source
 
-/** How to ask each supported Source for an Export, step by step, in Unpacked's own words and with no logos. */
+/**
+ * How to ask each supported Source for an Export, step by step, in Unpacked's own words and with no logos.
+ * A Source with no adapter yet has no steps: there is nothing Unpacked could read.
+ */
 fun exportInstructions(source: Source): List<String> =
     when (source) {
+        Source.GoogleTakeout -> {
+            emptyList()
+        }
+
         Source.Instagram -> {
             listOf(
                 "In the Instagram app or on the website, open Settings, then Accounts Center.",

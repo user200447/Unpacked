@@ -33,10 +33,17 @@ public sealed interface SourceAdapter {
     ): FileRecords
 
     public companion object {
-        /** The adapter for a Source. Exhaustive, so a Source added to the enum must bring its adapter. */
+        /** Every adapter there is: the Sources an Export can be imported from, in the order the Welcome screen lists them. */
+        public val all: List<SourceAdapter> = listOf(InstagramAdapter)
+
+        /**
+         * The adapter for a Source. Only an Import's Source is ever looked up, and an Import can only be of a Source
+         * with an adapter, so a Source without one here is a programming error, not an outcome.
+         */
         public fun of(source: Source): SourceAdapter =
             when (source) {
                 Source.Instagram -> InstagramAdapter
+                Source.GoogleTakeout -> error("Google Takeout has no adapter yet, so nothing can have imported it")
             }
     }
 }

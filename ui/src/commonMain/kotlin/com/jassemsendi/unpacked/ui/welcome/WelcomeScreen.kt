@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.jassemsendi.unpacked.ingest.SourceAdapter
 import com.jassemsendi.unpacked.model.Source
 import com.jassemsendi.unpacked.ui.theme.SectionCard
 import com.jassemsendi.unpacked.ui.theme.Spacing
@@ -46,7 +47,7 @@ fun WelcomeScreen(
             )
             PrivacyGuarantee()
             Text("Request your Export", style = MaterialTheme.typography.titleLarge)
-            Source.entries.forEach { source -> RequestInstructions(source) }
+            SourceAdapter.all.forEach { adapter -> RequestInstructions(adapter.source) }
             Button(onClick = onContinue) { Text("Choose an Export") }
         }
     }

@@ -12,7 +12,7 @@ Nothing leaves the device by default. The domain language and the decisions behi
 | `core:ingest` | Reads an Export (zip or folder) through a Source adapter into the canonical model. |
 | `core:data` | Local library on Room KMP; the only module that touches persistence. |
 | `core:insights` | Insight cards and the Gap report as pure functions over repository interfaces. |
-| `core:agent` | Koog agent, read-only Tools, provider selection, citation validation. |
+| `core:agent` | The eight read-only Tools over the repository interfaces and the query-time Match rule, with no model dependency; the Koog agent, provider selection and citation validation follow. |
 | `ui` | Compose Multiplatform screens shared by all targets (MVI per screen, Koin-injected ViewModels); produces the `UnpackedKit` iOS framework, whose entry point in `ui/iosMain` starts the app on iOS. |
 | `androidApp`, `desktopApp`, `iosApp` | Thin entry points. |
 | `build-logic` | Gradle convention plugins (`unpacked.kmp.library`, `unpacked.kmp.compose`, `unpacked.quality`). |

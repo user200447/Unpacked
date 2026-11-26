@@ -99,6 +99,94 @@ internal interface EventDao {
     suspend fun links(ids: List<Long>): List<EventEntityRow>
 }
 
+/**
+ * The reads over an `EventFilter`: every part of the filter is one nullable parameter, ignored when null, so one
+ * SQL clause serves a count, its times, its newest records and its Entity tallies and they always agree on what
+ * was counted. Room binds one query parameter per function parameter, which is why the parameter lists are long.
+ */
+@Suppress("LongParameterList")
+@Dao
+internal interface EventFilterDao {
+    @Query("SELECT COUNT(*) FROM events WHERE $EVENT_FILTER")
+    suspend fun count(
+        kind: String?,
+        from: Long?,
+        to: Long?,
+        source: String?,
+        entityId: String?,
+    ): Int
+
+    @Query("SELECT time FROM events WHERE $EVENT_FILTER")
+    suspend fun times(
+        kind: String?,
+        from: Long?,
+        to: Long?,
+        source: String?,
+        entityId: String?,
+    ): List<Long>
+
+    @Query("SELECT * FROM events WHERE $EVENT_FILTER ORDER BY time DESC, id DESC LIMIT :limit")
+    suspend fun newest(
+        kind: String?,
+        from: Long?,
+        to: Long?,
+        source: String?,
+        entityId: String?,
+        limit: Int,
+    ): List<EventRow>
+
+    @Query(
+        """
+        SELECT COUNT(DISTINCT entities.id) FROM event_entities
+        JOIN events ON events.id = event_entities.event_id
+        JOIN entities ON entities.id = event_entities.entity_id
+        WHERE $EVENT_FILTER AND entities.kind = :entityKind
+        """,
+    )
+    suspend fun entityCount(
+        kind: String?,
+        from: Long?,
+        to: Long?,
+        source: String?,
+        entityId: String?,
+        entityKind: String,
+    ): Int
+
+    @Query(
+        """
+        SELECT entities.*, COUNT(*) AS count FROM event_entities
+        JOIN events ON events.id = event_entities.event_id
+        JOIN entities ON entities.id = event_entities.entity_id
+        WHERE $EVENT_FILTER AND entities.kind = :entityKind
+        GROUP BY entities.id
+        ORDER BY count DESC, display_name COLLATE NOCASE, entities.id
+        LIMIT :limit
+        """,
+    )
+    suspend fun entityTallies(
+        kind: String?,
+        from: Long?,
+        to: Long?,
+        source: String?,
+        entityId: String?,
+        entityKind: String,
+        limit: Int,
+    ): List<EntityTallyRow>
+
+    companion object {
+        /**
+         * An `EventFilter` as SQL over the `events` table, every part ignored when its parameter is null. Column names
+         * are qualified so that the same clause works inside the Entity joins.
+         */
+        const val EVENT_FILTER: String = """
+            (:kind IS NULL OR events.kind = :kind)
+            AND (:from IS NULL OR events.time >= :from) AND (:to IS NULL OR events.time <= :to)
+            AND (:source IS NULL OR events.import_id IN (SELECT id FROM imports WHERE source = :source))
+            AND (:entityId IS NULL OR events.id IN (SELECT event_id FROM event_entities WHERE entity_id = :entityId))
+        """
+    }
+}
+
 @Dao
 internal interface ClaimDao {
     @Insert
@@ -248,22 +336,6 @@ internal interface EntityCountDao {
  */
 @Dao
 internal interface InsightCardDao {
-    @Query("SELECT time FROM events WHERE kind = :kind")
-    suspend fun eventTimes(kind: String): List<Long>
-
-    @Query(
-        """
-        SELECT COUNT(DISTINCT entities.id) FROM event_entities
-        JOIN events ON events.id = event_entities.event_id
-        JOIN entities ON entities.id = event_entities.entity_id
-        WHERE events.kind = :kind AND entities.kind = :entityKind
-        """,
-    )
-    suspend fun eventEntityCount(
-        kind: String,
-        entityKind: String,
-    ): Int
-
     @Query(
         """
         SELECT COUNT(DISTINCT entities.id) FROM claim_entities
@@ -276,23 +348,6 @@ internal interface InsightCardDao {
         kind: String,
         entityKind: String,
     ): Int
-
-    @Query(
-        """
-        SELECT entities.*, COUNT(*) AS count FROM event_entities
-        JOIN events ON events.id = event_entities.event_id
-        JOIN entities ON entities.id = event_entities.entity_id
-        WHERE events.kind = :kind AND entities.kind = :entityKind
-        GROUP BY entities.id
-        ORDER BY count DESC, display_name COLLATE NOCASE, entities.id
-        LIMIT :limit
-        """,
-    )
-    suspend fun eventEntityTallies(
-        kind: String,
-        entityKind: String,
-        limit: Int,
-    ): List<EntityTallyRow>
 
     @Query(
         """

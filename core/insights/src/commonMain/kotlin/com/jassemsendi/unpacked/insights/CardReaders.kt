@@ -2,6 +2,8 @@ package com.jassemsendi.unpacked.insights
 
 import com.jassemsendi.unpacked.data.ClaimRepository
 import com.jassemsendi.unpacked.data.EventRepository
+import com.jassemsendi.unpacked.data.timesOf
+import com.jassemsendi.unpacked.data.topEntities
 import com.jassemsendi.unpacked.model.ClaimKind
 import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.EntityKind

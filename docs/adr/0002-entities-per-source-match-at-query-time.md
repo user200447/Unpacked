@@ -17,3 +17,4 @@ The headline agent question is "which advertisers appear in both my Instagram an
 - A stable identifier is normalized only as far as the Source itself treats it as equivalent: Instagram usernames are case-insensitive, so they are lowercased; an advertiser name that is the only identifier is normalized like a display name. The display name is always stored as given.
 - Improving the matching rule changes answers without touching the database.
 - The UI must present Matches as "these look like the same advertiser", never as a single merged row.
+- The rule lives in `core:agent` as one pure function over Entities (`matchesAmong`) behind the findMatches Tool: two Entities of one Kind match when their display names agree once normalized as a key is; Entities of one Source never match each other. `Source.GoogleTakeout` is named in the model before its adapter exists so that the rule is tested across two Sources; until the adapter comes, nothing imports it.
