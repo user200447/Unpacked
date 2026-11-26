@@ -13,7 +13,7 @@ The archive a Source hands to a user under their right of access, as downloaded,
 _Avoid_: Dump, download, takeout, archive (as a generic noun)
 
 **Import**:
-One run of reading one Export into the user's local library. The unit the user deletes: removing an Import removes every Event, Claim and Entity it produced.
+One run of reading one Export into the user's local library. The unit the user deletes: removing an Import removes every Event, Claim and Entity it produced. An Import remembers where its Export was when it was read, the zip or the folder by absolute path, so the Explorer can open the Export's files again; nothing keeps the Export there, and when it has moved the user points at it again and the Import remembers the new place.
 _Avoid_: Sync, load, ingestion (as the noun for the result), session
 
 **Export owner**:
@@ -21,7 +21,7 @@ The person the Export is about, as the Source names them in the Export's own pro
 _Avoid_: User (for this), account holder, me, self
 
 **Library**:
-The user's local store of every Import, held in one on-device database and read only through repository interfaces. The Library is what cards, the agent's Tools and the gap report query; the Export itself is never consulted after its Import.
+The user's local store of every Import, held in one on-device database and read only through repository interfaces. The Library is what cards, the agent's Tools and the gap report query; only the Explorer goes back to the Export after its Import, reading one file at a time on demand and storing nothing of what it reads.
 _Avoid_: Database, store, cache, local data (as the noun for the thing)
 
 ### Canonical model
@@ -95,7 +95,7 @@ The screen that shows the exact text that would leave the device before any clou
 _Avoid_: Preview, consent dialog, privacy prompt
 
 **Explorer**:
-The screen that shows any Export file as its raw records, including files no Kind was assigned to. The fallback for anything the Import did not understand.
+The screen that shows any Export file as its Records, including files no Kind was assigned to. The fallback for anything the Import did not understand: nothing in the Export is hidden. It lists every file of one Import's inventory, newest complete Import by default, each with its Raw kind, its result (Parsed with its counts, Skipped or Failed with the reason) and the media files counted and never opened. Opening a JSON file reads its Records from the Export now, through the Source's adapter with no Kind assigned, in the file's order; a file the Source cannot read in its dialects shows as plain JSON with why, a Failed file shows the reason and whatever was readable. When the Export is no longer where the Import remembers it, the screen says so and offers the platform's chooser to pick it again.
 _Avoid_: JSON viewer, raw view, debug view, file browser
 
 ### Data rights

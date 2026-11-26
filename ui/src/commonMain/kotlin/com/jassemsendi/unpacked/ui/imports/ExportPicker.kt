@@ -1,6 +1,6 @@
 package com.jassemsendi.unpacked.ui.imports
 
-import com.jassemsendi.unpacked.ingest.ExportLocation
+import com.jassemsendi.unpacked.model.ExportLocation
 
 /**
  * The platform's way of letting the user point at an Export. Each app binds its own; a platform

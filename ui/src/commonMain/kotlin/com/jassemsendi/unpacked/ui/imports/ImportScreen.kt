@@ -39,6 +39,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun ImportRoot(
     onShowTimeline: () -> Unit,
+    onExplore: (ImportId) -> Unit,
     viewModel: ImportViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -68,16 +69,19 @@ fun ImportRoot(
             state = state,
             onAction = viewModel::onAction,
             onShowTimeline = onShowTimeline,
+            onExplore = onExplore,
             modifier = Modifier.padding(padding),
         )
     }
 }
 
+/** The picker, the run in progress and every stored Import, each with the way into its files. */
 @Composable
 fun ImportScreen(
     state: ImportState,
     onAction: (ImportAction) -> Unit,
     onShowTimeline: () -> Unit,
+    onExplore: (ImportId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -101,7 +105,11 @@ fun ImportScreen(
             }
         }
         items(state.imports, key = { it.id.value }) { import ->
-            ImportRow(import, onDelete = { onAction(ImportAction.DeleteImport(import.id)) })
+            ImportRow(
+                import,
+                onExplore = { onExplore(import.id) },
+                onDelete = { onAction(ImportAction.DeleteImport(import.id)) },
+            )
         }
     }
 }
@@ -154,6 +162,7 @@ private fun PartNotice(part: ExportPart) {
 @Composable
 private fun ImportRow(
     import: ImportUi,
+    onExplore: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(modifier = Modifier.readable()) {
@@ -181,6 +190,7 @@ private fun ImportRow(
                     )
                 }
             }
+            TextButton(onClick = onExplore) { Text("Explore") }
             TextButton(onClick = onDelete) { Text("Delete") }
         }
     }
@@ -214,6 +224,7 @@ private fun ImportScreenPreview() {
                 ),
             onAction = {},
             onShowTimeline = {},
+            onExplore = {},
         )
     }
 }

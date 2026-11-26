@@ -6,22 +6,11 @@ import com.jassemsendi.unpacked.insights.Verdict
 import com.jassemsendi.unpacked.model.ArticleItem
 import com.jassemsendi.unpacked.model.Coverage
 import com.jassemsendi.unpacked.model.EvidenceRule
-import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.ui.home.RecordRef
 import com.jassemsendi.unpacked.ui.home.counted
 import com.jassemsendi.unpacked.ui.home.label
 import com.jassemsendi.unpacked.ui.home.text
 import com.jassemsendi.unpacked.ui.imports.toUi
-import com.jassemsendi.unpacked.ui.time.toDeviceMinute
-import kotlinx.datetime.TimeZone
-
-internal fun Import.toChoice(timeZone: TimeZone): ImportChoiceUi =
-    ImportChoiceUi(
-        id = id,
-        exportName = summary.exportId.value,
-        startedAt = startedAt.toDeviceMinute(timeZone),
-        isComplete = completedAt != null,
-    )
 
 internal fun GapReport.toUi(): GapReportUi =
     GapReportUi(

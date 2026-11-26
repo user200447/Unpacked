@@ -4,9 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jassemsendi.unpacked.data.ImportRepository
 import com.jassemsendi.unpacked.data.ImportUseCase
-import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ExportPart
 import com.jassemsendi.unpacked.ingest.ImportStep
+import com.jassemsendi.unpacked.ingest.exportId
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.onFailure
 import com.jassemsendi.unpacked.model.onSuccess

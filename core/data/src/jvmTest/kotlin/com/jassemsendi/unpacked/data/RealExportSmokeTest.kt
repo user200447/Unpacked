@@ -2,10 +2,10 @@ package com.jassemsendi.unpacked.data
 
 import com.jassemsendi.unpacked.fixtures.orFail
 import com.jassemsendi.unpacked.ingest.Export
-import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.InstagramAdapter
 import com.jassemsendi.unpacked.ingest.open
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.FileResult
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest

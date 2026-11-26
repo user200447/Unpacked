@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import com.jassemsendi.unpacked.ui.accessrequest.AccessRequestRoot
 import com.jassemsendi.unpacked.ui.claims.ClaimsRoot
 import com.jassemsendi.unpacked.ui.entities.EntitiesRoot
+import com.jassemsendi.unpacked.ui.explorer.ExplorerRoot
 import com.jassemsendi.unpacked.ui.gapreport.GapReportRoot
 import com.jassemsendi.unpacked.ui.home.HomeDestinations
 import com.jassemsendi.unpacked.ui.home.HomeRoot
@@ -21,9 +22,10 @@ import com.jassemsendi.unpacked.ui.welcome.WelcomeScreen
 
 /**
  * Root of the shared UI: the Welcome screen first, then the Import screen, then Home with the Insight cards
- * and the timeline; Home and Import lead to each other, and Home to Search, Claims, Entities and the Gap
- * report and back, a number on a card opening them on what it counted; the Gap report leads to the Access
- * request and back. Koin must be started before this runs.
+ * and the timeline; Home and Import lead to each other, and Home to Search, Claims, Entities, the Gap
+ * report and the Explorer and back, a number on a card opening them on what it counted; the Gap report leads
+ * to the Access request and back, and Import to the Explorer over one of its Imports. Koin must be started
+ * before this runs.
  */
 @Composable
 fun UnpackedApp() {
@@ -37,7 +39,7 @@ fun UnpackedApp() {
                 }
 
                 Screen.Import -> {
-                    ImportRoot(onShowTimeline = home)
+                    ImportRoot(onShowTimeline = home, onExplore = { screen = Screen.Explorer(it) })
                 }
 
                 Screen.Home -> {
@@ -49,6 +51,7 @@ fun UnpackedApp() {
                             onEntities = { screen = Screen.Entities() },
                             onEntity = { screen = Screen.Entities(it) },
                             onGapReport = { screen = Screen.GapReport() },
+                            onExplorer = { screen = Screen.Explorer() },
                         ),
                     )
                 }
@@ -78,6 +81,10 @@ fun UnpackedApp() {
                         importId = current.importId,
                         onBack = { screen = Screen.GapReport(current.importId) },
                     )
+                }
+
+                is Screen.Explorer -> {
+                    ExplorerRoot(onBack = home, importId = current.importId)
                 }
             }
         }

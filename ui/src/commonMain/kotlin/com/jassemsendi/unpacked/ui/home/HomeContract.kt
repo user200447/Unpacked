@@ -156,6 +156,8 @@ data class HomeDestinations(
     val onEntity: (String) -> Unit,
     /** The Gap report over the latest Import. */
     val onGapReport: () -> Unit,
+    /** The Explorer over the latest Import's Export files. */
+    val onExplorer: () -> Unit,
 )
 
 sealed interface HomeAction {

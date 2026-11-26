@@ -10,10 +10,12 @@ public data class ImportId(
 /**
  * One run of reading one Export into the library, as stored. [completedAt] is null while the run
  * is in progress and stays null if it never finished; such an Import is still visible and deletable.
+ * [location] is where the Export was when it was read, kept so the Explorer can open its files again.
  */
 public data class Import(
     val id: ImportId,
     val startedAt: Instant,
     val completedAt: Instant?,
     val summary: ImportSummary,
+    val location: ExportLocation,
 )

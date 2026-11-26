@@ -13,6 +13,7 @@ import com.jassemsendi.unpacked.model.Coverage
 import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.EmptyResult
 import com.jassemsendi.unpacked.model.EvidenceRule
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Result
@@ -49,7 +50,8 @@ class GapReportReaderTest {
         }
         val summary = assertIs<ImportStep.Completed>(steps.last()).summary
         val startedAt = Instant.parse("2026-10-27T10:12:00Z")
-        return Import(ImportId(1), startedAt, startedAt + 1.minutes, summary).also { imports.imports += it }
+        return Import(ImportId(1), startedAt, startedAt + 1.minutes, summary, ExportLocation.Folder(root.toString()))
+            .also { imports.imports += it }
     }
 
     private fun reader(rules: EvidenceRules = DeclaredEvidenceRules) = GapReportReader(imports, events, claims, rules)
@@ -180,4 +182,9 @@ class FakeImportRepository : ImportRepository {
         imports.removeAll { it.id == id }
         return Result.Success(Unit)
     }
+
+    override suspend fun relocate(
+        id: ImportId,
+        location: ExportLocation,
+    ): EmptyResult<DataError.Local> = Result.Error(DataError.Local.NOT_FOUND)
 }

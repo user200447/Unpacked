@@ -1,11 +1,11 @@
 package com.jassemsendi.unpacked.data
 
 import com.jassemsendi.unpacked.ingest.Export
-import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ImportError
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.InstagramAdapter
 import com.jassemsendi.unpacked.ingest.open
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

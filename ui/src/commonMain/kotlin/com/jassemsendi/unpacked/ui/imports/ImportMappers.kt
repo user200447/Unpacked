@@ -19,6 +19,14 @@ fun Import.toUi(timeZone: TimeZone): ImportUi =
         failed = summary.failed.map { it.toUi() },
     )
 
+fun Import.toChoice(timeZone: TimeZone): ImportChoiceUi =
+    ImportChoiceUi(
+        id = id,
+        exportName = summary.exportId.value,
+        startedAt = startedAt.toDeviceMinute(timeZone),
+        isComplete = completedAt != null,
+    )
+
 fun FileResult.toUi(): FileResultUi =
     FileResultUi(
         path = path,

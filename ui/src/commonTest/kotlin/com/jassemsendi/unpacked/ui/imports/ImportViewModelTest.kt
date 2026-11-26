@@ -2,13 +2,13 @@ package com.jassemsendi.unpacked.ui.imports
 
 import app.cash.turbine.test
 import com.jassemsendi.unpacked.ingest.ExportError
-import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ExportPart
 import com.jassemsendi.unpacked.ingest.FileOutcome
 import com.jassemsendi.unpacked.ingest.ImportError
 import com.jassemsendi.unpacked.ingest.ImportProgress
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.model.DataError
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Inventory

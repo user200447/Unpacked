@@ -6,6 +6,7 @@ import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.ui.home.RecordDetailUi
 import com.jassemsendi.unpacked.ui.home.RecordRef
 import com.jassemsendi.unpacked.ui.imports.FileResultUi
+import com.jassemsendi.unpacked.ui.imports.ImportChoiceUi
 
 data class GapReportState(
     /** True from the start until the Imports and the report have been read, and again during a refresh. */
@@ -20,16 +21,6 @@ data class GapReportState(
     val detail: RecordDetailUi? = null,
     /** Why the last read failed, until the next one succeeds; what is shown is the last successful read. */
     val error: String? = null,
-)
-
-/** One stored Import as the chooser names it. */
-data class ImportChoiceUi(
-    val id: ImportId,
-    val exportName: String,
-    /** When the run started, in the device's time zone. */
-    val startedAt: String,
-    /** False for a run that never finished (ADR 0007); its report covers what landed before it stopped. */
-    val isComplete: Boolean,
 )
 
 /** The nine Verdicts for one Import as the screen shows them. */

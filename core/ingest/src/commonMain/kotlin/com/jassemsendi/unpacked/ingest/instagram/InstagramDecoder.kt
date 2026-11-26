@@ -1,5 +1,8 @@
 package com.jassemsendi.unpacked.ingest.instagram
 
+import com.jassemsendi.unpacked.ingest.FileRecords
+import com.jassemsendi.unpacked.ingest.JsonRecords
+import com.jassemsendi.unpacked.ingest.Record
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -41,6 +44,26 @@ internal object InstagramDecoder {
 
     fun decode(text: String): Result<List<InstagramRecord>> =
         runCatching { records(json.parseToJsonElement(text)).map(::decodeRecord) }
+
+    /**
+     * The file as the Explorer shows it: each record's time, when the Source gave one, under "Timestamp" and then
+     * its label and value pairs. A file in no dialect falls back to the plain reading, with its values repaired too.
+     */
+    fun records(text: String): FileRecords =
+        decode(text).fold(
+            onSuccess = { records ->
+                FileRecords(records.mapIndexed { index, record -> Record(index, record.shown()) })
+            },
+            onFailure = { error -> JsonRecords.fallback(text, error.message).repaired() },
+        )
+
+    private fun InstagramRecord.shown(): Map<String, String> =
+        buildMap {
+            time?.let { put(TIMESTAMP_LABEL, it.toString()) }
+            putAll(fields)
+        }
+
+    private const val TIMESTAMP_LABEL = "Timestamp"
 
     private fun records(element: JsonElement): List<JsonObject> =
         when (element) {
@@ -90,6 +113,10 @@ internal object InstagramDecoder {
     }
 
     private fun unsupported(message: String): Nothing = throw UnsupportedFileShapeException(message)
+
+    /** Instagram's mojibake runs through every file, the ones in no dialect included. */
+    internal fun FileRecords.repaired(): FileRecords =
+        copy(records = records.map { it.copy(fields = it.fields.mapValues { (_, value) -> repairMojibake(value) }) })
 
     private const val LABEL_VALUES = "label_values"
     private const val STRING_LIST_DATA = "string_list_data"

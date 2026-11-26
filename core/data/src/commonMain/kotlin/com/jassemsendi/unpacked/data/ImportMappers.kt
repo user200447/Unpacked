@@ -3,6 +3,7 @@ package com.jassemsendi.unpacked.data
 import com.jassemsendi.unpacked.data.db.ImportFileRow
 import com.jassemsendi.unpacked.data.db.ImportRow
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportId
@@ -19,6 +20,23 @@ internal fun Instant.toEpochMillis(): Long = toEpochMilliseconds()
 internal fun Long.toInstant(): Instant = Instant.fromEpochMilliseconds(this)
 
 internal fun sourceOf(id: String): Source = Source.entries.first { it.id == id }
+
+internal val ExportLocation.kindColumn: String
+    get() =
+        when (this) {
+            is ExportLocation.Zip -> ImportRow.ZIP
+            is ExportLocation.Folder -> ImportRow.FOLDER
+        }
+
+internal fun locationOf(
+    kind: String,
+    path: String,
+): ExportLocation =
+    when (kind) {
+        ImportRow.ZIP -> ExportLocation.Zip(path)
+        ImportRow.FOLDER -> ExportLocation.Folder(path)
+        else -> error("unknown export location kind '$kind'")
+    }
 
 internal fun FileResult.toRow(
     importId: ImportId,
@@ -99,4 +117,5 @@ internal fun ImportRow.toModel(files: List<FileResult>): Import =
                 files = files,
                 inventory = Inventory(jsonFiles = jsonFiles, mediaFiles = mediaFiles, otherFiles = otherFiles),
             ),
+        location = locationOf(exportLocationKind, exportLocationPath),
     )

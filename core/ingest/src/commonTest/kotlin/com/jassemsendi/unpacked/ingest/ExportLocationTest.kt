@@ -4,6 +4,7 @@ import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
 import com.jassemsendi.unpacked.fixtures.orFail
 import com.jassemsendi.unpacked.fixtures.writeText
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.Result
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem

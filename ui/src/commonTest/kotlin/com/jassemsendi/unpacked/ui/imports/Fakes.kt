@@ -2,11 +2,11 @@ package com.jassemsendi.unpacked.ui.imports
 
 import com.jassemsendi.unpacked.data.ImportRepository
 import com.jassemsendi.unpacked.data.ImportUseCase
-import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.EmptyResult
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportId
@@ -40,6 +40,20 @@ class FakeImportRepository(
         failure?.let { return Result.Error(it) }
         imports.removeAll { it.id == id }
         return Result.Success(Unit)
+    }
+
+    override suspend fun relocate(
+        id: ImportId,
+        location: ExportLocation,
+    ): EmptyResult<DataError.Local> {
+        failure?.let { return Result.Error(it) }
+        val index = imports.indexOfFirst { it.id == id }
+        return if (index < 0) {
+            Result.Error(DataError.Local.NOT_FOUND)
+        } else {
+            imports[index] = imports[index].copy(location = location)
+            Result.Success(Unit)
+        }
     }
 
     fun add(import: Import) {
@@ -76,17 +90,21 @@ class FakeExportPicker(
 
 const val FIRST_START_MILLIS = 1_793_095_920_000L // 2026-10-27T10:12:00Z
 
+/** A stored Import of [exportName], read from a zip in Downloads unless [location] says otherwise. */
 fun storedImport(
     id: Long,
     exportName: String,
     files: List<FileResult> = emptyList(),
     complete: Boolean = true,
+    mediaFiles: Int = 0,
+    location: ExportLocation = ExportLocation.Zip("/Users/me/Downloads/$exportName.zip"),
 ): Import {
     val startedAt = Instant.fromEpochMilliseconds(FIRST_START_MILLIS) + (id - 1).toInt().minutes
     return Import(
         id = ImportId(id),
         startedAt = startedAt,
         completedAt = if (complete) startedAt + 1.minutes else null,
-        summary = ImportSummary(ExportId(exportName), Source.Instagram, files, Inventory(files.size, 0, 0)),
+        summary = ImportSummary(ExportId(exportName), Source.Instagram, files, Inventory(files.size, mediaFiles, 0)),
+        location = location,
     )
 }

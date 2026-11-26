@@ -1,30 +1,19 @@
 package com.jassemsendi.unpacked.ingest
 
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.ExportLocation
 import com.jassemsendi.unpacked.model.Result
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
 
-/** Where the user's Export is on disk, by absolute path: the zip as downloaded, or the folder it was unzipped into. */
-public sealed interface ExportLocation {
-    public val path: String
-
-    /** The id [Export] will give this Export, known before it is opened: the zip name without `.zip`, or the folder name. */
-    public val exportId: ExportId
-
-    public data class Zip(
-        override val path: String,
-    ) : ExportLocation {
-        override val exportId: ExportId get() = exportIdOfZip(path.toPath())
-    }
-
-    public data class Folder(
-        override val path: String,
-    ) : ExportLocation {
-        override val exportId: ExportId get() = exportIdOfFolder(path.toPath())
-    }
-}
+/** The id [Export] will give the Export at this location, known before it is opened: the zip name without `.zip`, or the folder name. */
+public val ExportLocation.exportId: ExportId
+    get() =
+        when (this) {
+            is ExportLocation.Zip -> exportIdOfZip(path.toPath())
+            is ExportLocation.Folder -> exportIdOfFolder(path.toPath())
+        }
 
 /**
  * Opens the Export at [location], reading a zip in place and a folder as it is. Never throws for a
