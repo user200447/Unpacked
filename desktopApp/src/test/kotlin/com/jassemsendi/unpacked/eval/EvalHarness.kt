@@ -1,6 +1,8 @@
 package com.jassemsendi.unpacked.eval
 
 import com.jassemsendi.unpacked.OllamaModelProvider
+import com.jassemsendi.unpacked.agent.AgentUnavailable
+import com.jassemsendi.unpacked.agent.AskError
 import com.jassemsendi.unpacked.agent.KoogAskAgent
 import com.jassemsendi.unpacked.agent.LibraryTools
 import com.jassemsendi.unpacked.model.Result
@@ -8,6 +10,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.TimeZone
 import org.junit.Assume.assumeTrue
 import kotlin.test.Test
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -33,16 +36,23 @@ class EvalHarness {
             EvalFixture.seed().use { fixture ->
                 val tools = with(fixture.library) { LibraryTools(imports, events, claims, entities, search, zone) }
                 val agent = KoogAskAgent(tools, provider, zone)
-                val results =
-                    evalQuestions(fixture, zone).mapIndexed { index, question ->
-                        println("${index + 1}. ${question.question}")
-                        judge(question, agent.ask(question.question)).also { println("   ${it.status}: ${it.detail}") }
-                    }
+                val results = mutableListOf<EvalResult>()
+                // A model that goes away mid-run (Ollama stopped) ends the run: the questions left are not failures
+                // of the model, and scoring them as such would say nothing about it.
+                var wentAway: AgentUnavailable? = null
+                for ((index, question) in evalQuestions(fixture, zone).withIndex()) {
+                    println("${index + 1}. ${question.question}")
+                    val outcome = agent.ask(question.question)
+                    results += judge(question, outcome).also { println("   ${it.status}: ${it.detail}") }
+                    wentAway = ((outcome as? Result.Error)?.error as? AskError.Unavailable)?.reason
+                    if (wentAway != null) break
+                }
                 val report = EvalReport(results)
 
                 println()
                 println("Model: ${model.name} (${model.locality})")
                 println(report.render())
+                assertNull(wentAway, "the model went away after question ${results.size}; the score covers only those")
                 assertTrue(
                     report.percent >= TARGET_PERCENT,
                     "scored ${report.percent}%, under the $TARGET_PERCENT% target",
