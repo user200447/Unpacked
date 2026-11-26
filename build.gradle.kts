@@ -10,6 +10,8 @@ plugins {
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.kover)
+    // `./gradlew sharedCodeReport`: the README's line counts per source set.
+    id("unpacked.shared-code")
 }
 
 // One merged coverage report over every module that runs common tests.

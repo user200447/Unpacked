@@ -2,6 +2,7 @@ package com.jassemsendi.unpacked.agent
 
 import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
 import com.jassemsendi.unpacked.fixtures.orFail
+import com.jassemsendi.unpacked.fixtures.textFiles
 import com.jassemsendi.unpacked.ingest.Export
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.Importer
@@ -47,11 +48,7 @@ class FixturePayloadBoundaryTest {
 
     /** Every file of the Export as the fixture wrote it, by path. */
     private val written: Map<String, String>
-        get() =
-            fs
-                .listRecursively(root)
-                .filter { fs.metadata(it).isRegularFile }
-                .associate { it.relativeTo(root).toString() to fs.read(it) { readUtf8() } }
+        get() = fs.textFiles(root)
 
     private suspend fun seed() {
         export.writeTo(fs, root)
