@@ -25,6 +25,12 @@ public enum class ClaimKind {
     ConsentGiven,
     ProfileField,
     ContactSynced,
+
+    /**
+     * A setting that governs what the Source may do with the user's activity off its own platform, such as
+     * whether that activity is tied to the profile. Its own Kind because the off-platform Insight card counts it.
+     */
+    OffPlatformSetting,
     Other,
 }
 

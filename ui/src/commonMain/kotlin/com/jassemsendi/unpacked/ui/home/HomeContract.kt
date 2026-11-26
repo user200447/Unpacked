@@ -109,15 +109,26 @@ data class AttributeUi(
     val value: String,
 )
 
-/** One Insight card as Home shows it: a headline number, smaller ones under it and the top names; or why it is empty. */
+/**
+ * One Insight card as Home shows it: a headline number, smaller ones under it, the top names and the latest
+ * months of its series; or why it is empty.
+ */
 data class InsightCardUi(
     val id: String,
     val title: String,
     val headline: FigureUi,
     val details: List<FigureUi>,
     val rows: List<CardRowUi>,
+    /** The latest months of a card that counts over time, oldest first; empty for a card that does not. */
+    val months: List<MonthRowUi>,
     /** What the card says instead of its numbers when the library holds nothing it counts. */
     val emptyText: String?,
+)
+
+/** One month of a card's series: its name and the numbers counted in it, each opening its own Kind. */
+data class MonthRowUi(
+    val label: String,
+    val figures: List<FigureUi>,
 )
 
 /** A number on a card, its caption, and what it opens. */

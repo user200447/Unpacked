@@ -50,6 +50,7 @@ private fun InsightCardView(
                 FigureLine(card.headline, MaterialTheme.typography.displaySmall, onOpen)
                 card.details.forEach { FigureLine(it, MaterialTheme.typography.titleLarge, onOpen) }
                 card.rows.forEach { NameLine(it, onOpen) }
+                card.months.forEach { MonthLine(it, onOpen) }
             }
         }
     }
@@ -61,14 +62,16 @@ private fun FigureLine(
     figure: FigureUi,
     style: TextStyle,
     onOpen: (Opens) -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    captionStyle: TextStyle = MaterialTheme.typography.bodyMedium,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable { onOpen(figure.opens) },
+        modifier = modifier.clickable { onOpen(figure.opens) },
         horizontalArrangement = Arrangement.spacedBy(Spacing.small),
         verticalAlignment = Alignment.Bottom,
     ) {
         Text(figure.value, style = style, color = MaterialTheme.colorScheme.primary)
-        Text(figure.caption, style = MaterialTheme.typography.bodyMedium)
+        Text(figure.caption, style = captionStyle)
     }
 }
 
@@ -90,6 +93,19 @@ private fun NameLine(
             modifier = Modifier.weight(weight = 1f),
         )
         Text(row.detail, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** One month of a card's series: its name, then each number with its caption, each opening its own Kind. */
+@Composable
+private fun MonthLine(
+    row: MonthRowUi,
+    onOpen: (Opens) -> Unit,
+) {
+    val small = MaterialTheme.typography.bodySmall
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        Text(row.label, style = small, modifier = Modifier.weight(weight = 1f))
+        row.figures.forEach { FigureLine(it, small, onOpen, modifier = Modifier, captionStyle = small) }
     }
 }
 
@@ -115,6 +131,25 @@ private fun InsightCardRowPreview() {
                                     Opens.Entity("instagram:advertiser:examplecourier"),
                                 ),
                             ),
+                        months = emptyList(),
+                        emptyText = null,
+                    ),
+                    InsightCardUi(
+                        id = "messages",
+                        title = "Your messages",
+                        headline = FigureUi("5", "messages sent", Opens.Timeline(EventKind.MessageSent)),
+                        details = listOf(FigureUi("8", "messages received", Opens.Timeline(EventKind.MessageReceived))),
+                        rows = emptyList(),
+                        months =
+                            listOf(
+                                MonthRowUi(
+                                    "Oct 2026",
+                                    listOf(
+                                        FigureUi("5", "sent", Opens.Timeline(EventKind.MessageSent)),
+                                        FigureUi("8", "received", Opens.Timeline(EventKind.MessageReceived)),
+                                    ),
+                                ),
+                            ),
                         emptyText = null,
                     ),
                     InsightCardUi(
@@ -123,6 +158,7 @@ private fun InsightCardRowPreview() {
                         headline = FigureUi("0", "logins", Opens.Timeline(EventKind.Login)),
                         details = emptyList(),
                         rows = emptyList(),
+                        months = emptyList(),
                         emptyText = "No logins in your library yet.",
                     ),
                 ),

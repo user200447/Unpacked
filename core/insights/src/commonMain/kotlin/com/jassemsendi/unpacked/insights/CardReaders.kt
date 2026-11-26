@@ -11,7 +11,10 @@ import com.jassemsendi.unpacked.model.andThen
 import com.jassemsendi.unpacked.model.map
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.YearMonth
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.yearMonth
+import kotlin.time.Instant
 
 /**
  * What computes one Insight card: a deterministic read of the Library through its repository interfaces,
@@ -99,3 +102,113 @@ public class LoginsReader(
             }
         }
 }
+
+/** Spec story 27: how the user's social graph changed, month by month in the device's zone. */
+public class SocialGraphReader(
+    private val events: EventRepository,
+    private val timeZone: TimeZone,
+) : CardReader<InsightCard.SocialGraph> {
+    override suspend fun read(): Result<InsightCard.SocialGraph, DataError.Local> =
+        events.overTime(EventKind.Follow, EventKind.Unfollow, timeZone).map { (follows, unfollows, byMonth) ->
+            InsightCard.SocialGraph(follows, unfollows, byMonth)
+        }
+}
+
+/** Spec story 28: the profiling, as the Source's own location and interest Claims show it. */
+public class InferredReader(
+    private val claims: ClaimRepository,
+    private val topCount: Int = InsightCards.TOP_COUNT,
+) : CardReader<InsightCard.Inferred> {
+    override suspend fun read(): Result<InsightCard.Inferred, DataError.Local> =
+        claims.countByKind().andThen { counts ->
+            claims.topEntities(ClaimKind.InferredLocation, EntityKind.Place, topCount).andThen { places ->
+                claims.topEntities(ClaimKind.InferredInterest, EntityKind.Topic, topCount).map { topics ->
+                    InsightCard.Inferred(
+                        locations =
+                            Figure(counts[ClaimKind.InferredLocation] ?: 0, Opens.Claims(ClaimKind.InferredLocation)),
+                        topPlaces = places.top,
+                        interests =
+                            Figure(counts[ClaimKind.InferredInterest] ?: 0, Opens.Claims(ClaimKind.InferredInterest)),
+                        topTopics = topics.top,
+                    )
+                }
+            }
+        }
+}
+
+/** Spec story 29: how the user is tracked beyond the app. */
+public class OffPlatformReader(
+    private val events: EventRepository,
+    private val claims: ClaimRepository,
+) : CardReader<InsightCard.OffPlatform> {
+    override suspend fun read(): Result<InsightCard.OffPlatform, DataError.Local> =
+        events.countByKind().andThen { eventCounts ->
+            claims.countByKind().map { claimCounts ->
+                InsightCard.OffPlatform(
+                    linksVisited =
+                        Figure(eventCounts[EventKind.LinkVisited] ?: 0, Opens.Timeline(EventKind.LinkVisited)),
+                    settings =
+                        Figure(
+                            claimCounts[ClaimKind.OffPlatformSetting] ?: 0,
+                            Opens.Claims(ClaimKind.OffPlatformSetting),
+                        ),
+                )
+            }
+        }
+}
+
+/** Spec story 30: messaging volume, month by month in the device's zone; counts are all the Library holds (ADR 0003). */
+public class MessagesReader(
+    private val events: EventRepository,
+    private val timeZone: TimeZone,
+) : CardReader<InsightCard.Messages> {
+    override suspend fun read(): Result<InsightCard.Messages, DataError.Local> =
+        events.overTime(EventKind.MessageSent, EventKind.MessageReceived, timeZone).map { (sent, received, byMonth) ->
+            InsightCard.Messages(sent, received, byMonth)
+        }
+}
+
+/** What a card that counts two Kinds over time reads: each Kind in all, and both by month. */
+private data class OverTime(
+    val first: Figure,
+    val second: Figure,
+    val byMonth: List<MonthCounts>,
+)
+
+/**
+ * Two Kinds of Event counted in all and per calendar month of [timeZone], from the first month either has an Event
+ * in to the last, so that a quiet month between shows as zero rather than vanishing. No months when neither has any.
+ */
+private suspend fun EventRepository.overTime(
+    first: EventKind,
+    second: EventKind,
+    timeZone: TimeZone,
+): Result<OverTime, DataError.Local> =
+    timesOf(first).andThen { firstTimes ->
+        timesOf(second).map { secondTimes ->
+            val firstByMonth = firstTimes.countByMonth(timeZone)
+            val secondByMonth = secondTimes.countByMonth(timeZone)
+            val months = firstByMonth.keys + secondByMonth.keys
+            OverTime(
+                first = Figure(firstTimes.size, Opens.Timeline(first)),
+                second = Figure(secondTimes.size, Opens.Timeline(second)),
+                byMonth =
+                    if (months.isEmpty()) {
+                        emptyList()
+                    } else {
+                        (months.min()..months.max()).map { month ->
+                            MonthCounts(
+                                month,
+                                listOf(
+                                    Figure(firstByMonth[month] ?: 0, Opens.Timeline(first)),
+                                    Figure(secondByMonth[month] ?: 0, Opens.Timeline(second)),
+                                ),
+                            )
+                        }
+                    },
+            )
+        }
+    }
+
+private fun List<Instant>.countByMonth(timeZone: TimeZone): Map<YearMonth, Int> =
+    groupingBy { it.toLocalDateTime(timeZone).date.yearMonth }.eachCount()

@@ -162,9 +162,10 @@ internal object InstagramMappers {
             "instagram_profile_information.json" to ClaimMapper(ClaimKind.ProfileField),
             "possible_phone_numbers.json" to ClaimMapper(ClaimKind.ProfileField),
             "synced_contacts.json" to ClaimMapper(ClaimKind.ContactSynced),
+            // What the Source may do with the user's activity off its platform
+            "your_activity_off_meta_technologies_settings.json" to ClaimMapper(ClaimKind.OffPlatformSetting),
             // Untimed files the vocabulary does not distinguish (ADR 0001)
             "ad_preferences.json" to ClaimMapper(ClaimKind.Other),
-            "your_activity_off_meta_technologies_settings.json" to ClaimMapper(ClaimKind.Other),
             "notification_preferences.json" to ClaimMapper(ClaimKind.Other),
             "instagram_friend_map.json" to ClaimMapper(ClaimKind.Other),
             "audience_insights.json" to ClaimMapper(ClaimKind.Other),
