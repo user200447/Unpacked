@@ -160,6 +160,8 @@ data class HomeDestinations(
     val onGapReport: () -> Unit,
     /** The Explorer over the latest Import's Export files. */
     val onExplorer: () -> Unit,
+    /** Settings: how the agent runs and the Exports the app was tested against. */
+    val onSettings: () -> Unit,
 )
 
 sealed interface HomeAction {

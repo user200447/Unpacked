@@ -9,8 +9,10 @@ import com.jassemsendi.unpacked.agent.ChartKind
 import com.jassemsendi.unpacked.agent.ChartPoint
 import com.jassemsendi.unpacked.agent.ChartSpec
 import com.jassemsendi.unpacked.agent.Citation
+import com.jassemsendi.unpacked.agent.CloudPayload
 import com.jassemsendi.unpacked.agent.ModelInfo
 import com.jassemsendi.unpacked.agent.ModelLocality
+import com.jassemsendi.unpacked.agent.PayloadMessage
 import com.jassemsendi.unpacked.agent.TraceStep
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
@@ -83,7 +85,7 @@ class AskViewModelTest {
         runTest {
             val viewModel = viewModel(FakeAskAgent())
 
-            assertEquals(ModelUi.Ready("local · qwen3:8b"), viewModel.state.value.model)
+            assertEquals(ModelUi.Ready("local · qwen3:8b", ModelLocality.Local), viewModel.state.value.model)
         }
 
     @Test
@@ -98,7 +100,7 @@ class AskViewModelTest {
 
             agent.availability = Result.Success(local)
             viewModel.onAction(AskAction.CheckModel)
-            assertEquals(ModelUi.Ready("local · qwen3:8b"), viewModel.state.value.model)
+            assertEquals(ModelUi.Ready("local · qwen3:8b", ModelLocality.Local), viewModel.state.value.model)
         }
 
     @Test
@@ -193,6 +195,91 @@ class AskViewModelTest {
             assertTrue(stopped.message.contains("8 calls"))
             assertEquals(listOf(1), stopped.trace.map { it.number })
         }
+
+    @Test
+    fun aCloudModelIsMarkedCloudAndSaidToLeaveTheDevice() =
+        runTest {
+            val viewModel = viewModel(FakeAskAgent(Result.Success(ModelInfo("gemini-2.5-flash", ModelLocality.Cloud))))
+
+            assertEquals(ModelUi.Ready("cloud · gemini-2.5-flash", ModelLocality.Cloud), viewModel.state.value.model)
+        }
+
+    @Test
+    fun aCloudQuestionWaitsInThePayloadInspectorAndGoesOnWhenSent() =
+        runTest {
+            val cloud = ModelInfo("gemini-2.5-flash", ModelLocality.Cloud)
+            val agent =
+                FakeAskAgent(
+                    availability = Result.Success(cloud),
+                    answer = { Result.Success(AskOutcome.Answered(answer("1 ad [1].").copy(model = cloud))) },
+                )
+            val question = PayloadMessage("user", "How many ads?")
+            agent.payload = CloudPayload("gemini-2.5-flash", listOf(question), emptyList())
+            val viewModel = viewModel(agent)
+
+            viewModel.onAction(AskAction.QuestionChanged("How many ads?"))
+            viewModel.onAction(AskAction.Ask)
+
+            val waiting = viewModel.state.value
+            assertTrue(waiting.isAsking)
+            assertEquals("gemini-2.5-flash", waiting.payload?.model)
+            assertTrue(
+                waiting.payload
+                    ?.text
+                    .orEmpty()
+                    .contains("How many ads?"),
+                "the exact request is shown",
+            )
+            assertNull(waiting.outcome)
+
+            viewModel.onAction(AskAction.SendPayload)
+
+            val answered = viewModel.state.value
+            assertNull(answered.payload)
+            assertFalse(answered.isAsking)
+            assertEquals("cloud · gemini-2.5-flash", assertIs<OutcomeUi.Answered>(answered.outcome).answer.modelMarker)
+        }
+
+    @Test
+    fun refusingThePayloadEndsTheQuestionWithNothingSent() =
+        runTest {
+            val agent = FakeAskAgent(answer = { error("the answer must not be reached") })
+            agent.payload = CloudPayload("gemini-2.5-flash", emptyList(), emptyList())
+            val viewModel = viewModel(agent)
+
+            viewModel.onAction(AskAction.QuestionChanged("How many ads?"))
+            viewModel.onAction(AskAction.Ask)
+            viewModel.onAction(AskAction.RefusePayload)
+
+            val state = viewModel.state.value
+            assertNull(state.payload)
+            assertFalse(state.isAsking)
+            assertNull(state.outcome)
+            assertEquals(AskError.PayloadRefused.toMessage(), state.error)
+        }
+
+    @Test
+    fun everyUnavailableReasonHasItsOwnExplanationThatPointsAtTheCardsAndTheGapReport() {
+        val reasons =
+            listOf(
+                AgentUnavailable.NoProvider,
+                AgentUnavailable.OllamaNotRunning("http://localhost:11434"),
+                AgentUnavailable.NoToolModel("http://localhost:11434", emptyList()),
+                AgentUnavailable.Off,
+                AgentUnavailable.NoKey,
+                AgentUnavailable.KeyUnreadable,
+                AgentUnavailable.KeyRejected,
+                AgentUnavailable.QuotaExceeded,
+                AgentUnavailable.CloudUnreachable("no route to host"),
+            )
+
+        val messages = reasons.map { it.toMessage() }
+
+        assertEquals(messages.size, messages.toSet().size, "each reason reads differently")
+        assertTrue(messages.all { it.contains("Insight cards") && it.contains("Gap report") })
+        assertTrue(AgentUnavailable.NoKey.toMessage().contains("Settings"))
+        assertTrue(AgentUnavailable.QuotaExceeded.toMessage().contains("quota"))
+    }
 
     @Test
     fun aModelThatWentAwayIsReportedWhereTheModelCheckIs() =

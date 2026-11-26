@@ -1,8 +1,11 @@
 package com.jassemsendi.unpacked
 
 import android.app.Application
-import com.jassemsendi.unpacked.agent.ModelProvider
+import android.content.Context
+import com.jassemsendi.unpacked.agent.LocalModelProvider
 import com.jassemsendi.unpacked.agent.NoModelProvider
+import com.jassemsendi.unpacked.agent.PreferenceStore
+import com.jassemsendi.unpacked.agent.SecureKeyStore
 import com.jassemsendi.unpacked.data.Library
 import com.jassemsendi.unpacked.data.libraryModule
 import com.jassemsendi.unpacked.data.open
@@ -32,14 +35,21 @@ class UnpackedApplication : Application() {
                 libraryModule(library, contentResolver.exportFileSystem()) { importUseCase ->
                     HostedImportUseCase(importUseCase, ForegroundImportHost(this@UnpackedApplication), appScope)
                 },
-                // Nothing shares the Access request on Android yet, and no model runs on the phone yet (spec story 44).
+                // Nothing shares the Access request on Android yet. No model runs on the phone itself; Settings may
+                // choose Gemini, with the key sealed by the Android Keystore and the choice in SharedPreferences.
                 module {
                     single { picker } bind ExportPicker::class
                     single<AccessRequestSaver> { NoAccessRequestSaver }
-                    single<ModelProvider> { NoModelProvider }
+                    single<LocalModelProvider> { NoModelProvider }
+                    single<PreferenceStore> { AndroidPreferenceStore(preferencesFile("settings")) }
+                    single<SecureKeyStore> {
+                        AndroidSecureKeyStore(AndroidPreferenceStore(preferencesFile("secrets")), KeystoreCipher())
+                    }
                 },
                 uiModule,
             )
         }
     }
+
+    private fun preferencesFile(name: String) = getSharedPreferences(name, Context.MODE_PRIVATE)
 }

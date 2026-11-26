@@ -1,13 +1,18 @@
 package com.jassemsendi.unpacked.ui.ask
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -20,8 +25,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jassemsendi.unpacked.agent.ModelLocality
 import com.jassemsendi.unpacked.model.ExportId
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.ui.home.RecordDetailLayout
@@ -36,23 +44,30 @@ import org.koin.compose.viewmodel.koinViewModel
 fun AskRoot(
     onBack: () -> Unit,
     onGapReport: () -> Unit,
+    onSettings: () -> Unit,
     viewModel: AskViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    AskScreen(state = state, onAction = viewModel::onAction, onBack = onBack, onGapReport = onGapReport)
+    AskScreen(
+        state = state,
+        onAction = viewModel::onAction,
+        destinations = AskDestinations(onBack, onGapReport, onSettings),
+    )
 }
 
-/** The question, the answer with its citations and Tool trace, and the Record a citation opened beside or over them. */
+/**
+ * The question, the answer with its citations and Tool trace, the Payload inspector while a cloud question waits
+ * to be sent, and the Record a citation opened beside or over them.
+ */
 @Composable
 fun AskScreen(
     state: AskState,
     onAction: (AskAction) -> Unit,
-    onBack: () -> Unit,
-    onGapReport: () -> Unit,
+    destinations: AskDestinations,
     modifier: Modifier = Modifier,
 ) {
     RecordDetailLayout(detail = state.detail, onClose = { onAction(AskAction.CloseDetail) }, modifier = modifier) {
-        Conversation(state, onAction, onBack, onGapReport, modifier = it)
+        Conversation(state, onAction, destinations, modifier = it)
     }
 }
 
@@ -60,10 +75,10 @@ fun AskScreen(
 private fun Conversation(
     state: AskState,
     onAction: (AskAction) -> Unit,
-    onBack: () -> Unit,
-    onGapReport: () -> Unit,
+    destinations: AskDestinations,
     modifier: Modifier = Modifier,
 ) {
+    val onBack = destinations.onBack
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(Spacing.large),
@@ -77,16 +92,17 @@ private fun Conversation(
             }
 
             is ModelUi.Off -> {
-                item { OffNotice(model.message, onBack, onGapReport) { onAction(AskAction.CheckModel) } }
+                item { OffNotice(model.message, destinations) { onAction(AskAction.CheckModel) } }
             }
 
             is ModelUi.Ready -> {
                 item { QuestionBox(state.question, enabled = !state.isAsking, onAction) }
-                item { ModelLine(model.marker) }
+                item { ModelLine(model) }
             }
         }
         state.error?.let { error -> item { ErrorNotice(error) } }
-        if (state.isAsking) item { CircularProgressIndicator() }
+        state.payload?.let { payload -> item { PayloadCard(payload, onAction) } }
+        if (state.isAsking && state.payload == null) item { CircularProgressIndicator() }
         when (val outcome = state.outcome) {
             is OutcomeUi.Answered -> {
                 item { AnswerCard(outcome.answer) { onAction(AskAction.OpenCitation(it)) } }
@@ -124,12 +140,11 @@ private fun Header(onBack: () -> Unit) {
     }
 }
 
-/** Why the agent is off, and the two places that answer without it (spec story 44). */
+/** Why the agent is off, the two places that answer without it (spec story 42), and Settings to turn it on. */
 @Composable
 private fun OffNotice(
     message: String,
-    onHome: () -> Unit,
-    onGapReport: () -> Unit,
+    destinations: AskDestinations,
     onCheckAgain: () -> Unit,
 ) {
     Card(
@@ -139,9 +154,13 @@ private fun OffNotice(
         Column(modifier = Modifier.padding(Spacing.medium), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
             Text("The agent is off", style = MaterialTheme.typography.titleMedium)
             Text(message, style = MaterialTheme.typography.bodyMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                Button(onClick = onHome) { Text("Insight cards") }
-                Button(onClick = onGapReport) { Text("Gap report") }
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+            ) {
+                Button(onClick = destinations.onBack) { Text("Insight cards") }
+                Button(onClick = destinations.onGapReport) { Text("Gap report") }
+                OutlinedButton(onClick = destinations.onSettings) { Text("Settings") }
                 OutlinedButton(onClick = onCheckAgain) { Text("Check again") }
             }
         }
@@ -173,14 +192,62 @@ private fun QuestionBox(
     }
 }
 
+/** Where answers come from, and what that means for the data (spec story 44). */
 @Composable
-private fun ModelLine(marker: String) {
+private fun ModelLine(model: ModelUi.Ready) {
     Text(
-        "Answers come from $marker; your data stays on this device.",
+        if (model.locality == ModelLocality.Cloud) {
+            "Answers come from ${model.marker}; only your question and the Tool outputs leave this device, and " +
+                "you see them before the first call of every question."
+        } else {
+            "Answers come from ${model.marker}; your data stays on this device."
+        },
         style = MaterialTheme.typography.labelMedium,
         modifier = Modifier.readable(),
     )
 }
+
+/**
+ * The Payload inspector (spec story 40): the exact request about to leave the device, in full, with the two choices.
+ * Only the question and Tool outputs can be in it (ADR 0006); the user reads it and decides.
+ */
+@Composable
+private fun PayloadCard(
+    payload: PayloadUi,
+    onAction: (AskAction) -> Unit,
+) {
+    Card(
+        modifier = Modifier.readable(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+    ) {
+        Column(modifier = Modifier.padding(Spacing.medium), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+            Text("Before this leaves your device", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "This is the exact request about to be sent to ${payload.model}: your question, the instructions, " +
+                    "and the Tools offered. Later requests of this question add only the Tool outputs, which the " +
+                    "Tool trace shows afterwards. Nothing from your Export's records is ever in it.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            SelectionContainer {
+                Text(
+                    payload.text,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    modifier =
+                        Modifier
+                            .heightIn(max = PAYLOAD_HEIGHT)
+                            .verticalScroll(rememberScrollState()),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+                Button(onClick = { onAction(AskAction.SendPayload) }) { Text("Send") }
+                OutlinedButton(onClick = { onAction(AskAction.RefusePayload) }) { Text("Don’t send") }
+            }
+        }
+    }
+}
+
+private val PAYLOAD_HEIGHT = 320.dp
 
 @Composable
 private fun Hint() {
@@ -203,7 +270,7 @@ private fun AskScreenPreview() {
             state =
                 AskState(
                     question = "How many ads did I see?",
-                    model = ModelUi.Ready("local · qwen3:8b"),
+                    model = ModelUi.Ready("local · qwen3:8b", ModelLocality.Local),
                     outcome =
                         OutcomeUi.Answered(
                             AnswerUi(
@@ -230,8 +297,7 @@ private fun AskScreenPreview() {
                         ),
                 ),
             onAction = {},
-            onBack = {},
-            onGapReport = {},
+            destinations = AskDestinations(onBack = {}, onGapReport = {}, onSettings = {}),
         )
     }
 }

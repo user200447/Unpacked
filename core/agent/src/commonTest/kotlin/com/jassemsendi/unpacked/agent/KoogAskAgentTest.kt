@@ -1,5 +1,7 @@
 package com.jassemsendi.unpacked.agent
 
+import ai.koog.http.client.KoogHttpClientException
+import ai.koog.prompt.executor.clients.LLMClientException
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.MessagePart
 import ai.koog.prompt.message.ResponseMetaInfo
@@ -287,6 +289,69 @@ class KoogAskAgentTest {
             val agent = agent(ScriptedModel(says("x")))
 
             assertEquals(Result.Success(ModelInfo("scripted", ModelLocality.Local)), agent.available())
+        }
+
+    @Test
+    fun aCloudModelGetsNothingWhenTheUserRefusesThePayload() =
+        runTest {
+            val model = ScriptedModel(says("Counts"), says("4 ads."))
+            val agent = KoogAskAgent(tools, FakeModelProvider(model, locality = ModelLocality.Cloud), library.zone)
+
+            val result = agent.ask("How many ads?") { false }
+
+            assertEquals(Result.Error(AskError.PayloadRefused), result)
+            assertEquals(0, model.calls.size, "nothing left the device")
+        }
+
+    @Test
+    fun theInspectorIsAskedOnceAndApprovalCoversTheWholeQuestion() =
+        runTest {
+            val model =
+                ScriptedModel(
+                    says("Counts"),
+                    calls(COUNT_EVENTS, """{"kind":"AdShown"}"""),
+                    says("You were shown 4 ads [1]."),
+                )
+            val agent = KoogAskAgent(tools, FakeModelProvider(model, locality = ModelLocality.Cloud), library.zone)
+            val shown = mutableListOf<CloudPayload>()
+
+            val outcome =
+                agent
+                    .ask("How many ads?") { payload ->
+                        shown += payload
+                        true
+                    }.orFail()
+
+            assertEquals(1, shown.size)
+            assertEquals(3, model.calls.size)
+            val answered = assertIs<AskOutcome.Answered>(outcome)
+            assertEquals(ModelInfo("scripted", ModelLocality.Cloud), answered.answer.model)
+        }
+
+    @Test
+    fun aLocalModelNeverAsksTheInspector() =
+        runTest {
+            val model = ScriptedModel(says("Counts"), says("Nothing to count."))
+
+            agent(model).ask("How many ads?") { error("a local question has no payload to inspect") }.orFail()
+
+            assertEquals(2, model.calls.size)
+        }
+
+    @Test
+    fun aCloudRefusalMidQuestionIsReportedAsTheAgentBeingUnavailable() =
+        runTest {
+            val quota =
+                LLMClientException(
+                    "Google",
+                    "Error from client",
+                    KoogHttpClientException("google", 429, "", "", null),
+                )
+            val provider = FakeModelProvider(ThrowingModel(quota), locality = ModelLocality.Cloud)
+
+            val result = KoogAskAgent(tools, provider, library.zone).ask("How many ads?")
+
+            assertEquals(Result.Error(AskError.Unavailable(AgentUnavailable.QuotaExceeded)), result)
         }
 
     @Test

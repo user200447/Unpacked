@@ -64,13 +64,20 @@ class ScriptedModel(
 
 /** A model that fails every request, the way a connection dropping mid-answer does. */
 class FailingModel(
-    private val message: String,
+    message: String,
+) : ThrowingModel(IllegalStateException(message))
+
+/** A model that fails every request with the given exception, the way a cloud refusing a key or a quota does. */
+open class ThrowingModel(
+    private val failure: Exception,
 ) : PromptExecutor() {
+    private val message: String get() = failure.message ?: "failed"
+
     override suspend fun execute(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>,
-    ): Message.Assistant = throw IllegalStateException(message)
+    ): Message.Assistant = throw failure
 
     override fun executeStreaming(
         prompt: Prompt,
@@ -95,20 +102,27 @@ fun calls(
     args: String = "{}",
 ): Message.Assistant = Message.Assistant(MessagePart.Tool.Call(id = "call-$tool", tool = tool, args = args), meta)
 
-/** A provider that hands out the given executor as a local model, or a scripted refusal. */
+/** A provider that hands out the given executor as a local model (or a cloud one), or a scripted refusal. */
 class FakeModelProvider(
     private val executor: PromptExecutor?,
     private val refusal: AgentUnavailable = AgentUnavailable.NoProvider,
-) : ModelProvider {
+    private val locality: ModelLocality = ModelLocality.Local,
+) : LocalModelProvider {
     var connections = 0
+
+    override val isOffered: Boolean = true
 
     override suspend fun connect(): Result<ConnectedModel, AgentUnavailable> {
         connections++
         return executor?.let {
             Result.Success(
                 ConnectedModel(
-                    ModelInfo("scripted", ModelLocality.Local),
-                    LLModel(LLMProvider.Ollama, "scripted", listOf(LLMCapability.Tools)),
+                    ModelInfo("scripted", locality),
+                    if (locality == ModelLocality.Cloud) {
+                        GeminiModelProvider.MODEL
+                    } else {
+                        LLModel(LLMProvider.Ollama, "scripted", listOf(LLMCapability.Tools))
+                    },
                     it,
                 ),
             )

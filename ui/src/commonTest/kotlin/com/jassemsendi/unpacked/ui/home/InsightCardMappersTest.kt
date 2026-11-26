@@ -27,6 +27,7 @@ class InsightCardMappersTest {
                 onEntity = { visited += "entity:$it" },
                 onGapReport = { visited += "gap-report" },
                 onExplorer = { visited += "explorer" },
+                onSettings = { visited += "settings" },
             )
 
         listOf<Opens>(

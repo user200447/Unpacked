@@ -10,8 +10,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeUIViewController
-import com.jassemsendi.unpacked.agent.ModelProvider
+import com.jassemsendi.unpacked.agent.LocalModelProvider
 import com.jassemsendi.unpacked.agent.NoModelProvider
+import com.jassemsendi.unpacked.agent.PreferenceStore
+import com.jassemsendi.unpacked.agent.SecureKeyStore
 import com.jassemsendi.unpacked.data.Library
 import com.jassemsendi.unpacked.data.libraryModule
 import com.jassemsendi.unpacked.data.open
@@ -21,6 +23,9 @@ import com.jassemsendi.unpacked.ui.di.uiModule
 import com.jassemsendi.unpacked.ui.imports.ExportPicker
 import com.jassemsendi.unpacked.ui.imports.IosExportPicker
 import com.jassemsendi.unpacked.ui.imports.UiKitDocumentPickerPresenter
+import com.jassemsendi.unpacked.ui.settings.IosPreferenceStore
+import com.jassemsendi.unpacked.ui.settings.IosSecureKeyStore
+import com.jassemsendi.unpacked.ui.settings.SecurityKeychain
 import kotlinx.cinterop.ExperimentalForeignApi
 import okio.FileSystem
 import org.koin.core.context.startKoin
@@ -43,11 +48,14 @@ fun MainViewController(): UIViewController {
             modules(
                 libraryModule(library, FileSystem.SYSTEM),
                 // Exports are picked with the system document picker and read in place; nothing shares the Access
-                // request on iOS yet, and no model runs on the phone yet (spec story 44).
+                // request on iOS yet. No model runs on the phone itself; Settings may choose Gemini, with the key in
+                // the Keychain and the choice in the user defaults (ADR 0008).
                 module {
                     single<ExportPicker> { IosExportPicker(UiKitDocumentPickerPresenter()) }
                     single<AccessRequestSaver> { NoAccessRequestSaver }
-                    single<ModelProvider> { NoModelProvider }
+                    single<LocalModelProvider> { NoModelProvider }
+                    single<PreferenceStore> { IosPreferenceStore() }
+                    single<SecureKeyStore> { IosSecureKeyStore(SecurityKeychain()) }
                 },
                 uiModule,
             )

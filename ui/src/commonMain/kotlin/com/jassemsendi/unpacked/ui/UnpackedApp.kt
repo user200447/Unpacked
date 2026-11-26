@@ -19,14 +19,15 @@ import com.jassemsendi.unpacked.ui.home.HomeDestinations
 import com.jassemsendi.unpacked.ui.home.HomeRoot
 import com.jassemsendi.unpacked.ui.imports.ImportRoot
 import com.jassemsendi.unpacked.ui.search.SearchRoot
+import com.jassemsendi.unpacked.ui.settings.SettingsRoot
 import com.jassemsendi.unpacked.ui.welcome.WelcomeScreen
 
 /**
  * Root of the shared UI: the Welcome screen first, then the Import screen, then Home with the Insight cards
  * and the timeline; Home and Import lead to each other, and Home to Ask, Search, Claims, Entities, the Gap
- * report and the Explorer and back, Ask to the Gap report, a number on a card opening them on what it counted; the Gap report leads
- * to the Access request and back, and Import to the Explorer over one of its Imports. Koin must be started
- * before this runs.
+ * report, the Explorer and Settings and back, Ask to the Gap report and to Settings, a number on a card opening
+ * them on what it counted; the Gap report leads to the Access request and back, and Import to the Explorer over
+ * one of its Imports. Koin must be started before this runs.
  */
 @Composable
 fun UnpackedApp() {
@@ -44,22 +45,19 @@ fun UnpackedApp() {
                 }
 
                 Screen.Home -> {
-                    HomeRoot(
-                        HomeDestinations(
-                            onImport = { screen = Screen.Import },
-                            onAsk = { screen = Screen.Ask },
-                            onSearch = { screen = Screen.Search },
-                            onClaims = { screen = Screen.Claims(it) },
-                            onEntities = { screen = Screen.Entities() },
-                            onEntity = { screen = Screen.Entities(it) },
-                            onGapReport = { screen = Screen.GapReport() },
-                            onExplorer = { screen = Screen.Explorer() },
-                        ),
-                    )
+                    HomeRoot(homeDestinations { screen = it })
                 }
 
                 Screen.Ask -> {
-                    AskRoot(onBack = home, onGapReport = { screen = Screen.GapReport() })
+                    AskRoot(
+                        onBack = home,
+                        onGapReport = { screen = Screen.GapReport() },
+                        onSettings = { screen = Screen.Settings },
+                    )
+                }
+
+                Screen.Settings -> {
+                    SettingsRoot(onBack = home)
                 }
 
                 Screen.Search -> {
@@ -96,3 +94,17 @@ fun UnpackedApp() {
         }
     }
 }
+
+/** Where Home leads, each destination setting the screen through [go]. */
+private fun homeDestinations(go: (Screen) -> Unit) =
+    HomeDestinations(
+        onImport = { go(Screen.Import) },
+        onAsk = { go(Screen.Ask) },
+        onSearch = { go(Screen.Search) },
+        onClaims = { go(Screen.Claims(it)) },
+        onEntities = { go(Screen.Entities()) },
+        onEntity = { go(Screen.Entities(it)) },
+        onGapReport = { go(Screen.GapReport()) },
+        onExplorer = { go(Screen.Explorer()) },
+        onSettings = { go(Screen.Settings) },
+    )

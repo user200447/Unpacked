@@ -9,6 +9,7 @@ import com.jassemsendi.unpacked.agent.AskOutcome
 import com.jassemsendi.unpacked.agent.ChartSpec
 import com.jassemsendi.unpacked.agent.ModelInfo
 import com.jassemsendi.unpacked.agent.ModelLocality
+import com.jassemsendi.unpacked.agent.PayloadInspector
 import com.jassemsendi.unpacked.agent.TraceStep
 import com.jassemsendi.unpacked.data.ClaimRepository
 import com.jassemsendi.unpacked.data.EventRepository
@@ -19,6 +20,7 @@ import com.jassemsendi.unpacked.ui.home.RecordDetailUi
 import com.jassemsendi.unpacked.ui.home.RecordRef
 import com.jassemsendi.unpacked.ui.home.readRecord
 import com.jassemsendi.unpacked.ui.toMessage
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -28,7 +30,8 @@ import kotlinx.datetime.TimeZone
 /**
  * The Ask screen: whether a model answers, the question, and the outcome with its Tool trace and citations, each
  * citation opening the Record it names. The model is checked when the screen opens and whenever the user asks for
- * it again, so one started after the screen opened is found.
+ * it again, so one started after the screen opened is found. For a cloud model the screen is the Payload inspector
+ * too: the first request of a question waits in [AskState.payload] until the user sends or refuses it (ADR 0006).
  */
 class AskViewModel(
     private val agent: AskAgent,
@@ -39,6 +42,22 @@ class AskViewModel(
     private val _state = MutableStateFlow(AskState())
     val state = _state.asStateFlow()
 
+    /** The user's pending answer to the Payload inspector, while a payload is shown. */
+    private var pendingPayload: CompletableDeferred<Boolean>? = null
+
+    private val inspector =
+        PayloadInspector { payload ->
+            val answer = CompletableDeferred<Boolean>()
+            pendingPayload = answer
+            _state.update { it.copy(payload = PayloadUi(payload.model, payload.render())) }
+            try {
+                answer.await()
+            } finally {
+                pendingPayload = null
+                _state.update { it.copy(payload = null) }
+            }
+        }
+
     init {
         checkModel()
     }
@@ -48,6 +67,8 @@ class AskViewModel(
             is AskAction.QuestionChanged -> _state.update { it.copy(question = action.question) }
             AskAction.Ask -> ask()
             AskAction.CheckModel -> checkModel()
+            AskAction.SendPayload -> pendingPayload?.complete(true)
+            AskAction.RefusePayload -> pendingPayload?.complete(false)
             is AskAction.OpenCitation -> open(action.provenance)
             AskAction.CloseDetail -> _state.update { it.copy(detail = null) }
         }
@@ -58,8 +79,13 @@ class AskViewModel(
         viewModelScope.launch {
             val model =
                 when (val available = agent.available()) {
-                    is Result.Success -> ModelUi.Ready(available.data.marker())
-                    is Result.Error -> ModelUi.Off(available.error.toMessage())
+                    is Result.Success -> {
+                        ModelUi.Ready(available.data.marker(), available.data.locality)
+                    }
+
+                    is Result.Error -> {
+                        ModelUi.Off(available.error.toMessage())
+                    }
                 }
             _state.update { it.copy(model = model) }
         }
@@ -70,7 +96,7 @@ class AskViewModel(
         if (before.question.isBlank() || before.isAsking) return
         _state.update { it.copy(isAsking = true, error = null) }
         viewModelScope.launch {
-            val asked = agent.ask(before.question)
+            val asked = agent.ask(before.question, inspector)
             _state.update { state ->
                 when (asked) {
                     is Result.Success -> {

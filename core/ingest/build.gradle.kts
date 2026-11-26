@@ -9,6 +9,8 @@ kotlin {
             api(project(":core:model"))
             api(libs.kotlinx.coroutinesCore)
             api(libs.okio)
+            // For the dates of the Exports each Source was tested against.
+            api(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serializationJson)
         }
         commonTest.dependencies {
