@@ -10,34 +10,47 @@ import com.jassemsendi.unpacked.data.db.OwnedByRecord
 import com.jassemsendi.unpacked.data.db.inChunks
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
+import com.jassemsendi.unpacked.model.DataError
+import com.jassemsendi.unpacked.model.EmptyResult
 import com.jassemsendi.unpacked.model.Entity
 import com.jassemsendi.unpacked.model.Event
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Provenance
+import com.jassemsendi.unpacked.model.Result
+
+/** A row that is not there is [DataError.Local.NOT_FOUND]; every repository answers absence the same way. */
+private fun <T : Any> Result<T?, DataError.Local>.orNotFound(): Result<T, DataError.Local> =
+    when (this) {
+        is Result.Error -> this
+        is Result.Success -> data?.let { Result.Success(it) } ?: Result.Error(DataError.Local.NOT_FOUND)
+    }
 
 internal class RoomImportRepository(
     private val db: LibraryDatabase,
 ) : ImportRepository {
     private val dao get() = db.importDao()
 
-    override suspend fun all(): List<Import> {
-        val rows = dao.all()
-        val files = rows.map { it.id }.inChunks { dao.files(it) }.groupBy { it.importId }
-        return rows.map { row -> row.toModel(files[row.id].orEmpty().map { it.toModel() }) }
-    }
+    override suspend fun all(): Result<List<Import>, DataError.Local> =
+        localCall {
+            val rows = dao.all()
+            val files = rows.map { it.id }.inChunks { dao.files(it) }.groupBy { it.importId }
+            rows.map { row -> row.toModel(files[row.id].orEmpty().map { it.toModel() }) }
+        }
 
-    override suspend fun get(id: ImportId): Import? {
-        val row = dao.byId(id.value) ?: return null
-        return row.toModel(dao.files(listOf(id.value)).map { it.toModel() })
-    }
+    override suspend fun get(id: ImportId): Result<Import, DataError.Local> =
+        localCall {
+            dao.byId(id.value)?.toModel(dao.files(listOf(id.value)).map { it.toModel() })
+        }.orNotFound()
 
-    override suspend fun delete(id: ImportId): Unit =
-        db.useWriterConnection { transactor ->
-            transactor.immediateTransaction {
-                dao.delete(id.value)
-                db.entityDao().deleteOrphans()
+    override suspend fun delete(id: ImportId): EmptyResult<DataError.Local> =
+        localCall {
+            db.useWriterConnection { transactor ->
+                transactor.immediateTransaction {
+                    dao.delete(id.value)
+                    db.entityDao().deleteOrphans()
+                }
             }
         }
 }
@@ -47,9 +60,10 @@ internal class RoomEntityRepository(
 ) : EntityRepository {
     private val dao get() = db.entityDao()
 
-    override suspend fun byId(id: String): Entity? = hydrate(listOf(id)).singleOrNull()
+    override suspend fun byId(id: String): Result<Entity, DataError.Local> =
+        localCall { hydrate(listOf(id)).singleOrNull() }.orNotFound()
 
-    override suspend fun all(): List<Entity> = hydrate(dao.all().map { it.id })
+    override suspend fun all(): Result<List<Entity>, DataError.Local> = localCall { hydrate(dao.all().map { it.id }) }
 
     /** Entities in the order of [ids]; ids that no longer exist are left out. */
     suspend fun byIds(ids: List<String>): List<Entity> = hydrate(ids)
@@ -95,19 +109,20 @@ internal class RoomEventRepository(
     private val dao get() = db.eventDao()
     private val entities = RoomEntityRepository(db)
 
-    override suspend fun countByKind(importId: ImportId?): Map<EventKind, Int> =
-        dao.countByKind(importId?.value).toMap(EventKind::valueOf)
+    override suspend fun countByKind(importId: ImportId?): Result<Map<EventKind, Int>, DataError.Local> =
+        localCall { dao.countByKind(importId?.value).toMap(EventKind::valueOf) }
 
-    override suspend fun byProvenance(provenance: Provenance): Event? =
-        dao.byId(provenance.hash)?.let { hydrate(listOf(it)).single() }
+    override suspend fun byProvenance(provenance: Provenance): Result<Event, DataError.Local> =
+        localCall { dao.byId(provenance.hash)?.let { hydrate(listOf(it)).single() } }.orNotFound()
 
-    override suspend fun forImport(importId: ImportId): List<Event> = hydrate(dao.forImport(importId.value))
+    override suspend fun forImport(importId: ImportId): Result<List<Event>, DataError.Local> =
+        localCall { hydrate(dao.forImport(importId.value)) }
 
     override suspend fun newestFirst(
         kind: EventKind?,
         limit: Int,
         offset: Int,
-    ): List<Event> = hydrate(dao.newestFirst(kind?.name, limit, offset))
+    ): Result<List<Event>, DataError.Local> = localCall { hydrate(dao.newestFirst(kind?.name, limit, offset)) }
 
     private suspend fun hydrate(rows: List<EventRow>): List<Event> =
         entities.hydrate(rows, { it.id }, dao::attributes, dao::links) { row, attributes, linked ->
@@ -121,13 +136,14 @@ internal class RoomClaimRepository(
     private val dao get() = db.claimDao()
     private val entities = RoomEntityRepository(db)
 
-    override suspend fun countByKind(importId: ImportId?): Map<ClaimKind, Int> =
-        dao.countByKind(importId?.value).toMap(ClaimKind::valueOf)
+    override suspend fun countByKind(importId: ImportId?): Result<Map<ClaimKind, Int>, DataError.Local> =
+        localCall { dao.countByKind(importId?.value).toMap(ClaimKind::valueOf) }
 
-    override suspend fun byProvenance(provenance: Provenance): Claim? =
-        dao.byId(provenance.hash)?.let { hydrate(listOf(it)).single() }
+    override suspend fun byProvenance(provenance: Provenance): Result<Claim, DataError.Local> =
+        localCall { dao.byId(provenance.hash)?.let { hydrate(listOf(it)).single() } }.orNotFound()
 
-    override suspend fun forImport(importId: ImportId): List<Claim> = hydrate(dao.forImport(importId.value))
+    override suspend fun forImport(importId: ImportId): Result<List<Claim>, DataError.Local> =
+        localCall { hydrate(dao.forImport(importId.value)) }
 
     private suspend fun hydrate(rows: List<ClaimRow>): List<Claim> =
         entities.hydrate(rows, { it.id }, dao::attributes, dao::links) { row, attributes, linked ->

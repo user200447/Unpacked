@@ -1,6 +1,7 @@
 package com.jassemsendi.unpacked.ingest
 
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.Result
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
@@ -15,17 +16,26 @@ public class Export private constructor(
     private val fileSystem: FileSystem,
     private val root: Path,
 ) {
-    /** Every regular file in the Export, by path relative to the root, in a stable sorted order. */
-    public fun files(): List<ExportFile> =
-        fileSystem
-            .listRecursively(root)
-            .map { path -> path to path.relativeTo(root).segments }
-            .filter { (_, segments) -> segments.none(::isHidden) }
-            .filter { (path, _) -> fileSystem.metadata(path).isRegularFile }
-            .map { (_, segments) -> ExportFile(id, segments.joinToString("/")) }
-            .sortedBy { it.path }
-            .toList()
+    /**
+     * Every regular file in the Export, by path relative to the root, in a stable sorted order; an
+     * [ExportError] when the root cannot be listed any more.
+     */
+    public fun files(): Result<List<ExportFile>, ExportError> =
+        exportCall {
+            fileSystem
+                .listRecursively(root)
+                .map { path -> path to path.relativeTo(root).segments }
+                .filter { (_, segments) -> segments.none(::isHidden) }
+                .filter { (path, _) -> fileSystem.metadata(path).isRegularFile }
+                .map { (_, segments) -> ExportFile(id, segments.joinToString("/")) }
+                .sortedBy { it.path }
+                .toList()
+        }
 
+    /**
+     * The text of one file. Throws when the file cannot be read; the Importer records that as the
+     * file's Failed reason, since one unreadable file never stops an Import.
+     */
     public fun readText(file: ExportFile): String = fileSystem.read(root / file.path.toPath()) { readUtf8() }
 
     public companion object {

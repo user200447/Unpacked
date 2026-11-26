@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import okio.FileSystem
 import okio.ForwardingFileSystem
+import okio.IOException
 import okio.Path
 import okio.Path.Companion.toPath
 import okio.Source
@@ -279,6 +280,33 @@ class ImporterTest {
             assertTrue(advertisers.all { claim -> claim.entities.single().kind == EntityKind.Advertiser })
             assertEquals(4, advertisers.map { it.entities.single().id }.distinct().size)
             assertEquals(claims.size, claims.map { it.id }.distinct().size, "every Claim has its own identity")
+        }
+
+    @Test
+    fun anExportThatWillNotListEndsTheRunFailedBeforeItStarts() =
+        runTest {
+            SyntheticInstagramExport(adsViewed = 1).writeTo(fs, root)
+            var unplugged = false
+            val flaky =
+                object : ForwardingFileSystem(fs) {
+                    override fun listRecursively(
+                        dir: Path,
+                        followSymlinks: Boolean,
+                    ): Sequence<Path> =
+                        if (unplugged) {
+                            throw IOException(
+                                "device removed",
+                            )
+                        } else {
+                            super.listRecursively(dir, followSymlinks)
+                        }
+                }
+            val export = Export.directory(flaky, root)
+            unplugged = true
+
+            val steps = import(export)
+
+            assertEquals(listOf(ImportStep.Failed(ImportError.Reading(ExportError.NOT_READABLE))), steps)
         }
 
     @Test

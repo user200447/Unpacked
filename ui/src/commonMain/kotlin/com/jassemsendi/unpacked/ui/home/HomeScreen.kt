@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.ExportId
 import com.jassemsendi.unpacked.model.Provenance
+import com.jassemsendi.unpacked.ui.theme.ErrorNotice
 import com.jassemsendi.unpacked.ui.theme.Spacing
 import com.jassemsendi.unpacked.ui.theme.readable
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -95,6 +96,7 @@ private fun Timeline(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         item { Header(state.totalCount, onImport) }
+        state.error?.let { error -> item { ErrorNotice(error) } }
         if (state.kinds.isNotEmpty()) {
             item { KindFilter(state.kinds, state.totalCount, state.filter) { onAction(HomeAction.Filter(it)) } }
         }

@@ -4,12 +4,16 @@ import com.jassemsendi.unpacked.fixtures.InstagramClaimFixtures
 import com.jassemsendi.unpacked.fixtures.InstagramFixtures
 import com.jassemsendi.unpacked.fixtures.InstagramMessageFixtures
 import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
+import com.jassemsendi.unpacked.fixtures.orFail
 import com.jassemsendi.unpacked.fixtures.writeText
 import com.jassemsendi.unpacked.ingest.Export
+import com.jassemsendi.unpacked.ingest.ExportError
 import com.jassemsendi.unpacked.ingest.ExportLocation
+import com.jassemsendi.unpacked.ingest.ImportError
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.ingest.InstagramAdapter
 import com.jassemsendi.unpacked.model.ClaimKind
+import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.EntityKind
 import com.jassemsendi.unpacked.model.Event
 import com.jassemsendi.unpacked.model.EventKind
@@ -19,6 +23,7 @@ import com.jassemsendi.unpacked.model.Import
 import com.jassemsendi.unpacked.model.Inventory
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.model.RawKind
+import com.jassemsendi.unpacked.model.Result
 import com.jassemsendi.unpacked.model.Source
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
@@ -29,7 +34,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -49,6 +53,7 @@ abstract class LibraryTest {
     private val clock = TickingClock()
     private val pageSize = 20
     private lateinit var library: Library
+    private val notFound = Result.Error(DataError.Local.NOT_FOUND)
 
     protected abstract fun openLibrary(clock: Clock): Library
 
@@ -63,10 +68,10 @@ abstract class LibraryTest {
     /** Every page of the timeline in turn, until one comes back empty. */
     private suspend fun readEveryPage(): List<List<Event>> =
         buildList {
-            var page = library.events.newestFirst(limit = pageSize, offset = 0)
+            var page = library.events.newestFirst(limit = pageSize, offset = 0).orFail()
             while (page.isNotEmpty()) {
                 add(page)
-                page = library.events.newestFirst(limit = pageSize, offset = size * pageSize)
+                page = library.events.newestFirst(limit = pageSize, offset = size * pageSize).orFail()
             }
         }
 
@@ -82,10 +87,10 @@ abstract class LibraryTest {
 
             val import = import(Export.directory(fs, root))
 
-            assertEquals(mapOf(EventKind.AdShown to 4), library.events.countByKind(import.id))
-            assertEquals(emptyMap(), library.claims.countByKind(import.id))
-            assertEquals(import, library.imports.get(import.id))
-            assertEquals(listOf(import), library.imports.all())
+            assertEquals(mapOf(EventKind.AdShown to 4), library.events.countByKind(import.id).orFail())
+            assertEquals(emptyMap(), library.claims.countByKind(import.id).orFail())
+            assertEquals(import, library.imports.get(import.id).orFail())
+            assertEquals(listOf(import), library.imports.all().orFail())
             assertEquals(ExportId("instagram-synthetic"), import.summary.exportId)
             assertEquals(Source.Instagram, import.summary.source)
             assertEquals(Inventory(jsonFiles = 2, mediaFiles = 2, otherFiles = 1), import.summary.inventory)
@@ -126,11 +131,21 @@ abstract class LibraryTest {
                     EventKind.LinkVisited to 2,
                     EventKind.Other to 10,
                 ),
-                library.events.countByKind(import.id),
+                library.events.countByKind(import.id).orFail(),
             )
-            val follows = library.events.forImport(import.id).filter { it.kind == EventKind.Follow }
+            val follows =
+                library.events
+                    .forImport(import.id)
+                    .orFail()
+                    .filter { it.kind == EventKind.Follow }
             assertTrue(follows.all { event -> event.entities.any { it.id.startsWith("instagram:account:") } })
-            assertTrue(library.entities.all().any { it.kind == EntityKind.Device }, "logins name their devices")
+            assertTrue(
+                library.entities
+                    .all()
+                    .orFail()
+                    .any { it.kind == EntityKind.Device },
+                "logins name their devices",
+            )
         }
 
     @Test
@@ -152,18 +167,18 @@ abstract class LibraryTest {
                     ClaimKind.ContactSynced to 3,
                     ClaimKind.Other to 14,
                 ),
-                library.claims.countByKind(import.id),
+                library.claims.countByKind(import.id).orFail(),
             )
-            assertEquals(mapOf(EventKind.AdShown to 2), library.events.countByKind(import.id))
-            val claims = library.claims.forImport(import.id)
+            assertEquals(mapOf(EventKind.AdShown to 2), library.events.countByKind(import.id).orFail())
+            val claims = library.claims.forImport(import.id).orFail()
             assertEquals(42, claims.size)
             val advertisers = claims.filter { it.kind == ClaimKind.AdvertiserHoldsContact }
             assertTrue(advertisers.all { claim -> claim.entities.single().kind == EntityKind.Advertiser })
             assertEquals(4, advertisers.map { it.entities.single().id }.distinct().size)
             val consent = claims.single { it.kind == ClaimKind.ConsentGiven }
             assertNotNull(consent.asOf)
-            assertEquals(consent, library.claims.byProvenance(consent.provenance))
-            assertNull(library.events.byProvenance(consent.provenance), "a dated Claim is no Event")
+            assertEquals(consent, library.claims.byProvenance(consent.provenance).orFail())
+            assertEquals(notFound, library.events.byProvenance(consent.provenance), "a dated Claim is no Event")
             assertEquals(
                 setOf(
                     InstagramClaimFixtures.REPAIRED_NAME,
@@ -178,7 +193,13 @@ abstract class LibraryTest {
                         )
                     }.toSet(),
             )
-            assertTrue(library.entities.all().any { it.kind == EntityKind.Place }, "locations name their places")
+            assertTrue(
+                library.entities
+                    .all()
+                    .orFail()
+                    .any { it.kind == EntityKind.Place },
+                "locations name their places",
+            )
         }
 
     @Test
@@ -196,15 +217,20 @@ abstract class LibraryTest {
                     EventKind.MessageSent to threads.sumOf { it.sent },
                     EventKind.MessageReceived to threads.sumOf { it.received },
                 ),
-                library.events.countByKind(import.id),
+                library.events.countByKind(import.id).orFail(),
             )
-            val messages = library.events.forImport(import.id).filter { it.kind != EventKind.AdShown }
+            val messages =
+                library.events
+                    .forImport(import.id)
+                    .orFail()
+                    .filter { it.kind != EventKind.AdShown }
             assertTrue(messages.all { it.attributes.isEmpty() }, "a message Event stores nothing but its counts")
             assertTrue(messages.all { it.entities.single().kind == EntityKind.Thread })
             assertEquals(
                 threads.map { it.title }.toSet(),
                 library.entities
                     .all()
+                    .orFail()
                     .filter { it.kind == EntityKind.Thread }
                     .map { it.displayName }
                     .toSet(),
@@ -237,7 +263,7 @@ abstract class LibraryTest {
                 ),
                 import.summary.files,
             )
-            assertEquals(emptyMap(), library.events.countByKind(import.id))
+            assertEquals(emptyMap(), library.events.countByKind(import.id).orFail())
         }
 
     @Test
@@ -247,7 +273,7 @@ abstract class LibraryTest {
             val import = import(Export.directory(fs, root))
             val provenance = Provenance(ExportId("instagram-synthetic"), InstagramClaimFixtures.CONSENTS_PATH, 0)
 
-            val claim = assertNotNull(library.claims.byProvenance(provenance))
+            val claim = library.claims.byProvenance(provenance).orFail()
 
             assertEquals(ClaimKind.ConsentGiven, claim.kind)
             assertEquals(RawKind("consents"), claim.rawKind)
@@ -260,11 +286,11 @@ abstract class LibraryTest {
                 ),
                 claim.attributes,
             )
-            assertEquals(mapOf(ClaimKind.ConsentGiven to 1), library.claims.countByKind(import.id))
-            assertEquals(listOf(claim), library.claims.forImport(import.id))
-            assertNull(library.events.byProvenance(provenance))
-            assertEquals(emptyMap(), library.events.countByKind(import.id))
-            assertEquals(emptyList(), library.events.forImport(import.id))
+            assertEquals(mapOf(ClaimKind.ConsentGiven to 1), library.claims.countByKind(import.id).orFail())
+            assertEquals(listOf(claim), library.claims.forImport(import.id).orFail())
+            assertEquals(notFound, library.events.byProvenance(provenance))
+            assertEquals(emptyMap(), library.events.countByKind(import.id).orFail())
+            assertEquals(emptyList(), library.events.forImport(import.id).orFail())
         }
 
     @Test
@@ -277,17 +303,29 @@ abstract class LibraryTest {
             val import = import(Export.directory(fs, root))
             val record = Provenance(ExportId("instagram-synthetic"), InstagramClaimFixtures.ADVERTISERS_PATH, 0)
 
-            assertEquals(mapOf(ClaimKind.AdvertiserHoldsContact to 3), library.claims.countByKind(import.id))
-            val second = assertNotNull(library.claims.byProvenance(record.copy(itemIndex = 1)))
+            assertEquals(mapOf(ClaimKind.AdvertiserHoldsContact to 3), library.claims.countByKind(import.id).orFail())
+            val second = library.claims.byProvenance(record.copy(itemIndex = 1)).orFail()
             assertEquals("Smith, Jones & Co", second.attributes.getValue(InstagramClaimFixtures.ADVERTISERS_LABEL))
             assertEquals("instagram:advertiser:smith, jones & co", second.entities.single().id)
-            assertEquals(listOf(0, 1, 2), library.claims.forImport(import.id).map { it.provenance.itemIndex })
-            assertNull(library.claims.byProvenance(record.copy(itemIndex = 3)))
-            assertEquals(3, library.entities.all().count { it.kind == EntityKind.Advertiser })
+            assertEquals(
+                listOf(0, 1, 2),
+                library.claims
+                    .forImport(import.id)
+                    .orFail()
+                    .map { it.provenance.itemIndex },
+            )
+            assertEquals(notFound, library.claims.byProvenance(record.copy(itemIndex = 3)))
+            assertEquals(
+                3,
+                library.entities
+                    .all()
+                    .orFail()
+                    .count { it.kind == EntityKind.Advertiser },
+            )
         }
 
     @Test
-    fun theImportUseCaseImportsTheExportAtAPickedLocationAndFailsWhenThereIsNoneThere() =
+    fun theImportUseCaseImportsTheExportAtAPickedLocationAndEndsFailedWhenThereIsNoneThere() =
         runTest {
             SyntheticInstagramExport(adsViewed = 3, mediaFiles = 1).writeTo(fs, root)
             val useCase = LibraryImportUseCase(library, fs)
@@ -297,10 +335,17 @@ abstract class LibraryTest {
             val stored = assertIs<ImportStep.Stored>(steps.last()).import
             assertIs<ImportStep.Started>(steps.first())
             assertEquals(ExportId("instagram-synthetic"), stored.summary.exportId)
-            assertEquals(mapOf(EventKind.AdShown to 3), library.events.countByKind(stored.id))
-            assertEquals(listOf(stored), library.imports.all())
-            assertFailsWith<Exception> { useCase.run(ExportLocation.Zip("/nowhere/missing.zip")).toList() }
-            assertEquals(listOf(stored), library.imports.all(), "a location that will not open records no Import")
+            assertEquals(mapOf(EventKind.AdShown to 3), library.events.countByKind(stored.id).orFail())
+            assertEquals(listOf(stored), library.imports.all().orFail())
+            assertEquals(
+                listOf(ImportStep.Failed(ImportError.Reading(ExportError.NOT_FOUND))),
+                useCase.run(ExportLocation.Zip("/nowhere/missing.zip")).toList(),
+            )
+            assertEquals(
+                listOf(stored),
+                library.imports.all().orFail(),
+                "a location that will not open records no Import",
+            )
         }
 
     @Test
@@ -315,9 +360,9 @@ abstract class LibraryTest {
             assertEquals(RawKind("ads_viewed"), failed.rawKind)
             assertTrue(failed.reason.isNotBlank())
             assertEquals(1, import.summary.skipped.size)
-            assertEquals(emptyMap(), library.events.countByKind(import.id))
+            assertEquals(emptyMap(), library.events.countByKind(import.id).orFail())
             assertEquals(Inventory(jsonFiles = 2, mediaFiles = 1, otherFiles = 0), import.summary.inventory)
-            assertEquals(import, library.imports.get(import.id), "the Failed entry and its reason are stored")
+            assertEquals(import, library.imports.get(import.id).orFail(), "the Failed entry and its reason are stored")
         }
 
     @Test
@@ -327,7 +372,7 @@ abstract class LibraryTest {
             val import = import(Export.directory(fs, root))
             val provenance = Provenance(ExportId("instagram-synthetic"), InstagramFixtures.ADS_VIEWED_PATH, 1)
 
-            val event = assertNotNull(library.events.byProvenance(provenance))
+            val event = library.events.byProvenance(provenance).orFail()
 
             assertEquals(EventKind.AdShown, event.kind)
             assertEquals(RawKind("ads_viewed"), event.rawKind)
@@ -352,9 +397,19 @@ abstract class LibraryTest {
                 mapOf("username" to "ExampleCourier", "url" to "http://example.com/courier"),
                 advertiser.attributes,
             )
-            assertEquals(advertiser, library.entities.byId(advertiser.id))
-            assertNull(library.events.byProvenance(provenance.copy(recordIndex = 2)), "the undated record is dropped")
-            assertEquals(listOf(0, 1), library.events.forImport(import.id).map { it.provenance.recordIndex })
+            assertEquals(advertiser, library.entities.byId(advertiser.id).orFail())
+            assertEquals(
+                notFound,
+                library.events.byProvenance(provenance.copy(recordIndex = 2)),
+                "the undated record is dropped",
+            )
+            assertEquals(
+                listOf(0, 1),
+                library.events
+                    .forImport(import.id)
+                    .orFail()
+                    .map { it.provenance.recordIndex },
+            )
         }
 
     @Test
@@ -366,7 +421,7 @@ abstract class LibraryTest {
                 includeClaimFiles = true,
             ).writeTo(fs, root)
             val import = import(Export.directory(fs, root))
-            val all = library.events.forImport(import.id)
+            val all = library.events.forImport(import.id).orFail()
             val newestFirst = all.sortedWith(compareByDescending<Event> { it.time }.thenByDescending { it.id })
             assertTrue(all.size > pageSize, "the fixture must span more than one page")
 
@@ -376,14 +431,20 @@ abstract class LibraryTest {
             assertEquals(newestFirst, read.flatten())
             assertEquals(
                 newestFirst.filter { it.kind == EventKind.ContentLiked },
-                library.events.newestFirst(kind = EventKind.ContentLiked, limit = all.size, offset = 0),
+                library.events.newestFirst(kind = EventKind.ContentLiked, limit = all.size, offset = 0).orFail(),
             )
             assertEquals(
-                library.events.countByKind().getValue(EventKind.ContentLiked),
-                library.events.newestFirst(kind = EventKind.ContentLiked, limit = all.size, offset = 0).size,
+                library.events
+                    .countByKind()
+                    .orFail()
+                    .getValue(EventKind.ContentLiked),
+                library.events
+                    .newestFirst(kind = EventKind.ContentLiked, limit = all.size, offset = 0)
+                    .orFail()
+                    .size,
             )
-            assertEquals(emptyList(), library.events.newestFirst(limit = pageSize, offset = all.size))
-            val claims = library.claims.forImport(import.id)
+            assertEquals(emptyList(), library.events.newestFirst(limit = pageSize, offset = all.size).orFail())
+            val claims = library.claims.forImport(import.id).orFail()
             assertTrue(claims.any { it.asOf != null }, "the fixture must hold dated Claims")
             assertTrue(newestFirst.none { event -> claims.any { it.provenance == event.provenance } })
         }
@@ -397,11 +458,17 @@ abstract class LibraryTest {
             val first = import(export)
             val second = import(export)
 
-            assertEquals(listOf(first.id, second.id), library.imports.all().map { it.id })
+            assertEquals(
+                listOf(first.id, second.id),
+                library.imports
+                    .all()
+                    .orFail()
+                    .map { it.id },
+            )
             assertEquals(first.summary, second.summary)
-            assertEquals(mapOf(EventKind.AdShown to 6), library.events.countByKind())
-            assertEquals(mapOf(EventKind.AdShown to 6), library.events.countByKind(second.id))
-            assertEquals(emptyMap(), library.events.countByKind(first.id), "the latest Import owns the rows")
+            assertEquals(mapOf(EventKind.AdShown to 6), library.events.countByKind().orFail())
+            assertEquals(mapOf(EventKind.AdShown to 6), library.events.countByKind(second.id).orFail())
+            assertEquals(emptyMap(), library.events.countByKind(first.id).orFail(), "the latest Import owns the rows")
         }
 
     @Test
@@ -418,7 +485,13 @@ abstract class LibraryTest {
                     .distinct()
                     .sorted()
             assertTrue(expectedIds.size < generator.ads.size, "the fixture must repeat advertisers")
-            assertEquals(expectedIds, library.entities.all().map { it.id })
+            assertEquals(
+                expectedIds,
+                library.entities
+                    .all()
+                    .orFail()
+                    .map { it.id },
+            )
         }
 
     @Test
@@ -433,32 +506,42 @@ abstract class LibraryTest {
             val entitiesOfA =
                 library.events
                     .forImport(importA.id)
+                    .orFail()
                     .flatMap { it.entities }
                     .toSet()
             val entitiesOfB =
                 library.events
                     .forImport(importB.id)
+                    .orFail()
                     .flatMap { it.entities }
                     .toSet()
             assertTrue((entitiesOfA - entitiesOfB).isNotEmpty(), "A must name an advertiser B does not")
 
-            library.imports.delete(importA.id)
+            library.imports.delete(importA.id).orFail()
 
-            assertNull(library.imports.get(importA.id))
-            assertEquals(listOf(importB), library.imports.all())
-            assertEquals(emptyMap(), library.events.countByKind(importA.id))
-            assertEquals(emptyList(), library.events.forImport(importA.id))
-            assertEquals(mapOf(EventKind.AdShown to 1), library.events.countByKind())
-            assertEquals(entitiesOfB.sortedBy { it.id }, library.entities.all(), "only Entities nobody references go")
-            val survivor = library.events.forImport(importB.id).single()
+            assertEquals(notFound, library.imports.get(importA.id))
+            assertEquals(listOf(importB), library.imports.all().orFail())
+            assertEquals(emptyMap(), library.events.countByKind(importA.id).orFail())
+            assertEquals(emptyList(), library.events.forImport(importA.id).orFail())
+            assertEquals(mapOf(EventKind.AdShown to 1), library.events.countByKind().orFail())
+            assertEquals(
+                entitiesOfB.sortedBy { it.id },
+                library.entities.all().orFail(),
+                "only Entities nobody references go",
+            )
+            val survivor =
+                library.events
+                    .forImport(importB.id)
+                    .orFail()
+                    .single()
             assertEquals(entitiesOfB.toList(), survivor.entities)
             assertTrue(survivor.attributes.isNotEmpty())
 
-            library.imports.delete(importB.id)
+            library.imports.delete(importB.id).orFail()
 
-            assertEquals(emptyList(), library.imports.all())
-            assertEquals(emptyMap(), library.events.countByKind())
-            assertEquals(emptyList(), library.entities.all())
+            assertEquals(emptyList(), library.imports.all().orFail())
+            assertEquals(emptyMap(), library.events.countByKind().orFail())
+            assertEquals(emptyList(), library.entities.all().orFail())
         }
 
     @Test
@@ -470,14 +553,14 @@ abstract class LibraryTest {
             SyntheticInstagramExport(adsViewed = 3).writeTo(fs, rootB)
             val importA = import(Export.directory(fs, rootA))
             val importB = import(Export.directory(fs, rootB))
-            val shared = library.entities.all()
+            val shared = library.entities.all().orFail()
             assertTrue(shared.isNotEmpty())
 
-            library.imports.delete(importA.id)
-            assertEquals(shared, library.entities.all())
+            library.imports.delete(importA.id).orFail()
+            assertEquals(shared, library.entities.all().orFail())
 
-            library.imports.delete(importB.id)
-            assertEquals(emptyList(), library.entities.all())
+            library.imports.delete(importB.id).orFail()
+            assertEquals(emptyList(), library.entities.all().orFail())
         }
 
     @Test
@@ -490,11 +573,15 @@ abstract class LibraryTest {
             assertIs<ImportStep.Started>(steps[0])
             assertIs<ImportStep.FileStarted>(steps[1])
             assertIs<ImportStep.FileFinished>(steps[2])
-            val import = library.imports.all().single()
+            val import =
+                library.imports
+                    .all()
+                    .orFail()
+                    .single()
             assertNull(import.completedAt)
             assertEquals(TickingClock.START, import.startedAt)
             assertEquals(listOf(InstagramFixtures.ADS_VIEWED_PATH), import.summary.files.map { it.path })
-            assertEquals(mapOf(EventKind.AdShown to 2), library.events.countByKind(import.id))
+            assertEquals(mapOf(EventKind.AdShown to 2), library.events.countByKind(import.id).orFail())
         }
 }
 

@@ -8,10 +8,12 @@ import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ExportPart
 import com.jassemsendi.unpacked.ingest.ImportStep
 import com.jassemsendi.unpacked.model.ImportId
+import com.jassemsendi.unpacked.model.onFailure
+import com.jassemsendi.unpacked.model.onSuccess
+import com.jassemsendi.unpacked.ui.toMessage
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -55,13 +57,13 @@ class ImportViewModel(
         _state.update {
             it.copy(part = ExportPart.of(location.exportId), run = ImportRunUi.Running(name))
         }
-        importUseCase
-            .run(location)
-            .catch { error -> fail(name, error) }
-            .collect { step -> advance(step) }
+        importUseCase.run(location).collect { step -> advance(name, step) }
     }
 
-    private suspend fun advance(step: ImportStep) {
+    private suspend fun advance(
+        name: String,
+        step: ImportStep,
+    ) {
         when (step) {
             is ImportStep.Started -> {
                 Unit
@@ -96,17 +98,16 @@ class ImportViewModel(
 
             is ImportStep.Completed -> {
                 Unit
-            } // a library-backed run ends with Stored instead
-        }
-    }
+            }
 
-    private suspend fun fail(
-        name: String,
-        error: Throwable,
-    ) {
-        _state.update { it.copy(run = ImportRunUi.Failed(name, error.message ?: "unknown error")) }
-        // A run that stopped half-way may have left an incomplete Import behind; show it.
-        refreshImports()
+            // a library-backed run ends with Stored instead
+
+            is ImportStep.Failed -> {
+                _state.update { it.copy(run = ImportRunUi.Failed(name, step.error.toMessage())) }
+                // A run that stopped half-way may have left an incomplete Import behind; show it.
+                refreshImports()
+            }
+        }
     }
 
     private fun updateRun(transform: (ImportRunUi.Running) -> ImportRunUi.Running) {
@@ -122,18 +123,34 @@ class ImportViewModel(
                 _state.value.imports
                     .find { it.id == id }
                     ?.exportName ?: return@launch
-            imports.delete(id)
-            _state.update { state ->
-                val run = state.run
-                state.copy(run = if (run is ImportRunUi.Finished && run.import.id == id) ImportRunUi.Idle else run)
-            }
-            refreshImports()
-            _events.send(ImportEvent.ImportDeleted(name))
+            imports
+                .delete(id)
+                .onSuccess {
+                    _state.update { state ->
+                        val run = state.run
+                        state.copy(
+                            run = if (run is ImportRunUi.Finished && run.import.id == id) ImportRunUi.Idle else run,
+                        )
+                    }
+                    refreshImports()
+                    _events.send(ImportEvent.ImportDeleted(name))
+                }.onFailure { error -> _events.send(ImportEvent.ImportNotDeleted(name, error.toMessage())) }
         }
     }
 
     private suspend fun refreshImports() {
-        val stored = imports.all().asReversed().map { it.toUi(timeZone) }
-        _state.update { it.copy(imports = stored) }
+        imports
+            .all()
+            .onSuccess { stored ->
+                _state.update {
+                    it.copy(
+                        imports =
+                            stored.asReversed().map { import ->
+                                import.toUi(timeZone)
+                            },
+                        error = null,
+                    )
+                }
+            }.onFailure { error -> _state.update { it.copy(error = error.toMessage()) } }
     }
 }

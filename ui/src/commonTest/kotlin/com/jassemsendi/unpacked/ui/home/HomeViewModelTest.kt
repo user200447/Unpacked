@@ -3,8 +3,10 @@ package com.jassemsendi.unpacked.ui.home
 import app.cash.turbine.test
 import com.jassemsendi.unpacked.model.Claim
 import com.jassemsendi.unpacked.model.ClaimKind
+import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.RawKind
+import com.jassemsendi.unpacked.model.Result
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -96,7 +98,7 @@ class HomeViewModelTest {
                 ),
                 state.kinds,
             )
-            assertEquals(events.countByKind(), state.kinds.associate { it.kind to it.count })
+            assertEquals(Result.Success(state.kinds.associate { it.kind to it.count }), events.countByKind())
             assertEquals(
                 listOf(
                     TimelineEntryUi(
@@ -303,13 +305,52 @@ class HomeViewModelTest {
         }
 
     @Test
-    fun openingARecordThatIsNoLongerInTheLibraryShowsNothing() =
+    fun openingARecordThatIsNoLongerInTheLibrarySaysSoAndShowsNoDetail() =
         runTest {
             val viewModel = viewModel()
 
             viewModel.onAction(HomeAction.Open(RecordRef.Event(adShown.provenance.copy(recordIndex = 99))))
 
             assertNull(viewModel.state.value.detail)
+            assertEquals("That is no longer in your library.", viewModel.state.value.error)
+
+            viewModel.onAction(HomeAction.Open(RecordRef.Event(adShown.provenance)))
+
+            assertNull(viewModel.state.value.error, "a successful read clears the message")
+        }
+
+    @Test
+    fun aLibraryThatWillNotReadKeepsTheLastListAndSaysWhy() =
+        runTest {
+            val viewModel = viewModel()
+            events.failure = DataError.Local.UNKNOWN
+
+            viewModel.onAction(HomeAction.Refresh)
+
+            val state = viewModel.state.value
+            assertFalse(state.isLoading)
+            assertEquals("Your library could not be read or written.", state.error)
+            assertEquals(2, state.entries.size, "the last successful read stays on screen")
+            assertEquals(3, state.totalCount)
+        }
+
+    @Test
+    fun aNextPageTheLibraryRefusesStopsAskingForMoreUntilTheNextRefresh() =
+        runTest {
+            val viewModel = viewModel()
+            events.failure = DataError.Local.UNKNOWN
+
+            viewModel.onAction(HomeAction.NextPage)
+
+            assertFalse(viewModel.state.value.isReadingNextPage)
+            assertFalse(viewModel.state.value.hasMore)
+            assertEquals("Your library could not be read or written.", viewModel.state.value.error)
+
+            events.failure = null
+            viewModel.onAction(HomeAction.Refresh)
+
+            assertNull(viewModel.state.value.error)
+            assertTrue(viewModel.state.value.hasMore)
         }
 
     @Test

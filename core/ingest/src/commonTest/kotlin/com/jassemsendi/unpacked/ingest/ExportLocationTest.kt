@@ -1,7 +1,10 @@
 package com.jassemsendi.unpacked.ingest
 
 import com.jassemsendi.unpacked.fixtures.SyntheticInstagramExport
+import com.jassemsendi.unpacked.fixtures.orFail
+import com.jassemsendi.unpacked.fixtures.writeText
 import com.jassemsendi.unpacked.model.ExportId
+import com.jassemsendi.unpacked.model.Result
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 import kotlin.test.Test
@@ -20,14 +23,28 @@ class ExportLocationTest {
 
         val folderLocation = ExportLocation.Folder(folder.toString())
         val zipLocation = ExportLocation.Zip("/picked/instagram-synthetic.zip")
-        val fromFolder = Export.open(fs, folderLocation)
-        val fromZip = Export.open(fs, zipLocation)
+        val fromFolder = Export.open(fs, folderLocation).orFail()
+        val fromZip = Export.open(fs, zipLocation).orFail()
 
         assertEquals(ExportId("instagram-synthetic"), fromFolder.id)
         assertEquals(fromFolder.id, fromZip.id)
         assertEquals(folderLocation.exportId, fromFolder.id, "the id a location promises is the id the Export gets")
         assertEquals(zipLocation.exportId, fromZip.id)
-        assertEquals(fromFolder.files(), fromZip.files())
+        assertEquals(fromFolder.files().orFail(), fromZip.files().orFail())
+    }
+
+    @Test
+    fun aLocationWithNothingAtItIsNotFoundAndOneThatIsNotAnExportIsNotReadable() {
+        fs.writeText("/picked/notes.zip".toPath(), "this is a text file with a zip name")
+        fs.writeText("/picked/instagram-file".toPath(), "a file where a folder was expected")
+
+        assertEquals(Result.Error(ExportError.NOT_FOUND), Export.open(fs, ExportLocation.Zip("/picked/missing.zip")))
+        assertEquals(Result.Error(ExportError.NOT_FOUND), Export.open(fs, ExportLocation.Folder("/picked/missing")))
+        assertEquals(Result.Error(ExportError.NOT_READABLE), Export.open(fs, ExportLocation.Zip("/picked/notes.zip")))
+        assertEquals(
+            Result.Error(ExportError.NOT_READABLE),
+            Export.open(fs, ExportLocation.Folder("/picked/instagram-file")),
+        )
     }
 
     @Test

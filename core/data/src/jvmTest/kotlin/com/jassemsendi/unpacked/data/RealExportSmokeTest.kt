@@ -1,5 +1,6 @@
 package com.jassemsendi.unpacked.data
 
+import com.jassemsendi.unpacked.fixtures.orFail
 import com.jassemsendi.unpacked.ingest.Export
 import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ImportStep
@@ -31,14 +32,14 @@ class RealExportSmokeTest {
                 if (path.endsWith(".zip", ignoreCase = true)) ExportLocation.Zip(path) else ExportLocation.Folder(path)
 
             Library.inMemory().use { library ->
-                val steps = library.import(Export.open(FileSystem.SYSTEM, location), InstagramAdapter).toList()
+                val steps = library.import(Export.open(FileSystem.SYSTEM, location).orFail(), InstagramAdapter).toList()
                 val import = assertIs<ImportStep.Stored>(steps.last()).import
 
                 val summary = import.summary
                 println("Export ${summary.exportId.value}: ${summary.inventory}")
                 println("Parsed ${summary.parsed.size}, skipped ${summary.skipped.size}, failed ${summary.failed.size}")
-                println("Events per Kind: ${library.events.countByKind(import.id).toSortedMap()}")
-                println("Claims per Kind: ${library.claims.countByKind(import.id).toSortedMap()}")
+                println("Events per Kind: ${library.events.countByKind(import.id).orFail().toSortedMap()}")
+                println("Claims per Kind: ${library.claims.countByKind(import.id).orFail().toSortedMap()}")
                 println("Skipped JSON files, by name:")
                 summary.skipped
                     .filter { it.path.endsWith(".json") }

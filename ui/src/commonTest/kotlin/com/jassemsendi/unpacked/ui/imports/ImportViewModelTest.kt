@@ -1,15 +1,19 @@
 package com.jassemsendi.unpacked.ui.imports
 
 import app.cash.turbine.test
+import com.jassemsendi.unpacked.ingest.ExportError
 import com.jassemsendi.unpacked.ingest.ExportLocation
 import com.jassemsendi.unpacked.ingest.ExportPart
 import com.jassemsendi.unpacked.ingest.FileOutcome
+import com.jassemsendi.unpacked.ingest.ImportError
 import com.jassemsendi.unpacked.ingest.ImportProgress
 import com.jassemsendi.unpacked.ingest.ImportStep
+import com.jassemsendi.unpacked.model.DataError
 import com.jassemsendi.unpacked.model.FileResult
 import com.jassemsendi.unpacked.model.ImportId
 import com.jassemsendi.unpacked.model.Inventory
 import com.jassemsendi.unpacked.model.RawKind
+import com.jassemsendi.unpacked.model.Result
 import com.jassemsendi.unpacked.model.Source
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -180,14 +184,22 @@ class ImportViewModelTest {
         }
 
     @Test
-    fun anExportThatWillNotOpenLeavesTheRunFailedWithTheReason() =
+    fun anExportThatWillNotOpenLeavesTheRunFailedWithTheReasonInWords() =
         runTest {
-            useCase.failure = IllegalStateException("not a zip file")
             val viewModel = viewModel()
 
             viewModel.onAction(ImportAction.PickZip)
+            useCase.steps.send(ImportStep.Failed(ImportError.Reading(ExportError.NOT_READABLE)))
+            useCase.steps.close()
 
-            assertEquals(ImportRunUi.Failed("instagram-me-2026-10-20", "not a zip file"), viewModel.state.value.run)
+            assertEquals(
+                ImportRunUi.Failed(
+                    "instagram-me-2026-10-20",
+                    "That is not an Export Unpacked can read. Pick the zip as you downloaded it, " +
+                        "or the folder you unzipped it into.",
+                ),
+                viewModel.state.value.run,
+            )
             assertEquals(
                 listOf(earlier.summary.exportId.value),
                 viewModel.state.value.imports
@@ -203,9 +215,13 @@ class ImportViewModelTest {
             useCase.steps.send(ImportStep.Started(earlier.summary.exportId, Source.Instagram, Inventory(2, 0, 0)))
             repository.add(storedImport(2, "instagram-me-2026-10-20", emptyList(), complete = false))
 
-            useCase.steps.close(IllegalStateException("disk full"))
+            useCase.steps.send(ImportStep.Failed(ImportError.Writing(DataError.Local.DISK_FULL)))
+            useCase.steps.close()
 
-            assertEquals(ImportRunUi.Failed("instagram-me-2026-10-20", "disk full"), viewModel.state.value.run)
+            assertEquals(
+                ImportRunUi.Failed("instagram-me-2026-10-20", "The device is out of storage."),
+                viewModel.state.value.run,
+            )
             assertEquals(
                 listOf(false, true),
                 viewModel.state.value.imports
@@ -244,7 +260,61 @@ class ImportViewModelTest {
                     .map { it.id },
             )
             assertEquals(ImportRunUi.Idle, viewModel.state.value.run)
-            assertEquals(listOf(earlier), repository.all())
+            assertEquals(Result.Success(listOf(earlier)), repository.all())
+        }
+
+    @Test
+    fun aDeleteTheLibraryRefusesLeavesTheListAsItIsAndSaysWhy() =
+        runTest {
+            val viewModel = viewModel()
+            repository.failure = DataError.Local.UNKNOWN
+
+            viewModel.events.test {
+                viewModel.onAction(ImportAction.DeleteImport(ImportId(1)))
+
+                assertEquals(
+                    ImportEvent.ImportNotDeleted(
+                        "instagram-me-2026-09-01",
+                        "Your library could not be read or written.",
+                    ),
+                    awaitItem(),
+                )
+            }
+            assertEquals(
+                listOf(ImportId(1)),
+                viewModel.state.value.imports
+                    .map { it.id },
+            )
+        }
+
+    @Test
+    fun aLibraryThatWillNotListItsImportsSaysSoInsteadOfListingNothing() =
+        runTest {
+            repository.failure = DataError.Local.UNKNOWN
+
+            val state = viewModel().state.value
+
+            assertEquals("Your library could not be read or written.", state.error)
+            assertEquals(emptyList(), state.imports)
+        }
+
+    @Test
+    fun theNextSuccessfulListingClearsTheError() =
+        runTest {
+            repository.failure = DataError.Local.UNKNOWN
+            val viewModel = viewModel()
+            repository.failure = null
+
+            viewModel.onAction(ImportAction.PickZip)
+            useCase.steps.send(ImportStep.Stored(storedImport(2, "instagram-me-2026-10-20", listOf(parsed))))
+            useCase.steps.close()
+
+            assertEquals(null, viewModel.state.value.error)
+            assertEquals(
+                listOf(ImportId(2), ImportId(1)),
+                viewModel.state.value.imports
+                    .map { it.id },
+            )
         }
 
     @Test
