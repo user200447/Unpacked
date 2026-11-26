@@ -134,6 +134,7 @@ internal class ToolOutputJson(
             put("chart", output.kind.name)
             put("title", output.title)
             put("valueLabel", output.valueLabel)
+            put("pointLabel", output.pointLabel)
             putJsonArray("points") {
                 output.points.forEach { point ->
                     add(

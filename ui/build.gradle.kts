@@ -39,5 +39,10 @@ kotlin {
             implementation(libs.kotlinx.coroutinesTest)
             implementation(libs.turbine)
         }
+        jvmTest.dependencies {
+            // Compose UI tests run on the desktop target, where Skiko renders without a device.
+            implementation(libs.compose.uiTest)
+            implementation(compose.desktop.currentOs)
+        }
     }
 }

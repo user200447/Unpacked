@@ -134,9 +134,10 @@ public class KoogAskAgent(
         public const val DEFAULT_STEP_CAP: Int = 8
 
         // Koog counts node visits: each Tool round visits the execute and the send node, and a question also visits
-        // classify, ask and check, plus the retry's own request. The Koog limit stays a backstop behind the step cap.
+        // classify, ask, check and chart, plus the retry's own request. The Koog limit stays a backstop behind the
+        // step cap.
         private const val NODES_PER_STEP = 2
-        private const val FIXED_NODES = 8
+        private const val FIXED_NODES = 9
     }
 }
 
@@ -213,6 +214,12 @@ internal fun askStrategy(
             }
         }
         val check by node<Message.Assistant, Checked>("check") { response -> checkAnswer(state, response, llm) }
+        // An answer whose Tool outputs include a count over time or a ranking gets a chart of the newest one, unless
+        // the model drew its own (spec story 36); the numbers are the Tool's, so nothing new needs validating.
+        val chart by node<Checked.Done, Ending>("chart") { done ->
+            state.chartLatest()
+            Ending.Text(done.text, done.unverified)
+        }
 
         edge(nodeStart forwardTo classify)
         edge(classify forwardTo ask)
@@ -232,10 +239,11 @@ internal fun askStrategy(
             },
         )
         edge(
-            check forwardTo nodeFinish onCondition { checked -> checked is Checked.Done } transformed { checked ->
-                (checked as Checked.Done).let { done -> Ending.Text(done.text, done.unverified) }
+            check forwardTo chart onCondition { checked -> checked is Checked.Done } transformed { checked ->
+                checked as Checked.Done
             },
         )
+        edge(chart forwardTo nodeFinish)
     }
 
 /**
@@ -283,6 +291,8 @@ internal fun systemPrompt(
         put the marker of the output or record it comes from right after it, like "4 ads [1]". Use only numbers
         that appear in Tool outputs, written as they appear. If a Tool reports an error, say what could not be
         found instead of inventing an answer. Answer in plain language, in a few sentences, without headings.
+        A count grouped by day or month, or a ranking, is also shown to the person as a chart under your answer,
+        so you need not list every point of it.
         """.trimIndent()
 }
 

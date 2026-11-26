@@ -168,10 +168,15 @@ internal fun Answer.toUi(): AnswerUi =
 
 internal fun TraceStep.toUi(): TraceStepUi = TraceStepUi(number, tool, input, output, failed)
 
-internal fun ChartSpec.toUi(): ChartUi {
-    val largest = points.maxOfOrNull { it.value }?.coerceAtLeast(1) ?: 1
-    return ChartUi(title, valueLabel, points.map { ChartRowUi(it.label, it.value, it.value.toFloat() / largest) })
-}
+internal fun ChartSpec.toUi(): ChartUi =
+    ChartUi(
+        kind = kind,
+        title = title,
+        valueLabel = valueLabel,
+        pointLabel = pointLabel,
+        rows = points.map { ChartRowUi(it.label, it.value) },
+        top = points.maxOfOrNull { it.value } ?: 0,
+    )
 
 /** How an answer is marked with where it came from: "local" for a model on this device (spec story 44). */
 internal fun ModelInfo.marker(): String =

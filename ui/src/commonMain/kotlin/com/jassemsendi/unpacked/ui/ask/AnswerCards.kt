@@ -1,13 +1,8 @@
 package com.jassemsendi.unpacked.ui.ask
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -18,8 +13,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
@@ -34,8 +29,8 @@ import com.jassemsendi.unpacked.ui.theme.SectionCard
 import com.jassemsendi.unpacked.ui.theme.Spacing
 import com.jassemsendi.unpacked.ui.theme.readable
 
-// The cards under a question: the answer with its clickable citations and its flag, the chart the model asked
-// for, and the Tool trace that backs every number (spec stories 35 and 44).
+// The cards under a question: the answer with its clickable citations and its flag, and the Tool trace that backs
+// every number (spec stories 35 and 44); the chart has its own file.
 
 /** The answer with its markers made clickable, how it is marked, and the flag when a number has no backing. */
 @Composable
@@ -87,35 +82,10 @@ private fun citedText(
     append(answer.text.substring(from))
 }
 
-@Composable
-internal fun ChartCard(chart: ChartUi) {
-    SectionCard(title = chart.title, modifier = Modifier.readable()) {
-        chart.rows.forEach { row ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(row.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(weight = 1f))
-                Box(modifier = Modifier.weight(weight = 2f)) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth(row.share)
-                                .height(Spacing.medium)
-                                .background(MaterialTheme.colorScheme.primary),
-                    )
-                }
-                Text(row.value.toString(), style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-        Text(chart.valueLabel, style = MaterialTheme.typography.labelSmall)
-    }
-}
-
 /** Every Tool call in order, with what it was called with and what came back; a long output unfolds on tap. */
 @Composable
 internal fun TraceCard(trace: List<TraceStepUi>) {
-    SectionCard(title = "Tool trace", modifier = Modifier.readable()) {
+    SectionCard(title = "Tool trace", modifier = Modifier.readable().testTag(TRACE_TAG)) {
         if (trace.isEmpty()) Text("The model called no Tool.", style = MaterialTheme.typography.bodyMedium)
         trace.forEach { step -> TraceStepRow(step) }
     }

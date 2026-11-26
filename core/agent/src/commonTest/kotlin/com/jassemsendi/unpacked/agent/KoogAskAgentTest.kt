@@ -9,10 +9,17 @@ import com.jassemsendi.unpacked.fixtures.orFail
 import com.jassemsendi.unpacked.model.EventKind
 import com.jassemsendi.unpacked.model.Result
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -47,13 +54,13 @@ class KoogAskAgentTest {
             assertTrue(answer.isVerified, "numbers 4 and 2 are both in the Tool outputs")
             assertEquals(listOf(1, 2), answer.citations.map { it.marker })
             assertTrue(answer.citations.all { it.provenance in adProvenances }, "every citation opens an ad Record")
-            assertEquals(listOf(COUNT_EVENTS, TOP_ENTITIES), answer.trace.map { it.tool })
-            assertEquals(listOf(1, 2), answer.trace.map { it.number })
+            assertEquals(listOf(COUNT_EVENTS, TOP_ENTITIES, CHART_SPEC), answer.trace.map { it.tool })
+            assertEquals(listOf(1, 2, 3), answer.trace.map { it.number })
             assertEquals("""{"kind":"AdShown"}""", answer.trace[0].input, "the input as the model wrote it")
             assertTrue(answer.trace.none { it.failed })
             assertTrue(answer.trace[0].output.contains("\"total\":4"), answer.trace[0].output)
             assertEquals(ModelInfo("scripted", ModelLocality.Local), answer.model)
-            assertEquals(null, answer.chart)
+            assertEquals(ChartKind.Bars, answer.chart?.kind, "the ranking the model fetched is charted by the strategy")
         }
 
     @Test
@@ -253,6 +260,111 @@ class KoogAskAgentTest {
             assertEquals(ChartKind.TimeSeries, answer.chart?.kind)
             assertEquals(listOf("2026-09" to 1, "2026-10" to 3), answer.chart?.points?.map { it.label to it.value })
             assertTrue(answer.isVerified)
+            assertEquals(
+                listOf(COUNT_EVENTS, CHART_SPEC),
+                answer.trace.map { it.tool },
+                "the model's chart stands alone",
+            )
+        }
+
+    @Test
+    fun aPerMonthQuestionIsChartedAsATimeSeriesWithTheCountsOfTheTrace() =
+        runTest {
+            val model =
+                ScriptedModel(
+                    says("Counts"),
+                    calls(COUNT_EVENTS, """{"kind":"AdShown","groupBy":"Month"}"""),
+                    says("Ads per month: 1 in September and 3 in October [1]."),
+                )
+
+            val answer = assertIs<AskOutcome.Answered>(agent(model).ask("Ads per month?").orFail()).answer
+
+            val chart = assertNotNull(answer.chart, "the strategy charts a count over time without being asked")
+            assertEquals(ChartKind.TimeSeries, chart.kind)
+            assertEquals("Month", chart.pointLabel)
+            assertEquals("AdShown", chart.valueLabel)
+            val series = answer.trace[0].seriesInOutput()
+            assertEquals(series.map { it.second }, chart.points.map { it.value }, "the values are the Tool's counts")
+            assertEquals(series.map { it.first.take(MONTH_LENGTH) }, chart.points.map { it.label }, "labelled by month")
+            assertEquals(listOf(COUNT_EVENTS, CHART_SPEC), answer.trace.map { it.tool })
+            val charted = answer.trace[1]
+            assertEquals("""{"ofTool":"countEvents"}""", charted.input)
+            assertFalse(charted.failed)
+            assertTrue(charted.output.contains("\"chart\":\"TimeSeries\""), charted.output)
+            assertTrue(answer.isVerified)
+        }
+
+    @Test
+    fun aTopAdvertisersQuestionIsChartedAsBarsWithTheCountsOfTheTrace() =
+        runTest {
+            val model =
+                ScriptedModel(
+                    says("Entities"),
+                    calls(TOP_ENTITIES, """{"kind":"AdShown","entityKind":"Advertiser"}"""),
+                    says("Example Courier placed 2 ads [1], Example Hotels 1 [3]."),
+                )
+
+            val answer = assertIs<AskOutcome.Answered>(agent(model).ask("Top advertisers?").orFail()).answer
+
+            val chart = assertNotNull(answer.chart)
+            assertEquals(ChartKind.Bars, chart.kind)
+            assertEquals("Advertiser", chart.pointLabel)
+            assertEquals(answer.trace[0].topInOutput(), chart.points.map { it.label to it.value })
+            assertEquals(listOf(TOP_ENTITIES, CHART_SPEC), answer.trace.map { it.tool })
+            assertEquals("""{"ofTool":"topEntities"}""", answer.trace[1].input)
+        }
+
+    @Test
+    fun aQuestionWithNoQuantitativeShapeGetsNoChartAndNoRefusalInTheTrace() =
+        runTest {
+            val model =
+                ScriptedModel(
+                    says("Search"),
+                    calls(COUNT_EVENTS, """{"kind":"AdShown"}"""),
+                    calls(SEARCH_TEXT, """{"text":"courier"}"""),
+                    says("4 ads [1]; two mention a courier [2][3]."),
+                )
+
+            val answer = assertIs<AskOutcome.Answered>(agent(model).ask("Anything about couriers?").orFail()).answer
+
+            assertNull(answer.chart, "a single number and search hits have no shape to chart")
+            assertEquals(listOf(COUNT_EVENTS, SEARCH_TEXT), answer.trace.map { it.tool })
+            assertTrue(answer.trace.none { it.failed })
+        }
+
+    @Test
+    fun theStrategysChartSpendsNoneOfTheStepCap() =
+        runTest {
+            val model =
+                ScriptedModel(
+                    says("Counts"),
+                    calls(COUNT_EVENTS, """{"kind":"AdShown","groupBy":"Month"}"""),
+                    says("1 in September, 3 in October [1]."),
+                )
+
+            val outcome = agent(model, stepCap = 1).ask("Ads per month?").orFail()
+
+            val answer = assertIs<AskOutcome.Answered>(outcome).answer
+            assertEquals(ChartKind.TimeSeries, answer.chart?.kind)
+            assertEquals(listOf(1, 2), answer.trace.map { it.number }, "the chart is recorded after the cap was spent")
+            assertEquals(emptyList(), model.calls.last().tools, "the model was asked to answer, not to call")
+        }
+
+    @Test
+    fun whenSeveralOutputsCouldBeChartedTheNewestIs() =
+        runTest {
+            val model =
+                ScriptedModel(
+                    says("Counts"),
+                    calls(TOP_ENTITIES, """{"kind":"AdShown","entityKind":"Advertiser"}"""),
+                    calls(COUNT_EVENTS, """{"kind":"AdShown","groupBy":"Month"}"""),
+                    says("2 from Example Courier [1]; 1 in September and 3 in October."),
+                )
+
+            val answer = assertIs<AskOutcome.Answered>(agent(model).ask("Who, and when?").orFail()).answer
+
+            assertEquals(ChartKind.TimeSeries, answer.chart?.kind)
+            assertEquals("""{"ofTool":"countEvents"}""", answer.trace.last().input)
         }
 
     @Test
@@ -363,3 +475,27 @@ class KoogAskAgentTest {
         assertTrue(prompt.contains(EventKind.AdShown.name).not(), "the prompt teaches citing, the Tools teach kinds")
     }
 }
+
+/** How many characters of a bucket's first day name its month: "2026-09" of "2026-09-01". */
+private const val MONTH_LENGTH = 7
+
+/** The series of a countEvents output as the trace shows it: each bucket's first day and its count. */
+private fun TraceStep.seriesInOutput(): List<Pair<String, Int>> =
+    Json.parseToJsonElement(output).jsonObject.getValue("series").jsonArray.map { bucket ->
+        bucket.jsonObject
+            .getValue("start")
+            .jsonPrimitive.content to
+            bucket.jsonObject
+                .getValue("count")
+                .jsonPrimitive.int
+    }
+
+/** The ranking of a topEntities output as the trace shows it: each Entity's name and its count. */
+private fun TraceStep.topInOutput(): List<Pair<String, Int>> =
+    Json.parseToJsonElement(output).jsonObject.getValue("top").jsonArray.map { ranked ->
+        val entity = ranked.jsonObject.getValue("entity").jsonObject
+        entity.getValue("name").jsonPrimitive.content to
+            ranked.jsonObject
+                .getValue("count")
+                .jsonPrimitive.int
+    }

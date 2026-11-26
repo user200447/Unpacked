@@ -1,5 +1,6 @@
 package com.jassemsendi.unpacked.ui.ask
 
+import com.jassemsendi.unpacked.agent.ChartKind
 import com.jassemsendi.unpacked.agent.ModelLocality
 import com.jassemsendi.unpacked.model.Provenance
 import com.jassemsendi.unpacked.ui.home.RecordDetailUi
@@ -88,18 +89,26 @@ data class TraceStepUi(
     val failed: Boolean,
 )
 
-/** A chart the model asked for, as rows the screen draws as bars. */
+/**
+ * A chart as drawn under an answer (glossary: Chart): a line over time or bars across Entities, every number the
+ * Tool's own, with both axes named.
+ */
 data class ChartUi(
+    val kind: ChartKind,
     val title: String,
+    /** The value axis: what the numbers count, such as "AdShown". */
     val valueLabel: String,
+    /** The point axis: "Month" or "Day" for a line, the Entity Kind for bars. */
+    val pointLabel: String,
     val rows: List<ChartRowUi>,
+    /** The top of the value axis: the largest value; 0 when every value is, and then the axis shows no top. */
+    val top: Int,
 )
 
+/** One point of a chart: what it stands for and the number, exactly as the Tool output has them. */
 data class ChartRowUi(
     val label: String,
     val value: Int,
-    /** 0 to 1: this row's share of the largest value, the bar's width. */
-    val share: Float,
 )
 
 sealed interface AskAction {

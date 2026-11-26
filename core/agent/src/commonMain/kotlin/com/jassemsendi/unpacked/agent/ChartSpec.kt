@@ -24,8 +24,10 @@ public data class ChartPoint(
 public data class ChartSpec(
     val kind: ChartKind,
     val title: String,
-    /** What the numbers count, such as "Events" or "ads shown". */
+    /** What the numbers count, such as "Events" or "ads shown": the value axis. */
     val valueLabel: String,
+    /** What the points stand for, "Month" or "Day" for a time series, the Entity Kind for bars: the point axis. */
+    val pointLabel: String,
     val points: List<ChartPoint>,
     override val cited: List<Provenance>,
 ) : ToolOutput
@@ -56,12 +58,13 @@ public fun chartSpecOf(output: ToolOutput): Result<ChartSpec, ToolError> =
 private fun EventsCounted.timeSeries(series: List<SeriesPoint>): Result<ChartSpec, ToolError> {
     if (series.isEmpty()) return refuse(this, Reason.NothingToChart)
     val what = kind?.name ?: "Events"
-    val per = if (grouping == Grouping.Day) "day" else "month"
+    val per = if (grouping == Grouping.Day) "Day" else "Month"
     return Result.Success(
         ChartSpec(
             kind = ChartKind.TimeSeries,
-            title = "$what per $per",
+            title = "$what per ${per.lowercase()}",
             valueLabel = what,
+            pointLabel = per,
             points =
                 series.map { point ->
                     val label =
@@ -86,6 +89,7 @@ private fun TopEntities.bars(): Result<ChartSpec, ToolError> {
             kind = ChartKind.Bars,
             title = "${entityKind.name} named most by ${kind.name} Events",
             valueLabel = "${kind.name} Events",
+            pointLabel = entityKind.name,
             points = top.map { ChartPoint(it.entity.displayName, it.count) },
             cited = cited,
         ),

@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -80,7 +81,7 @@ private fun Conversation(
 ) {
     val onBack = destinations.onBack
     LazyColumn(
-        modifier = modifier,
+        modifier = modifier.testTag(ASK_LIST_TAG),
         contentPadding = PaddingValues(Spacing.large),
         verticalArrangement = Arrangement.spacedBy(Spacing.medium),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -248,6 +249,11 @@ private fun PayloadCard(
 }
 
 private val PAYLOAD_HEIGHT = 320.dp
+
+// Where the desktop UI tests find the list, the chart and the trace.
+internal const val ASK_LIST_TAG = "ask-list"
+internal const val CHART_TAG = "ask-chart"
+internal const val TRACE_TAG = "ask-trace"
 
 @Composable
 private fun Hint() {
